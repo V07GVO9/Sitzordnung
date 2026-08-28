@@ -15,24 +15,44 @@ vergeben. Bewertet werden kann nur, wenn der Kurs laut Stundenplan gerade läuft
 | Fächer & Kurse | Fächer anlegen und einer Klasse zuordnen – daraus entsteht ein Kurs |
 | Sitzordnung | Ein bis zwei Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
 | Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |
-| Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
-| Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
+| Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet – eine Bewertung je Unterrichtsstunde |
+| Stundenplan | Wochenplan je Kurs, wahlweise aus WebUntis als Kalenderdatei importiert |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
 | Anmeldung | Alle Daten liegen hinter einem Login; ohne Anmeldung liefert die API nichts aus |
 
-### Die Sperre für Bewertungen
+### Eine Bewertung je Unterrichtsstunde
 
-Bewertungen sind nur innerhalb einer eingetragenen Unterrichtsstunde möglich. Die
-Prüfung findet im Backend statt, nicht nur in der Oberfläche – ein Aufruf außerhalb
-der Unterrichtszeit wird mit `403` abgelehnt.
+Bewertet werden darf **jederzeit** – auch abends, wenn die Stunde längst vorbei
+ist. Begrenzt ist nur die Menge: je Unterrichtsstunde und Schüler zählt genau
+eine Bewertung. Ein zweiter Klick in derselben Stunde **ersetzt** die vorherige,
+statt Punkte zu häufen. So lässt sich ein Vertipper korrigieren, ohne dass eine
+einzelne Stunde den Punktestand verzerrt.
 
-Zwei Stellschrauben unter *Auswertung → Einstellungen*:
+Welche Stunde gerade gemeint ist, ergibt sich aus dem Stundenplan:
 
-- **Kulanzzeit** (Standard 15 Minuten): So lange vor Beginn und nach Ende einer
-  Stunde ist das Bewerten noch möglich.
-- **Notfall-Freigabe** (Standard aus): Hebt die Sperre ganz auf, falls der
-  Stundenplan einmal kurzfristig abweicht.
+- die **laufende** Stunde des Kurses, sonst
+- die **zuletzt gehaltene** – wer abends nachträgt, bewertet also den Unterricht
+  von heute Vormittag.
+
+Hat ein Kurs keinen Stundenplaneintrag, zählt der **Tag** als eine Einheit. Die
+Kursansicht zeigt oben immer an, auf welche Stunde eine Bewertung gerade einzahlt,
+und hebt die bereits vergebene Bewertung hervor.
+
+### Stundenplan aus WebUntis übernehmen
+
+Statt jede Stunde einzeln einzutragen, lässt sich der Plan als Kalenderdatei
+importieren – in WebUntis über den iCal-Export des eigenen Stundenplans.
+
+Der Import läuft in zwei Schritten: Die App liest die Datei, rechnet die Zeiten in
+die lokale Zeitzone um und leitet aus den Einzelterminen die **Wochenmuster** ab.
+In einer Vorschau lassen sich Klasse, Fach und Raum je Zeile korrigieren, bevor
+etwas gespeichert wird. Fehlende Klassen, Fächer und Kurse legt der Import selbst an.
+
+Weil die Titelformate sich je Schule unterscheiden („D - KDM23", „MA - 10a - A101"),
+werden Klasse und Fach geraten – bereits angelegte Namen haben dabei Vorrang.
+Einträge, die nur einmal vorkommen, sind vermutlich Vertretungen und deshalb nicht
+vorausgewählt.
 
 ### Anmeldung
 
@@ -142,8 +162,8 @@ dotnet test
 
 Die Testsuite umfasst:
 
-- **Fachlogik** – Stundenplanprüfung inklusive Kulanzzeit, Tageswechsel und
-  Notfall-Freigabe; Notenschlüssel; CSV-Erzeugung.
+- **Fachlogik** – Zuordnung einer Bewertung zur richtigen Unterrichtsstunde;
+  Notenschlüssel; CSV-Erzeugung; Kalenderimport samt Sommer- und Winterzeit.
 - **API-Tests** – die vollständige Anwendung läuft gegen eine SQLite-Datenbank im
   Arbeitsspeicher, sodass auch Abfragen auffallen, die SQLite nicht übersetzen kann.
 
@@ -194,7 +214,7 @@ backend/
     Models/        Datenmodell (Klasse, Fach, Kurs, Schüler, Sitzordnung, Bewertung …)
     Data/          EF-Core-Kontext und Migrationen
     Dtos/          Datenstrukturen der API
-    Services/      Stundenplanprüfung, Notenschlüssel, Fotoablage, CSV
+    Services/      Unterrichtsstunden, Notenschlüssel, Fotoablage, CSV, ICS-Import
     Controllers/   Die API-Endpunkte
   Sitzordnung.Api.Tests/
 frontend/
@@ -217,8 +237,10 @@ der Punktestand eines Schülers ist die Summe seiner Bewertungen, beginnend bei 
 | --- | --- | --- |
 | `GET` | `/api/courses` | Alle Kurse |
 | `GET` | `/api/timetable/current` | Welcher Unterricht läuft gerade? |
-| `GET` | `/api/courses/{id}/rating-window` | Darf für diesen Kurs bewertet werden? |
-| `POST` | `/api/ratings` | Bewertung abgeben (nur während des Unterrichts) |
+| `GET` | `/api/courses/{id}/current-lesson` | Welcher Stunde wird eine Bewertung zugerechnet? |
+| `POST` | `/api/ratings` | Bewertung abgeben (ersetzt eine vorhandene derselben Stunde) |
+| `POST` | `/api/timetable/import/preview` | Kalenderdatei einlesen und Vorschau zeigen |
+| `POST` | `/api/timetable/import/apply` | Bestätigte Stunden übernehmen |
 | `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses |
 | `PUT` | `/api/seatingplans/{id}/layout` | Sitzordnung speichern |
 | `GET` | `/api/export/summary.csv` | Punktestand als CSV |

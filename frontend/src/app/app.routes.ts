@@ -32,6 +32,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/timetable/timetable').then((m) => m.TimetablePage),
   },
   {
+    path: 'stundenplan/import',
+    canActivate: [authGuard],
+    title: 'Stundenplan importieren',
+    loadComponent: () =>
+      import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
+  },
+  {
     path: 'auswertung',
     canActivate: [authGuard],
     title: 'Auswertung',

@@ -2,7 +2,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
-  AppSettings,
   Course,
   CourseScoreboard,
   CurrentLesson,
@@ -10,7 +9,7 @@ import {
   GradeScaleInput,
   Rating,
   RatingValue,
-  RatingWindow,
+  LessonSlot,
   SchoolClass,
   SeatLayoutInput,
   SeatingPlan,
@@ -18,6 +17,9 @@ import {
   Subject,
   TimetableEntry,
   TimetableEntryInput,
+  TimetableImportPreview,
+  TimetableImportResult,
+  TimetableImportRow,
 } from './models';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
@@ -196,10 +198,33 @@ export class ApiService {
     return this.http.delete<void>(`${this.base}/timetable/${id}`);
   }
 
+  /** Liest eine Kalenderdatei ein und zeigt, was daraus würde - speichert nichts. */
+  previewTimetableImport(file: File): Observable<TimetableImportPreview> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<TimetableImportPreview>(`${this.base}/timetable/import/preview`, form);
+  }
+
+  applyTimetableImport(entries: TimetableImportRow[]): Observable<TimetableImportResult> {
+    const nutzdaten = entries.map((e) => ({
+      dayOfWeek: e.dayOfWeek,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      schoolClassName: e.schoolClassName,
+      subjectName: e.subjectName,
+      room: e.room,
+    }));
+
+    return this.http.post<TimetableImportResult>(`${this.base}/timetable/import/apply`, {
+      entries: nutzdaten,
+    });
+  }
+
   // --- Bewertungen ---
 
-  getRatingWindow(courseId: number): Observable<RatingWindow> {
-    return this.http.get<RatingWindow>(`${this.base}/courses/${courseId}/rating-window`);
+  /** Welcher Unterrichtsstunde wird eine Bewertung gerade zugerechnet? */
+  getCurrentLessonSlot(courseId: number): Observable<LessonSlot> {
+    return this.http.get<LessonSlot>(`${this.base}/courses/${courseId}/current-lesson`);
   }
 
   rate(
@@ -257,15 +282,6 @@ export class ApiService {
     return this.http.delete<void>(`${this.base}/courses/${courseId}/gradescale`);
   }
 
-  // --- Einstellungen ---
-
-  getSettings(): Observable<AppSettings> {
-    return this.http.get<AppSettings>(`${this.base}/settings`);
-  }
-
-  saveSettings(settings: AppSettings): Observable<AppSettings> {
-    return this.http.put<AppSettings>(`${this.base}/settings`, settings);
-  }
 
   // --- Export ---
 

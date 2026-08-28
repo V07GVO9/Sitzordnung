@@ -180,42 +180,18 @@
     </section>
 
     <section class="card">
-      <h2>Einstellungen</h2>
-      @if (settings(); as s) {
-        <label class="full">
-          Kulanzzeit vor und nach der Stunde (Minuten)
-          <input
-            type="number"
-            min="0"
-            max="120"
-            [value]="s.toleranceMinutes"
-            (change)="saveSettings({ toleranceMinutes: +$any($event.target).value })"
-          />
-        </label>
-        <p class="muted small">
-          Innerhalb dieser Zeitspanne vor Beginn und nach Ende einer Stunde sind Bewertungen
-          weiterhin möglich.
-        </p>
-
-        <label class="inline">
-          <input
-            type="checkbox"
-            [checked]="s.allowRatingOutsideLesson"
-            (change)="saveSettings({ allowRatingOutsideLesson: $any($event.target).checked })"
-          />
-          Notfall-Freigabe: Bewerten auch außerhalb des Stundenplans
-        </label>
-        <p class="muted small">
-          Normalerweise sperrt die App Bewertungen außerhalb der eingetragenen Unterrichtszeiten.
-          Diese Freigabe hebt die Sperre auf – etwa, wenn der Stundenplan kurzfristig abweicht.
-        </p>
-
-        @if (s.allowRatingOutsideLesson) {
-          <div class="banner warn">
-            Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
-          </div>
-        }
-      }
+      <h2>Wie Bewertungen gezählt werden</h2>
+      <p class="muted small">
+        Bewertet werden darf jederzeit – auch nach dem Unterricht. Je
+        Unterrichtsstunde und Schüler zählt aber genau eine Bewertung: eine
+        weitere in derselben Stunde ersetzt die vorherige.
+      </p>
+      <p class="muted small">
+        Welche Stunde das gerade ist, ergibt sich aus dem
+        <a routerLink="/stundenplan">Stundenplan</a> – es ist die laufende
+        Stunde, sonst die zuletzt gehaltene. Hat ein Kurs keinen
+        Stundenplaneintrag, zählt der Tag als eine Einheit.
+      </p>
     </section>
   </div>
 </div>

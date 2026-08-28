@@ -336,3 +336,27 @@
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
+
+/* Die Bewertung, die für die aktuelle Stunde gilt. */
+.rate.aktiv {
+  color: #fff;
+  font-weight: 800;
+}
+
+.rate.plus2.aktiv,
+.rate.plus1.aktiv {
+  background: var(--positive);
+  border-color: var(--positive);
+}
+
+.rate.minus1.aktiv,
+.rate.minus2.aktiv {
+  background: var(--negative);
+  border-color: var(--negative);
+}
+
+.mini-actions button.aktiv {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}

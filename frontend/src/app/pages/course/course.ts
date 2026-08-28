@@ -14,7 +14,7 @@ import { ApiService } from '../../core/api.service';
 import {
   Course,
   RatingValue,
-  RatingWindow,
+  LessonSlot,
   SeatingPlan,
   Student,
   StudentScore,
@@ -54,7 +54,7 @@ export class CoursePage {
   readonly plans = signal<SeatingPlan[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
-  readonly window = signal<RatingWindow | null>(null);
+  readonly lessonSlot = signal<LessonSlot | null>(null);
   readonly saving = signal(false);
 
   /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
@@ -115,7 +115,8 @@ export class CoursePage {
 
   readonly poolTarget: DropTarget = { kind: 'pool' };
 
-  readonly canRate = computed(() => this.window()?.canRate === true);
+  /** Bewertet werden darf immer - begrenzt ist nur eine Bewertung je Stunde. */
+  readonly canRate = computed(() => this.students().length > 0);
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
@@ -135,14 +136,14 @@ export class CoursePage {
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
       scoreboard: this.api.getScoreboard(courseId),
-      window: this.api.getRatingWindow(courseId),
+      slot: this.api.getCurrentLessonSlot(courseId),
     }).subscribe({
-      next: ({ course, students, plans, scoreboard, window }) => {
+      next: ({ course, students, plans, scoreboard, slot }) => {
         this.course.set(course);
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
-        this.window.set(window);
+        this.lessonSlot.set(slot);
         this.selectPlan(plans[0]?.id ?? null);
         this.loading.set(false);
       },
@@ -345,11 +346,7 @@ export class CoursePage {
 
     this.api.rate(courseId, studentId, value).subscribe({
       next: () => this.refreshScores(),
-      error: (err) => {
-        this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.');
-        // Meist ist die Stunde inzwischen vorbei - Status neu holen.
-        this.refreshWindow();
-      },
+      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
@@ -365,18 +362,22 @@ export class CoursePage {
 
   private refreshScores(): void {
     this.api.getScoreboard(this.courseId()).subscribe({
-      next: (board) => this.scores.set(board.students),
+      next: (board) => {
+        this.scores.set(board.students);
+        this.lessonSlot.set(board.currentLesson);
+      },
       error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
     });
   }
 
-  refreshWindow(): void {
+  /** Holt die aktuelle Unterrichtsstunde neu - sie wechselt mit der Zeit. */
+  refreshSlot(): void {
     this.api
-      .getRatingWindow(this.courseId())
+      .getCurrentLessonSlot(this.courseId())
       .pipe(catchError(() => of(null)))
-      .subscribe((window) => {
-        if (window) {
-          this.window.set(window);
+      .subscribe((slot) => {
+        if (slot) {
+          this.lessonSlot.set(slot);
         }
       });
   }
@@ -388,8 +389,8 @@ export class CoursePage {
   toggleMode(edit: boolean): void {
     this.editMode.set(edit);
     if (!edit) {
-      // Beim Zurückwechseln kann sich die Unterrichtszeit geändert haben.
-      this.refreshWindow();
+      // Beim Zurückwechseln kann inzwischen eine neue Stunde begonnen haben.
+      this.refreshSlot();
       this.refreshScores();
     }
   }

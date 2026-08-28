@@ -23,6 +23,7 @@ builder.Services.AddSingleton<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>
 builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<GradingService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<TimetableImportService>();
 
 // Anmeldung über ein Sitzungs-Cookie. Die App wird von derselben Adresse
 // ausgeliefert wie die API, deshalb genügt SameSite=Strict als Schutz davor,
@@ -146,11 +147,6 @@ app.Run();
 
 static async Task SeedAsync(AppDbContext db)
 {
-    if (!await db.AppSettings.AnyAsync())
-    {
-        db.AppSettings.Add(new AppSettings { Id = AppSettings.SingletonId });
-    }
-
     // Ein Vorschlag für den Notenschlüssel, damit die Notenspalte von Anfang an
     // etwas anzeigt. Er lässt sich in der Oberfläche jederzeit überschreiben.
     if (!await db.GradeScales.AnyAsync())

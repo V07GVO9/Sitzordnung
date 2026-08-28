@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sitzordnung.Api.Data;
@@ -27,21 +28,26 @@ public class RatingsController : ControllerBase
         _clock = clock;
     }
 
-    /// <summary>Sagt der Oberfläche, ob der Bewertungsmodus für diesen Kurs offen ist.</summary>
-    [HttpGet("courses/{courseId:int}/rating-window")]
-    public async Task<ActionResult<RatingWindowDto>> GetWindow(int courseId, CancellationToken ct)
+    /// <summary>
+    /// Welcher Unterrichtsstunde wird eine Bewertung gerade zugerechnet?
+    /// Die Oberfläche zeigt das an, damit klar ist, worauf sich ein Klick bezieht.
+    /// </summary>
+    [HttpGet("courses/{courseId:int}/current-lesson")]
+    public async Task<ActionResult<LessonSlotDto>> GetCurrentSlot(int courseId, CancellationToken ct)
     {
         if (!await _db.Courses.AnyAsync(c => c.Id == courseId, ct))
         {
             return NotFound();
         }
 
-        return Ok(await _lessons.GetRatingWindowAsync(courseId, ct));
+        return Ok(await _lessons.GetCurrentSlotAsync(courseId, ct));
     }
 
     /// <summary>
-    /// Nimmt eine Bewertung entgegen - aber nur, wenn der Kurs laut Stundenplan
-    /// gerade läuft. Die Prüfung findet hier im Backend statt, nicht nur in der Oberfläche.
+    /// Nimmt eine Bewertung entgegen. Bewertet werden darf jederzeit, aber je
+    /// Unterrichtsstunde und Schüler nur einmal: liegt für dieselbe Stunde schon
+    /// eine Bewertung vor, wird sie ersetzt statt ergänzt. Damit lässt sich ein
+    /// Vertipper korrigieren, ohne dass sich Punkte in einer Stunde häufen.
     /// </summary>
     [HttpPost("ratings")]
     public async Task<ActionResult<RatingDto>> Create(RatingInput input, CancellationToken ct)
@@ -68,35 +74,39 @@ public class RatingsController : ControllerBase
             return BadRequest("Der Schüler gehört nicht zur Klasse dieses Kurses.");
         }
 
-        var window = await _lessons.GetRatingWindowAsync(input.CourseId, ct);
-        if (!window.CanRate)
+        var slot = await _lessons.GetCurrentSlotAsync(input.CourseId, ct);
+        var start = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
+        var now = _clock.Now;
+
+        var rating = await _db.Ratings.FirstOrDefaultAsync(
+            r => r.CourseId == input.CourseId && r.StudentId == input.StudentId
+                 && r.LessonDate == slot.Date && r.LessonStart == start,
+            ct);
+
+        if (rating is null)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, window.Reason);
+            rating = new Rating
+            {
+                CourseId = input.CourseId,
+                StudentId = input.StudentId,
+                LessonDate = slot.Date,
+                LessonStart = start,
+            };
+            _db.Ratings.Add(rating);
         }
 
-        var now = _clock.Now;
-        var rating = new Rating
-        {
-            CourseId = input.CourseId,
-            StudentId = input.StudentId,
-            Value = input.Value,
-            LessonDate = DateOnly.FromDateTime(now.DateTime),
-            CreatedAt = now,
-            Comment = string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim(),
-        };
+        rating.Value = input.Value;
+        rating.CreatedAt = now;
+        rating.Comment = string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim();
 
-        _db.Ratings.Add(rating);
         await _db.SaveChangesAsync(ct);
 
         return Ok(new RatingDto(
             rating.Id, rating.CourseId, rating.StudentId, rating.Value,
-            rating.LessonDate, rating.CreatedAt, rating.Comment));
+            rating.LessonDate, slot.StartTime, rating.CreatedAt, rating.Comment));
     }
 
-    /// <summary>
-    /// Nimmt eine Bewertung zurück. Ein Vertipper soll korrigierbar sein, ohne
-    /// dass dafür der Stundenplan erneut geprüft wird.
-    /// </summary>
+    /// <summary>Nimmt eine Bewertung ganz zurück.</summary>
     [HttpDelete("ratings/{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
@@ -159,11 +169,11 @@ public class RatingsController : ControllerBase
 
         var ratings = await query
             .OrderByDescending(r => r.LessonDate).ThenByDescending(r => r.Id)
-            .Select(r => new RatingDto(
-                r.Id, r.CourseId, r.StudentId, r.Value, r.LessonDate, r.CreatedAt, r.Comment))
             .ToListAsync(ct);
 
-        return Ok(ratings);
+        return Ok(ratings.Select(r => new RatingDto(
+            r.Id, r.CourseId, r.StudentId, r.Value, r.LessonDate,
+            r.LessonStart.ToString("HH\\:mm"), r.CreatedAt, r.Comment)));
     }
 
     /// <summary>
@@ -204,11 +214,15 @@ public class RatingsController : ControllerBase
         }
 
         var ratings = await query
-            .Select(r => new { r.StudentId, r.Value, r.LessonDate })
+            .Select(r => new { r.StudentId, r.Value, r.LessonDate, r.LessonStart })
             .ToListAsync(ct);
 
         var byStudent = ratings.ToLookup(r => r.StudentId);
         var scale = await _grading.GetEffectiveScaleAsync(courseId, ct);
+
+        // Was in der aktuellen Stunde schon vergeben wurde, zeigt die Oberfläche an.
+        var slot = await _lessons.GetCurrentSlotAsync(courseId, ct);
+        var slotStart = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
 
         var rows = students.Select(s =>
         {
@@ -222,7 +236,8 @@ public class RatingsController : ControllerBase
                 points,
                 own.Count,
                 own.Where(r => r.LessonDate == today).Sum(r => r.Value),
-                GradingService.ResolveGrade(scale, points));
+                GradingService.ResolveGrade(scale, points),
+                own.FirstOrDefault(r => r.LessonDate == slot.Date && r.LessonStart == slotStart)?.Value);
         }).ToList();
 
         return Ok(new CourseScoreboardDto(
@@ -230,6 +245,7 @@ public class RatingsController : ControllerBase
             course.SchoolClass!.Name,
             course.Subject!.Name,
             today,
+            slot,
             rows));
     }
 }

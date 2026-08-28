@@ -155,6 +155,14 @@ public class Rating
     /// <summary>Der Unterrichtstag, auf den sich die Bewertung bezieht.</summary>
     public DateOnly LessonDate { get; set; }
 
+    /// <summary>
+    /// Beginn der Unterrichtsstunde laut Stundenplan. Zusammen mit
+    /// <see cref="LessonDate"/> bezeichnet sie eindeutig eine Stunde - je Stunde
+    /// und Schüler gibt es genau eine Bewertung. Ohne Stundenplaneintrag steht
+    /// hier 00:00, dann gilt der ganze Tag als eine Einheit.
+    /// </summary>
+    public TimeOnly LessonStart { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     [MaxLength(300)]
@@ -194,26 +202,6 @@ public class GradeScaleEntry
     /// <summary>Die Note als Text, z.B. "1", "2-" oder "sehr gut".</summary>
     [MaxLength(20)]
     public string Grade { get; set; } = string.Empty;
-}
-
-/// <summary>Globale Einstellungen der App. Es gibt genau einen Datensatz mit Id = 1.</summary>
-public class AppSettings
-{
-    public const int SingletonId = 1;
-
-    public int Id { get; set; } = SingletonId;
-
-    /// <summary>
-    /// Kulanzzeitraum in Minuten vor und nach der Unterrichtsstunde,
-    /// in dem Bewertungen noch möglich sind.
-    /// </summary>
-    public int ToleranceMinutes { get; set; } = 15;
-
-    /// <summary>
-    /// Notfall-Freigabe: wenn true, sind Bewertungen auch außerhalb des
-    /// Stundenplans möglich. Standardmäßig aus.
-    /// </summary>
-    public bool AllowRatingOutsideLesson { get; set; }
 }
 
 /// <summary>

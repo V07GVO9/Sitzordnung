@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Sitzordnung.Api.Data;
 using Sitzordnung.Api.Dtos;
@@ -6,13 +7,19 @@ using Sitzordnung.Api.Models;
 namespace Sitzordnung.Api.Services;
 
 /// <summary>
-/// Beantwortet anhand des Stundenplans, ob gerade Unterricht stattfindet.
-/// Bewertungen sind nur innerhalb einer Unterrichtsstunde (plus Toleranz) möglich.
+/// Beantwortet zwei Fragen rund um den Stundenplan: welcher Unterricht gerade
+/// läuft, und welcher Unterrichtsstunde eine Bewertung zugerechnet wird.
+///
+/// Bewertet werden darf jederzeit - auch abends nach dem Unterricht. Begrenzt
+/// ist nur die Menge: je Unterrichtsstunde und Schüler eine Bewertung. Welche
+/// Stunde das gerade ist, entscheidet diese Klasse.
 /// </summary>
 public class LessonService
 {
     private readonly AppDbContext _db;
     private readonly IClock _clock;
+
+    private static readonly CultureInfo Deutsch = CultureInfo.GetCultureInfo("de-DE");
 
     public LessonService(AppDbContext db, IClock clock)
     {
@@ -20,25 +27,12 @@ public class LessonService
         _clock = clock;
     }
 
-    public async Task<AppSettings> GetSettingsAsync(CancellationToken ct = default)
-    {
-        var settings = await _db.AppSettings.FirstOrDefaultAsync(s => s.Id == Models.AppSettings.SingletonId, ct);
-        if (settings is null)
-        {
-            settings = new AppSettings { Id = Models.AppSettings.SingletonId };
-            _db.AppSettings.Add(settings);
-            await _db.SaveChangesAsync(ct);
-        }
+    private static int ToMinutes(TimeOnly time) => time.Hour * 60 + time.Minute;
 
-        return settings;
-    }
+    private static string Format(TimeOnly time) => time.ToString("HH\\:mm");
 
-    /// <summary>
-    /// Prüft, ob der übergebene Zeitpunkt in den Eintrag fällt. Die Toleranz wird
-    /// in Minuten seit Mitternacht gerechnet, damit sie an den Tagesrändern nicht
-    /// über den Tageswechsel hinaus "umschlägt".
-    /// </summary>
-    private static bool Covers(TimetableEntry entry, DateTimeOffset now, int toleranceMinutes)
+    /// <summary>Läuft dieser Eintrag zum übergebenen Zeitpunkt gerade?</summary>
+    private static bool LaeuftGerade(TimetableEntry entry, DateTimeOffset now)
     {
         if (entry.DayOfWeek != now.DayOfWeek)
         {
@@ -46,20 +40,12 @@ public class LessonService
         }
 
         var nowMinutes = now.Hour * 60 + now.Minute;
-        var start = Math.Max(0, ToMinutes(entry.StartTime) - toleranceMinutes);
-        var end = Math.Min(24 * 60, ToMinutes(entry.EndTime) + toleranceMinutes);
-
-        return nowMinutes >= start && nowMinutes <= end;
+        return nowMinutes >= ToMinutes(entry.StartTime) && nowMinutes <= ToMinutes(entry.EndTime);
     }
-
-    private static int ToMinutes(TimeOnly time) => time.Hour * 60 + time.Minute;
-
-    private static string Format(TimeOnly time) => time.ToString("HH\\:mm");
 
     /// <summary>Liefert den Stundenplaneintrag, der gerade läuft - über alle Kurse hinweg.</summary>
     public async Task<CurrentLessonDto> GetCurrentLessonAsync(CancellationToken ct = default)
     {
-        var settings = await GetSettingsAsync(ct);
         var now = _clock.Now;
 
         var entries = await _db.TimetableEntries
@@ -69,17 +55,15 @@ public class LessonService
             .ToListAsync(ct);
 
         var current = entries
-            .Where(e => Covers(e, now, settings.ToleranceMinutes))
+            .Where(e => LaeuftGerade(e, now))
             .OrderBy(e => e.StartTime)
             .FirstOrDefault();
 
         if (current is null)
         {
-            var message = settings.AllowRatingOutsideLesson
-                ? "Aktuell steht kein Unterricht im Stundenplan. Die Notfall-Freigabe ist aktiv, Bewertungen sind trotzdem möglich."
-                : "Aktuell steht kein Unterricht im Stundenplan. Bewertungen sind deshalb gesperrt.";
-
-            return new CurrentLessonDto(false, null, null, null, null, null, null, message);
+            return new CurrentLessonDto(
+                false, null, null, null, null, null, null,
+                "Aktuell steht kein Unterricht im Stundenplan.");
         }
 
         return new CurrentLessonDto(
@@ -94,45 +78,81 @@ public class LessonService
             $"({Format(current.StartTime)}-{Format(current.EndTime)} Uhr).");
     }
 
-    /// <summary>Prüft, ob für diesen Kurs gerade bewertet werden darf.</summary>
-    public async Task<RatingWindowDto> GetRatingWindowAsync(int courseId, CancellationToken ct = default)
+    /// <summary>
+    /// Ermittelt die Unterrichtsstunde, der eine Bewertung jetzt zugerechnet wird:
+    /// die laufende Stunde, sonst die zuletzt vergangene. Hat der Kurs keinen
+    /// Stundenplaneintrag, zählt der heutige Tag als eine Einheit.
+    /// </summary>
+    public async Task<LessonSlotDto> GetCurrentSlotAsync(int courseId, CancellationToken ct = default)
     {
-        var settings = await GetSettingsAsync(ct);
         var now = _clock.Now;
+        var heute = DateOnly.FromDateTime(now.DateTime);
 
         var entries = await _db.TimetableEntries
-            .Where(e => e.CourseId == courseId && e.DayOfWeek == now.DayOfWeek)
+            .Where(e => e.CourseId == courseId)
             .ToListAsync(ct);
 
-        var match = entries
-            .Where(e => Covers(e, now, settings.ToleranceMinutes))
-            .OrderBy(e => e.StartTime)
-            .FirstOrDefault();
-
-        if (match is not null)
+        if (entries.Count == 0)
         {
-            return new RatingWindowDto(
-                true,
-                $"Unterricht läuft ({Format(match.StartTime)}-{Format(match.EndTime)} Uhr).",
-                Format(match.StartTime),
-                Format(match.EndTime));
+            return new LessonSlotDto(
+                heute,
+                "00:00",
+                $"{heute.ToString("dddd, dd.MM.yyyy", Deutsch)} (kein Stundenplan hinterlegt)",
+                false);
         }
 
-        if (settings.AllowRatingOutsideLesson)
+        // Die laufende Stunde hat Vorrang.
+        var laufend = entries.FirstOrDefault(e => LaeuftGerade(e, now));
+        if (laufend is not null)
         {
-            return new RatingWindowDto(
-                true,
-                "Kein Unterricht laut Stundenplan - Bewertung nur wegen aktiver Notfall-Freigabe möglich.",
-                null,
-                null);
+            return Slot(heute, laufend, "läuft gerade");
         }
 
-        var todaysLessons = entries.OrderBy(e => e.StartTime).ToList();
-        var reason = todaysLessons.Count == 0
-            ? "In diesem Kurs findet heute laut Stundenplan kein Unterricht statt."
-            : "Der Unterricht in diesem Kurs läuft gerade nicht. Heute: " +
-              string.Join(", ", todaysLessons.Select(e => $"{Format(e.StartTime)}-{Format(e.EndTime)}")) + " Uhr.";
+        // Sonst die jüngste Stunde, die schon vorbei ist - höchstens eine Woche zurück.
+        TimetableEntry? juengste = null;
+        var juengstesDatum = default(DateOnly);
 
-        return new RatingWindowDto(false, reason, null, null);
+        foreach (var entry in entries)
+        {
+            var datum = LetztesVorkommen(entry, now);
+            if (juengste is null || datum > juengstesDatum ||
+                (datum == juengstesDatum && entry.StartTime > juengste.StartTime))
+            {
+                juengste = entry;
+                juengstesDatum = datum;
+            }
+        }
+
+        return Slot(juengstesDatum, juengste!, juengstesDatum == heute ? "heute" : null);
+    }
+
+    /// <summary>Das letzte Datum, an dem dieser Eintrag stattgefunden hat.</summary>
+    private static DateOnly LetztesVorkommen(TimetableEntry entry, DateTimeOffset now)
+    {
+        var heute = DateOnly.FromDateTime(now.DateTime);
+
+        // Wie viele Tage liegt der Wochentag zurück? 0 = heute.
+        var abstand = ((int)now.DayOfWeek - (int)entry.DayOfWeek + 7) % 7;
+
+        // Heute, aber die Stunde hat noch nicht begonnen: dann zählt die Vorwoche.
+        if (abstand == 0 && now.Hour * 60 + now.Minute < ToMinutes(entry.StartTime))
+        {
+            abstand = 7;
+        }
+
+        return heute.AddDays(-abstand);
+    }
+
+    private static LessonSlotDto Slot(DateOnly datum, TimetableEntry entry, string? zusatz)
+    {
+        var beschreibung =
+            $"{datum.ToString("dddd, dd.MM.yyyy", Deutsch)}, {Format(entry.StartTime)}-{Format(entry.EndTime)} Uhr";
+
+        if (zusatz is not null)
+        {
+            beschreibung += $" ({zusatz})";
+        }
+
+        return new LessonSlotDto(datum, Format(entry.StartTime), beschreibung, true);
     }
 }
