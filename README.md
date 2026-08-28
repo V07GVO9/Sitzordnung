@@ -64,40 +64,52 @@ rechnet GitHub nach Laufzeit ab. Ein Codespace lässt sich jederzeit unter
 ## Starten
 
 Voraussetzungen: [.NET SDK 8](https://dotnet.microsoft.com/download) und
-[Node.js 20+](https://nodejs.org/).
+[Node.js 20+](https://nodejs.org/). Kurz prüfen mit `dotnet --version` und
+`node --version`.
+
+### Der schnellste Weg
+
+Frontend einmal bauen, dann das Backend starten – es liefert die Oberfläche
+gleich mit:
+
+Die drei Befehle sind unter Windows, macOS und Linux dieselben – sie werden im
+Hauptordner des Projekts ausgeführt:
+
+```
+npm --prefix frontend install
+npm --prefix frontend run build
+dotnet run --project backend/Sitzordnung.Api
+```
+
+Die Anwendung läuft danach auf <http://localhost:5099> und der Browser öffnet
+sich von selbst.
+
+Dasselbe erledigen auch die Startskripte, die das Frontend bei Bedarf nachbauen:
+`.\start.ps1` unter Windows, `./start.sh` unter macOS und Linux. Ein anderer
+Port geht über `$env:PORT=8080` beziehungsweise `PORT=8080`.
 
 ### Zum Entwickeln (zwei Prozesse)
 
-```bash
-# 1. Backend – läuft auf http://localhost:5099
-cd backend/Sitzordnung.Api
-dotnet run
-
-# 2. Frontend – läuft auf http://localhost:4200
-cd frontend
-npm install
-npm start
-```
-
-Der Angular-Entwicklungsserver reicht alle Anfragen an `/api` über
-`frontend/proxy.conf.json` an das Backend weiter. Im Browser wird
-<http://localhost:4200> geöffnet.
-
-### Als fertige Anwendung (ein Prozess)
-
-Der Angular-Build legt seine Dateien direkt in `wwwroot` des Backends ab, das sie
-dann mit ausliefert:
+Wer am Frontend arbeitet, startet zusätzlich den Angular-Entwicklungsserver –
+dann werden Änderungen sofort im Browser sichtbar:
 
 ```bash
-cd frontend && npm install && npm run build
-cd ../backend/Sitzordnung.Api && dotnet run
+# Fenster 1 – Backend auf Port 5099
+dotnet run --project backend/Sitzordnung.Api
+
+# Fenster 2 – Angular auf Port 4200
+npm --prefix frontend start
 ```
 
-Danach ist die komplette Anwendung unter <http://localhost:5099> erreichbar.
+Geöffnet wird dann <http://localhost:4200>. Der Entwicklungsserver reicht alle
+Anfragen an `/api` über `frontend/proxy.conf.json` an das Backend auf Port 5099
+weiter.
 
-Beide Schritte zusammen erledigt auch `./start.sh` – das Skript baut das Frontend
-nach, falls es noch fehlt, und startet die Anwendung. Mit `PORT=8080 ./start.sh`
-läuft sie auf einem anderen Port.
+### In Visual Studio Code
+
+Das Terminal mit ``Strg + ` `` öffnen und dort die Befehle von oben eingeben.
+Ein Klick auf *Run and Debug* startet nur das Backend – ohne gebautes Frontend
+zeigt es dann lediglich die API.
 
 ## Tests
 
