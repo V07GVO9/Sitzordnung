@@ -1,0 +1,92 @@
+.filter {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.cols .card + .card {
+  margin-top: 0;
+}
+
+label.full {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0.5rem;
+
+  input {
+    width: 100%;
+  }
+}
+
+.scale-target {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.9rem;
+}
+
+.chip {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.9rem;
+
+  &.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.banner.small {
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.scale-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.9rem;
+}
+
+.scale-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  input[type='number'] {
+    width: 5rem;
+  }
+
+  input.grade {
+    width: 6rem;
+  }
+}
+
+.remove {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+
+  &:hover {
+    color: var(--negative);
+  }
+}

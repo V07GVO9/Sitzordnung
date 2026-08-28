@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Datenbank und hochgeladene Fotos bleiben lokal
+backend/Sitzordnung.Api/App_Data/
+
+# Das gebaute Frontend wird beim Build erzeugt
+backend/Sitzordnung.Api/wwwroot/
+
+# Node
+node_modules/
+npm-debug.log*
+.angular/
+
+# Editoren
+.vs/
+.idea/
+*.swp
+.DS_Store

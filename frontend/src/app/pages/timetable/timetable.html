@@ -1,0 +1,109 @@
+<div class="stack">
+  <section class="card">
+    <h1>Stundenplan</h1>
+    <p class="muted">
+      Bewertungen sind nur möglich, während der jeweilige Kurs laut Stundenplan stattfindet.
+      Eine Kulanzzeit vor und nach der Stunde lässt sich unter
+      <a routerLink="/auswertung">Auswertung</a> einstellen.
+    </p>
+  </section>
+
+  @if (courses().length === 0) {
+    <div class="empty">
+      <p>Für den Stundenplan werden zuerst Kurse benötigt.</p>
+      <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
+    </div>
+  } @else {
+    <section class="card">
+      <h2>Stunde eintragen</h2>
+      <form class="form-row" (ngSubmit)="add()">
+        <label>
+          Kurs
+          <select [ngModel]="formCourseId()" (ngModelChange)="formCourseId.set($event)" name="course">
+            @for (course of courses(); track course.id) {
+              <option [ngValue]="course.id">
+                {{ course.subjectName }} · {{ course.schoolClassName }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label>
+          Tag
+          <select [ngModel]="formDay()" (ngModelChange)="formDay.set($event)" name="day">
+            @for (day of days; track day) {
+              <option [ngValue]="day">{{ weekdayNames[day] }}</option>
+            }
+          </select>
+        </label>
+
+        <label>
+          Von
+          <input
+            type="time"
+            [ngModel]="formStart()"
+            (ngModelChange)="onStartChange($event)"
+            name="start"
+            required
+          />
+        </label>
+
+        <label>
+          Bis
+          <input
+            type="time"
+            [ngModel]="formEnd()"
+            (ngModelChange)="formEnd.set($event)"
+            name="end"
+            required
+          />
+        </label>
+
+        <label>
+          Raum
+          <input
+            type="text"
+            placeholder="optional"
+            [ngModel]="formRoom()"
+            (ngModelChange)="formRoom.set($event)"
+            name="room"
+          />
+        </label>
+
+        <button class="btn primary" type="submit">Eintragen</button>
+      </form>
+    </section>
+
+    <section class="week">
+      @for (day of days; track day) {
+        <div class="day card" [class.today]="day === today">
+          <h3>{{ weekdayNames[day] }}</h3>
+
+          @for (entry of entriesFor(day); track entry.id) {
+            <div class="lesson">
+              <span class="time">{{ entry.startTime }}–{{ entry.endTime }}</span>
+              <a class="what" [routerLink]="['/kurs', entry.courseId]">
+                <strong>{{ entry.subjectName }}</strong>
+                <span class="muted small">{{ entry.schoolClassName }}</span>
+              </a>
+              @if (entry.room) {
+                <span class="badge">{{ entry.room }}</span>
+              }
+              <button
+                class="remove"
+                type="button"
+                (click)="remove(entry)"
+                [attr.aria-label]="'Stunde ' + entry.startTime + ' löschen'"
+                title="Stunde löschen"
+              >
+                ×
+              </button>
+            </div>
+          } @empty {
+            <p class="muted small">Kein Unterricht</p>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

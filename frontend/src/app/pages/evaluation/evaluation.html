@@ -1,0 +1,221 @@
+<div class="stack">
+  <section class="card">
+    <h1>Auswertung &amp; Export</h1>
+    <div class="filter">
+      <label>
+        Kurs
+        <select
+          [ngModel]="selectedCourseId()"
+          (ngModelChange)="selectCourse($event)"
+          name="course"
+        >
+          @for (course of courses(); track course.id) {
+            <option [ngValue]="course.id">
+              {{ course.subjectName }} · {{ course.schoolClassName }}
+            </option>
+          } @empty {
+            <option [ngValue]="null">Noch keine Kurse</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        Von
+        <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" name="from" />
+      </label>
+
+      <label>
+        Bis
+        <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" name="to" />
+      </label>
+
+      <button class="btn" type="button" (click)="refreshScoreboard()">Aktualisieren</button>
+
+      <span class="spacer"></span>
+
+      <a class="btn primary" [href]="exportHref('summary', false)" download>
+        Punktestand als CSV
+      </a>
+      <a class="btn" [href]="exportHref('ratings', false)" download>Einzelbewertungen</a>
+      <a class="btn" [href]="exportHref('summary', true)" download>Alle Kurse</a>
+    </div>
+    <p class="muted small">
+      Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet. Die CSV-Dateien öffnen sich direkt
+      in Excel oder LibreOffice.
+    </p>
+  </section>
+
+  @if (scoreboard(); as board) {
+    <section class="card">
+      <h2>{{ board.subjectName }} · {{ board.schoolClassName }}</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Punkte</th>
+              <th>Bewertungen</th>
+              <th>Heute</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (student of board.students; track student.studentId) {
+              <tr>
+                <td>{{ student.lastName }}, {{ student.firstName }}</td>
+                <td>
+                  <span
+                    class="points"
+                    [class.pos]="student.points > 0"
+                    [class.neg]="student.points < 0"
+                  >
+                    {{ student.points }}
+                  </span>
+                </td>
+                <td class="muted">{{ student.ratingCount }}</td>
+                <td class="muted">{{ student.pointsToday }}</td>
+                <td>
+                  @if (student.grade) {
+                    <span class="badge">{{ student.grade }}</span>
+                  } @else {
+                    <span class="muted small">–</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <div class="cols">
+    <section class="card">
+      <h2>Notenschlüssel</h2>
+      <p class="muted small">
+        Ab wie vielen Mitarbeitspunkten gilt welche Note? Jeder Schüler startet bei 0 Punkten.
+      </p>
+
+      <div class="scale-target">
+        <button
+          type="button"
+          class="chip"
+          [class.active]="!scaleIsCourseSpecific()"
+          (click)="switchScaleTarget(false)"
+        >
+          Für alle Kurse
+        </button>
+        <button
+          type="button"
+          class="chip"
+          [class.active]="scaleIsCourseSpecific()"
+          [disabled]="!selectedCourse()"
+          (click)="switchScaleTarget(true)"
+        >
+          Nur {{ selectedCourse()?.subjectName ?? 'dieser Kurs' }}
+        </button>
+      </div>
+
+      @if (scaleIsCourseSpecific() && loadedScale()?.isGlobalDefault) {
+        <div class="banner warn small">
+          Dieser Kurs hat noch keinen eigenen Schlüssel. Beim Speichern wird der angezeigte
+          Schlüssel als eigener für diesen Kurs übernommen.
+        </div>
+      }
+
+      <label class="full">
+        Bezeichnung
+        <input
+          type="text"
+          [ngModel]="scaleName()"
+          (ngModelChange)="scaleName.set($event)"
+          name="scaleName"
+        />
+      </label>
+
+      <div class="scale-list">
+        @for (entry of sortedEntries(); track $index) {
+          <div class="scale-row">
+            <span class="muted small">ab</span>
+            <input
+              type="number"
+              [value]="entry.minPoints"
+              (change)="updateScaleEntry($index, { minPoints: +$any($event.target).value })"
+            />
+            <span class="muted small">Punkten →</span>
+            <input
+              type="text"
+              class="grade"
+              placeholder="Note"
+              [value]="entry.grade"
+              (change)="updateScaleEntry($index, { grade: $any($event.target).value })"
+            />
+            <button
+              class="remove"
+              type="button"
+              (click)="removeScaleEntry($index)"
+              title="Stufe entfernen"
+            >
+              ×
+            </button>
+          </div>
+        } @empty {
+          <p class="muted small">Noch keine Stufen festgelegt.</p>
+        }
+      </div>
+
+      <div class="row">
+        <button class="btn" type="button" (click)="addScaleEntry()">Stufe hinzufügen</button>
+        <button class="btn primary" type="button" (click)="saveScale()">Speichern</button>
+        @if (scaleIsCourseSpecific() && loadedScale() && !loadedScale()!.isGlobalDefault) {
+          <button class="btn danger" type="button" (click)="deleteCourseScale()">
+            Eigenen Schlüssel entfernen
+          </button>
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Einstellungen</h2>
+      @if (settings(); as s) {
+        <label class="full">
+          Kulanzzeit vor und nach der Stunde (Minuten)
+          <input
+            type="number"
+            min="0"
+            max="120"
+            [value]="s.toleranceMinutes"
+            (change)="saveSettings({ toleranceMinutes: +$any($event.target).value })"
+          />
+        </label>
+        <p class="muted small">
+          Innerhalb dieser Zeitspanne vor Beginn und nach Ende einer Stunde sind Bewertungen
+          weiterhin möglich.
+        </p>
+
+        <label class="inline">
+          <input
+            type="checkbox"
+            [checked]="s.allowRatingOutsideLesson"
+            (change)="saveSettings({ allowRatingOutsideLesson: $any($event.target).checked })"
+          />
+          Notfall-Freigabe: Bewerten auch außerhalb des Stundenplans
+        </label>
+        <p class="muted small">
+          Normalerweise sperrt die App Bewertungen außerhalb der eingetragenen Unterrichtszeiten.
+          Diese Freigabe hebt die Sperre auf – etwa, wenn der Stundenplan kurzfristig abweicht.
+        </p>
+
+        @if (s.allowRatingOutsideLesson) {
+          <div class="banner warn">
+            Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>

@@ -1,0 +1,306 @@
+@if (loading()) {
+  <p class="muted">Kurs wird geladen …</p>
+} @else if (!course()) {
+  <div class="empty">
+    <p>Dieser Kurs wurde nicht gefunden.</p>
+    <a class="btn" routerLink="/">Zurück zur Übersicht</a>
+  </div>
+} @else {
+  <div class="stack">
+    <!-- Kopfzeile: Kurs, Modusumschalter, Sitzordnungswahl -->
+    <section class="head card">
+      <div>
+        <div class="eyebrow">{{ course()!.schoolClassName }}</div>
+        <h1>{{ course()!.subjectName }}</h1>
+      </div>
+
+      <div class="spacer"></div>
+
+      @if (plans().length > 1) {
+        <div class="plan-switch" role="group" aria-label="Sitzordnung wählen">
+          @for (plan of plans(); track plan.id) {
+            <button
+              type="button"
+              [class.active]="plan.id === activePlanId()"
+              (click)="selectPlan(plan.id)"
+            >
+              {{ plan.name }}
+            </button>
+          }
+        </div>
+      }
+
+      <div class="mode-switch" role="group" aria-label="Modus wählen">
+        <button type="button" [class.active]="!editMode()" (click)="toggleMode(false)">
+          Unterricht
+        </button>
+        <button type="button" [class.active]="editMode()" (click)="toggleMode(true)">
+          Einstellungen
+        </button>
+      </div>
+    </section>
+
+    <!-- Statusleiste: darf gerade bewertet werden? -->
+    @if (!editMode()) {
+      @if (window(); as w) {
+        <div class="banner" [class.ok]="w.canRate" [class.blocked]="!w.canRate">
+          <strong>{{ w.canRate ? 'Bewerten möglich' : 'Bewerten gesperrt' }}</strong>
+          <span>{{ w.reason }}</span>
+          <span class="spacer"></span>
+          <button class="btn small" type="button" (click)="refreshWindow()">Neu prüfen</button>
+          @if (!w.canRate) {
+            <a class="btn small" routerLink="/stundenplan">Stundenplan</a>
+          }
+        </div>
+      }
+    } @else {
+      <div class="banner warn">
+        <strong>Einstellungsmodus</strong>
+        <span>
+          Schüler per Drag and Drop auf die Plätze ziehen. Änderungen werden sofort gespeichert.
+        </span>
+        <span class="spacer"></span>
+        @if (saving()) {
+          <span class="small">Wird gespeichert …</span>
+        }
+      </div>
+    }
+
+    @if (plans().length === 0) {
+      <div class="empty">
+        <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
+        <button class="btn primary" type="button" (click)="addPlan()">Sitzordnung anlegen</button>
+      </div>
+    } @else {
+      <!-- Werkzeugleiste nur im Einstellungsmodus -->
+      @if (editMode()) {
+        <section class="card toolbar">
+          <label>
+            Name
+            <input
+              type="text"
+              [value]="activePlan()?.name ?? ''"
+              (change)="renamePlan($any($event.target).value)"
+            />
+          </label>
+          <label>
+            Reihen
+            <input
+              type="number"
+              min="1"
+              max="20"
+              [value]="rows()"
+              (change)="changeGrid(+$any($event.target).value, columns())"
+            />
+          </label>
+          <label>
+            Spalten
+            <input
+              type="number"
+              min="1"
+              max="20"
+              [value]="columns()"
+              (change)="changeGrid(rows(), +$any($event.target).value)"
+            />
+          </label>
+
+          <span class="spacer"></span>
+
+          <button class="btn" type="button" (click)="autoFill()">Automatisch verteilen</button>
+          <button class="btn" type="button" (click)="clearSeats()">Plätze leeren</button>
+          @if (plans().length < maxPlans) {
+            <button class="btn" type="button" (click)="addPlan()">Zweite Sitzordnung</button>
+          }
+          <button class="btn danger" type="button" (click)="deletePlan()">Löschen</button>
+        </section>
+      }
+
+      <div class="layout" cdkDropListGroup>
+        <!-- Der Raum -->
+        <section class="room card">
+          <div class="board">Tafel</div>
+
+          <div class="grid" [style.--cols]="columns()">
+            @for (row of grid(); track $index) {
+              @for (cell of row; track cell.row + ':' + cell.column) {
+                <div
+                  class="cell"
+                  [class.occupied]="!!cell.student"
+                  [class.edit]="editMode()"
+                  cdkDropList
+                  [cdkDropListData]="cell.target"
+                  [cdkDropListSortingDisabled]="true"
+                  [cdkDropListDisabled]="!editMode()"
+                  (cdkDropListDropped)="drop($event)"
+                >
+                  @if (cell.student; as student) {
+                    <div
+                      class="student"
+                      cdkDrag
+                      [cdkDragData]="student.id"
+                      [cdkDragDisabled]="!editMode()"
+                    >
+                      <div class="drag-preview" *cdkDragPreview>
+                        {{ fullName(student) }}
+                      </div>
+
+                      <div class="avatar">
+                        @if (student.photoUrl) {
+                          <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                        } @else {
+                          <span>{{ initials(student) }}</span>
+                        }
+                      </div>
+
+                      <div class="name">{{ student.firstName }}<br />{{ student.lastName }}</div>
+
+                      @if (!editMode()) {
+                        <div
+                          class="score"
+                          [class.pos]="(cell.score?.points ?? 0) > 0"
+                          [class.neg]="(cell.score?.points ?? 0) < 0"
+                        >
+                          {{ cell.score?.points ?? 0 }}
+                          @if (cell.score?.grade) {
+                            <span class="grade">Note {{ cell.score?.grade }}</span>
+                          }
+                        </div>
+
+                        <div class="actions">
+                          <button
+                            type="button"
+                            class="rate plus2"
+                            [disabled]="!canRate()"
+                            (click)="rate(student.id, 2)"
+                            title="Sehr gute Mitarbeit (++)"
+                          >
+                            ++
+                          </button>
+                          <button
+                            type="button"
+                            class="rate plus1"
+                            [disabled]="!canRate()"
+                            (click)="rate(student.id, 1)"
+                            title="Gute Mitarbeit (+)"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            class="rate minus1"
+                            [disabled]="!canRate()"
+                            (click)="rate(student.id, -1)"
+                            title="Schwache Mitarbeit (−)"
+                          >
+                            −
+                          </button>
+                          <button
+                            type="button"
+                            class="rate minus2"
+                            [disabled]="!canRate()"
+                            (click)="rate(student.id, -2)"
+                            title="Keine Mitarbeit / Störung (−−)"
+                          >
+                            −−
+                          </button>
+                        </div>
+
+                        @if ((cell.score?.ratingCount ?? 0) > 0) {
+                          <button
+                            type="button"
+                            class="undo"
+                            (click)="undo(student.id)"
+                            title="Letzte Bewertung zurücknehmen"
+                          >
+                            ↶ zurück
+                          </button>
+                        }
+                      }
+                    </div>
+                  } @else {
+                    <span class="free">{{ editMode() ? 'frei' : '' }}</span>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </section>
+
+        <!-- Schüler ohne Platz -->
+        <aside class="pool card">
+          <h2>Ohne Platz</h2>
+          <p class="muted small">
+            @if (editMode()) {
+              Von hier auf einen Platz ziehen – oder einen Schüler hierher zurückziehen.
+            } @else {
+              Diese Schüler sitzen auf keinem Platz, können aber bewertet werden.
+            }
+          </p>
+
+          <div
+            class="pool-list"
+            cdkDropList
+            [cdkDropListData]="poolTarget"
+            [cdkDropListSortingDisabled]="true"
+            [cdkDropListDisabled]="!editMode()"
+            (cdkDropListDropped)="drop($event)"
+          >
+            @for (student of unseated(); track student.id) {
+              <div
+                class="pool-item"
+                cdkDrag
+                [cdkDragData]="student.id"
+                [cdkDragDisabled]="!editMode()"
+              >
+                <div class="drag-preview" *cdkDragPreview>{{ fullName(student) }}</div>
+
+                <div class="avatar small">
+                  @if (student.photoUrl) {
+                    <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                  } @else {
+                    <span>{{ initials(student) }}</span>
+                  }
+                </div>
+
+                <span class="pool-name">{{ fullName(student) }}</span>
+
+                @if (!editMode()) {
+                  <span
+                    class="points"
+                    [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
+                    [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
+                  >
+                    {{ scoreFor(student.id)?.points ?? 0 }}
+                  </span>
+                  <span class="mini-actions">
+                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, 2)">
+                      ++
+                    </button>
+                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, 1)">
+                      +
+                    </button>
+                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, -1)">
+                      −
+                    </button>
+                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, -2)">
+                      −−
+                    </button>
+                  </span>
+                }
+              </div>
+            } @empty {
+              <p class="muted small">Alle Schüler sitzen auf einem Platz.</p>
+            }
+          </div>
+
+          @if (students().length === 0) {
+            <div class="empty small">
+              <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
+              <a class="btn small" routerLink="/verwaltung">Schüler anlegen</a>
+            </div>
+          }
+        </aside>
+      </div>
+    }
+  </div>
+}

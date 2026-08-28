@@ -1,0 +1,250 @@
+<div class="stack">
+  <div class="cols">
+    <!-- Klassen -->
+    <section class="card">
+      <h2>Klassen</h2>
+      <p class="muted small">Jeder Schüler gehört zu genau einer Klasse.</p>
+
+      <div class="chips">
+        @for (schoolClass of classes(); track schoolClass.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.active]="schoolClass.id === selectedClassId()"
+            (click)="selectClass(schoolClass.id)"
+          >
+            {{ schoolClass.name }}
+            <span class="badge">{{ schoolClass.studentCount }}</span>
+          </button>
+        } @empty {
+          <p class="muted small">Noch keine Klasse angelegt.</p>
+        }
+      </div>
+
+      <form class="row add" (ngSubmit)="addClass()">
+        <input
+          type="text"
+          placeholder="z. B. 10a"
+          [ngModel]="newClassName()"
+          (ngModelChange)="newClassName.set($event)"
+          name="className"
+          required
+        />
+        <button class="btn primary" type="submit" [disabled]="!newClassName().trim()">
+          Klasse anlegen
+        </button>
+      </form>
+    </section>
+
+    <!-- Fächer -->
+    <section class="card">
+      <h2>Fächer</h2>
+      <p class="muted small">Das Kürzel erscheint auf den Kacheln der Übersicht.</p>
+
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            @for (subject of subjects(); track subject.id) {
+              <tr>
+                <td><span class="badge">{{ subject.shortName }}</span></td>
+                <td class="grow">{{ subject.name }}</td>
+                <td>
+                  <button class="btn small danger" type="button" (click)="deleteSubject(subject)">
+                    Löschen
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="muted small">Noch kein Fach angelegt.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <form class="row add" (ngSubmit)="addSubject()">
+        <input
+          type="text"
+          placeholder="Fach, z. B. Mathematik"
+          [ngModel]="newSubjectName()"
+          (ngModelChange)="newSubjectName.set($event)"
+          name="subjectName"
+          required
+        />
+        <input
+          class="short"
+          type="text"
+          placeholder="Kürzel"
+          maxlength="10"
+          [ngModel]="newSubjectShort()"
+          (ngModelChange)="newSubjectShort.set($event)"
+          name="subjectShort"
+        />
+        <button class="btn primary" type="submit" [disabled]="!newSubjectName().trim()">
+          Fach anlegen
+        </button>
+      </form>
+    </section>
+  </div>
+
+  @if (selectedClass(); as schoolClass) {
+    <!-- Kurse dieser Klasse -->
+    <section class="card">
+      <div class="row">
+        <h2>Fächer der Klasse {{ schoolClass.name }}</h2>
+        <span class="spacer"></span>
+        <button class="btn small danger" type="button" (click)="deleteClass(schoolClass)">
+          Klasse löschen
+        </button>
+      </div>
+      <p class="muted small">
+        Für jedes Fach, das Sie in dieser Klasse unterrichten, entsteht ein Kurs mit eigener
+        Sitzordnung und eigenen Bewertungen.
+      </p>
+
+      <div class="course-chips">
+        @for (course of classCourses(); track course.id) {
+          <div class="course-chip">
+            <a [routerLink]="['/kurs', course.id]">
+              <strong>{{ course.subjectName }}</strong>
+              <span class="muted small">
+                {{ course.seatingPlanCount }}
+                {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }}
+              </span>
+            </a>
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="deleteCourse(course)"
+              title="Kurs löschen"
+            >
+              ×
+            </button>
+          </div>
+        } @empty {
+          <p class="muted small">In dieser Klasse ist noch kein Fach zugeordnet.</p>
+        }
+      </div>
+
+      <form class="row add" (ngSubmit)="addCourse()">
+        <select
+          [ngModel]="courseSubjectId()"
+          (ngModelChange)="courseSubjectId.set($event); courseClassId.set(schoolClass.id)"
+          name="courseSubject"
+        >
+          <option [ngValue]="null">Fach wählen …</option>
+          @for (subject of subjects(); track subject.id) {
+            <option [ngValue]="subject.id">{{ subject.name }}</option>
+          }
+        </select>
+        <button class="btn primary" type="submit" [disabled]="!courseSubjectId()">
+          Fach zuordnen
+        </button>
+      </form>
+    </section>
+
+    <!-- Schüler -->
+    <section class="card">
+      <div class="row">
+        <h2>Schüler der Klasse {{ schoolClass.name }}</h2>
+        <span class="spacer"></span>
+        <button class="btn small" type="button" (click)="showImport.set(!showImport())">
+          {{ showImport() ? 'Liste schließen' : 'Namensliste einfügen' }}
+        </button>
+      </div>
+
+      @if (showImport()) {
+        <div class="import">
+          <label>
+            Ein Name je Zeile – „Nachname, Vorname" oder „Vorname Nachname"
+            <textarea
+              rows="6"
+              [ngModel]="importText()"
+              (ngModelChange)="importText.set($event)"
+              name="importText"
+              placeholder="Berger, Anna&#10;Cordes, Ben&#10;Clara Dorn"
+            ></textarea>
+          </label>
+          <button class="btn primary" type="button" (click)="importStudents()">
+            Schüler übernehmen
+          </button>
+        </div>
+      }
+
+      <div class="student-grid">
+        @for (student of students(); track student.id) {
+          <div class="student-card">
+            <div class="avatar">
+              @if (student.photoUrl) {
+                <img [src]="student.photoUrl" [alt]="fullName(student)" />
+              } @else {
+                <span>{{ initials(student) }}</span>
+              }
+            </div>
+
+            <div class="fields">
+              <input
+                type="text"
+                [value]="student.firstName"
+                placeholder="Vorname"
+                (change)="renameStudent(student, $any($event.target).value, student.lastName)"
+              />
+              <input
+                type="text"
+                [value]="student.lastName"
+                placeholder="Nachname"
+                (change)="renameStudent(student, student.firstName, $any($event.target).value)"
+              />
+            </div>
+
+            <div class="student-actions">
+              <label class="upload btn small">
+                {{ student.hasPhoto ? 'Foto tauschen' : 'Foto wählen' }}
+                <input type="file" accept="image/*" (change)="uploadPhoto(student, $event)" />
+              </label>
+              @if (student.hasPhoto) {
+                <button class="btn small" type="button" (click)="deletePhoto(student)">
+                  Foto entfernen
+                </button>
+              }
+              <button class="btn small danger" type="button" (click)="deleteStudent(student)">
+                Löschen
+              </button>
+            </div>
+          </div>
+        } @empty {
+          <p class="muted small">Noch keine Schüler in dieser Klasse.</p>
+        }
+      </div>
+
+      <form class="row add" (ngSubmit)="addStudent()">
+        <input
+          type="text"
+          placeholder="Vorname"
+          [ngModel]="newFirstName()"
+          (ngModelChange)="newFirstName.set($event)"
+          name="firstName"
+        />
+        <input
+          type="text"
+          placeholder="Nachname"
+          [ngModel]="newLastName()"
+          (ngModelChange)="newLastName.set($event)"
+          name="lastName"
+        />
+        <button
+          class="btn primary"
+          type="submit"
+          [disabled]="!newFirstName().trim() && !newLastName().trim()"
+        >
+          Schüler anlegen
+        </button>
+      </form>
+    </section>
+  } @else {
+    <div class="empty">
+      <p>Legen Sie zuerst eine Klasse an.</p>
+    </div>
+  }
+</div>

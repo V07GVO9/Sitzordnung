@@ -1,0 +1,87 @@
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  input[type='time'] {
+    width: 7.5rem;
+  }
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.week .card + .card {
+  margin-top: 0;
+}
+
+.day {
+  padding: 0.9rem;
+
+  &.today {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  h3 {
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.lesson {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.45rem;
+  background: var(--surface-muted);
+  margin-bottom: 0.35rem;
+
+  .time {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    flex: none;
+  }
+
+  .what {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    text-decoration: none;
+    color: var(--text);
+    min-width: 0;
+    flex: 1;
+
+    strong {
+      font-size: 0.88rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .what:hover strong {
+    color: var(--accent);
+  }
+}
+
+.remove {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+
+  &:hover {
+    color: var(--negative);
+  }
+}
