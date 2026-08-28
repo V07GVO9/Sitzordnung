@@ -5,10 +5,6 @@
       <span class="spacer"></span>
       <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
     </div>
-    <p class="muted">
-      Der Stundenplan bestimmt, welcher Unterrichtsstunde eine Bewertung zugerechnet wird –
-      je Stunde und Schüler zählt genau eine. Bewerten können Sie unabhängig davon jederzeit.
-    </p>
   </section>
 
   @if (courses().length === 0) {
@@ -17,7 +13,7 @@
       <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
     </div>
   } @else {
-    <section class="card">
+    <!--<section class="card">
       <h2>Stunde eintragen</h2>
       <form class="form-row" (ngSubmit)="add()">
         <label>
@@ -75,7 +71,7 @@
 
         <button class="btn primary" type="submit">Eintragen</button>
       </form>
-    </section>
+    </section> -->
 
     <section class="card">
       @if (zeitschienen().length === 0) {
@@ -109,16 +105,7 @@
                           <a class="stunde-text" [routerLink]="['/kurs', entry.courseId]">
                             <strong>{{ entry.subjectName }}</strong>
                             <span>{{ entry.schoolClassName }}</span>
-                          </a>
-                          <button
-                            class="remove"
-                            type="button"
-                            (click)="remove(entry)"
-                            [attr.aria-label]="'Stunde ' + entry.startTime + ' löschen'"
-                            title="Stunde löschen"
-                          >
-                            ×
-                          </button>
+                          </a>                      
                         </div>
                       }
                     </td>
