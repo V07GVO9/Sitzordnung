@@ -215,3 +215,28 @@ public class AppSettings
     /// </summary>
     public bool AllowRatingOutsideLesson { get; set; }
 }
+
+/// <summary>
+/// Das Konto der Lehrkraft. Die App ist für eine Person gedacht; es gibt daher
+/// in aller Regel genau einen Datensatz. Das Passwort wird nur als Hash abgelegt.
+/// </summary>
+public class AppUser
+{
+    public int Id { get; set; }
+
+    [MaxLength(80)]
+    public string Username { get; set; } = string.Empty;
+
+    [MaxLength(400)]
+    public string PasswordHash { get; set; } = string.Empty;
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset? LastLoginAt { get; set; }
+
+    /// <summary>
+    /// Solange true, verlangt die App nach dem Anmelden das Setzen eines eigenen
+    /// Passworts - das Startpasswort taucht in Logs und Konfiguration auf.
+    /// </summary>
+    public bool MustChangePassword { get; set; }
+}

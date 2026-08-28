@@ -19,6 +19,7 @@ vergeben. Bewertet werden kann nur, wenn der Kurs laut Stundenplan gerade läuft
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
+| Anmeldung | Alle Daten liegen hinter einem Login; ohne Anmeldung liefert die API nichts aus |
 
 ### Die Sperre für Bewertungen
 
@@ -32,6 +33,27 @@ Zwei Stellschrauben unter *Auswertung → Einstellungen*:
   Stunde ist das Bewerten noch möglich.
 - **Notfall-Freigabe** (Standard aus): Hebt die Sperre ganz auf, falls der
   Stundenplan einmal kurzfristig abweicht.
+
+### Anmeldung
+
+Die App verlangt eine Anmeldung. Ohne gültige Sitzung antwortet **jeder**
+API-Endpunkt mit `401` – geprüft wird im Backend, nicht in der Oberfläche.
+
+Beim ersten Start wird ein Konto angelegt. Benutzername und Startpasswort kommen
+aus der Konfiguration:
+
+```
+Auth__Username=lehrkraft
+Auth__InitialPassword=ein-langes-startpasswort
+```
+
+Fehlt das Passwort oder ist es kürzer als 10 Zeichen, erzeugt die App ein
+zufälliges und schreibt es einmalig ins Log. In beiden Fällen verlangt die App
+nach dem Anmelden, ein eigenes Passwort zu setzen – zu finden unter *Konto*.
+
+Weitere Eigenschaften: Passwörter werden nur als Hash gespeichert (PBKDF2), das
+Sitzungs-Cookie ist `HttpOnly`, `Secure` und `SameSite=Strict`, und zehn
+Fehlversuche je fünf Minuten und IP-Adresse bremsen das Durchprobieren aus.
 
 ## Ohne lokale Installation ausprobieren (GitHub Codespaces)
 
@@ -54,8 +76,8 @@ weitergeleitete Adresse – lokal muss nichts installiert werden.
 
 Der Port ist zunächst **privat** – nur Sie sehen ihn. Zum Vorführen kann er im
 Reiter *Ports* per Rechtsklick auf *Public* gestellt werden; dann ist die
-Adresse für jeden erreichbar, der sie kennt. Da die App keine Anmeldung hat,
-sollte das nur kurz und ohne echte Schülerdaten geschehen.
+Adresse für jeden erreichbar, der sie kennt. Die Anmeldung schützt zwar die
+Daten, trotzdem gehören in einen Codespace nur Testdaten und keine echten Namen.
 
 Codespaces ist für private Konten in gewissem Umfang kostenlos; darüber hinaus
 rechnet GitHub nach Laufzeit ab. Ein Codespace lässt sich jederzeit unter
@@ -136,9 +158,33 @@ Beides ist von der Versionsverwaltung ausgenommen. Für eine Sicherung genügt e
 den Ordner `App_Data` zu kopieren. Fotos werden nur über die API ausgeliefert,
 nicht als statische Dateien, und der Dateiname wird serverseitig vergeben.
 
-Die Anwendung ist für **eine Lehrkraft auf einem Rechner** gedacht und hat keine
-Anmeldung. Wer sie im Netzwerk erreichbar macht, sollte einen Zugriffsschutz davor
-setzen – die Daten sind personenbezogen.
+Die Anwendung ist für **eine Lehrkraft** gedacht und kennt genau ein Konto. Die
+Daten sind personenbezogen und betreffen Minderjährige: Wer die App im Netz
+betreibt, sollte das mit der Schule abstimmen und mit dem Anbieter einen
+Auftragsverarbeitungsvertrag schließen. Siehe [deploy/ANLEITUNG.md](deploy/ANLEITUNG.md).
+
+## Auf einem Server betreiben
+
+Für den Betrieb bei einem Anbieter liegen ein `Dockerfile`, ein Compose-Setup mit
+Reverse-Proxy und automatischem HTTPS sowie GitHub-Actions-Pipelines bei:
+
+- `test` wird auf die Testumgebung ausgerollt,
+- `master` auf die Produktivumgebung,
+- beide Umgebungen laufen auf einem Server, haben aber getrennte Daten.
+
+Die vollständige Anleitung samt Sicherungen und Wiederherstellung steht in
+[deploy/ANLEITUNG.md](deploy/ANLEITUNG.md).
+
+Schnell ausprobieren lässt sich das Image auch lokal:
+
+```bash
+docker build -t sitzordnung .
+docker run --rm -p 8080:8080 -v sitzordnung-daten:/data \
+  -e Auth__Username=lehrkraft \
+  -e Auth__InitialPassword=ein-langes-startpasswort \
+  -e Auth__RequireHttps=false \
+  sitzordnung
+```
 
 ## Aufbau des Projekts
 

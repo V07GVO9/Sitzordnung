@@ -9,20 +9,22 @@ namespace Sitzordnung.Api.Tests;
 /// Fährt die API einmal komplett durch. Die Tests laufen gegen SQLite und decken
 /// damit auch Abfragen auf, die sich nicht in SQL übersetzen lassen.
 /// </summary>
-public class ApiEndpointTests : IDisposable
+public class ApiEndpointTests : IAsyncLifetime
 {
     private readonly ApiFactory _factory = new();
-    private readonly HttpClient _client;
+    private HttpClient _client = null!;
 
-    public ApiEndpointTests()
+    /// <summary>Alle Endpunkte verlangen eine Anmeldung, daher zuerst anmelden.</summary>
+    public async Task InitializeAsync()
     {
-        _client = _factory.CreateClient();
+        _client = await _factory.CreateSignedInClientAsync();
     }
 
-    public void Dispose()
+    public Task DisposeAsync()
     {
         _client.Dispose();
         _factory.Dispose();
+        return Task.CompletedTask;
     }
 
     private async Task<T> PostAsync<T>(string url, object body)

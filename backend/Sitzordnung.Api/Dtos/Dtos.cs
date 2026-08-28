@@ -242,3 +242,29 @@ public class AppSettingsInput
 
     public bool AllowRatingOutsideLesson { get; set; }
 }
+
+// --- Anmeldung --------------------------------------------------------------
+
+public class LoginInput
+{
+    [Required, MaxLength(80)]
+    public string Username { get; set; } = string.Empty;
+
+    [Required, MaxLength(200)]
+    public string Password { get; set; } = string.Empty;
+
+    /// <summary>Hält die Anmeldung 30 Tage statt nur einen Tag.</summary>
+    public bool StayLoggedIn { get; set; }
+}
+
+public class ChangePasswordInput
+{
+    [Required, MaxLength(200)]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required, MaxLength(200)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>Wer ist angemeldet - und muss das Startpasswort noch geändert werden?</summary>
+public record CurrentUserDto(string Username, bool MustChangePassword);

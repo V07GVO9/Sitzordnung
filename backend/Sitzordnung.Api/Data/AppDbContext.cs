@@ -20,9 +20,14 @@ public class AppDbContext : DbContext
     public DbSet<GradeScale> GradeScales => Set<GradeScale>();
     public DbSet<GradeScaleEntry> GradeScaleEntries => Set<GradeScaleEntry>();
     public DbSet<AppSettings> AppSettings => Set<AppSettings>();
+    public DbSet<AppUser> Users => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppUser>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
         modelBuilder.Entity<SchoolClass>()
             .HasIndex(c => c.Name)
             .IsUnique();

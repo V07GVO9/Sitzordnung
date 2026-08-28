@@ -1,0 +1,82 @@
+name: Ausrollen
+
+# test  -> Testumgebung
+# master -> Produktivumgebung
+on:
+  push:
+    branches: [master, test]
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  testen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # Nichts wird ausgerollt, was die Tests nicht besteht.
+      - name: Backend testen
+        run: dotnet test backend/Sitzordnung.sln --configuration Release
+
+  bauen:
+    needs: testen
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.namen.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Registry-Name in Kleinbuchstaben
+        id: namen
+        run: echo "image=${REGISTRY}/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image bauen und hochladen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.namen.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.namen.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  ausrollen:
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'master' && 'produktion' || 'test' }}
+    steps:
+      - name: Auf dem Server ausrollen
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch origin ${{ github.ref_name }}
+            git checkout ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            ./deploy/deploy.sh ${{ github.ref_name == 'master' && 'prod' || 'test' }}

@@ -2,46 +2,57 @@ import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
+import { AuthService } from './core/auth.service';
 import { CurrentLesson } from './core/models';
 import { ToastHost } from './core/toast-host';
+import { ToastService } from './core/toast.service';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost],
   template: `
-    <header class="topbar">
-      <a class="brand" routerLink="/">
-        <span class="brand-mark">SO</span>
-        <span>
-          <strong>Sitzordnung</strong>
-          <span class="brand-sub">Mitarbeitsnoten im Unterricht</span>
-        </span>
-      </a>
-
-      <nav>
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Unterricht
+    @if (auth.isSignedIn()) {
+      <header class="topbar">
+        <a class="brand" routerLink="/">
+          <span class="brand-mark">SO</span>
+          <span>
+            <strong>Sitzordnung</strong>
+            <span class="brand-sub">Mitarbeitsnoten im Unterricht</span>
+          </span>
         </a>
-        <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
-        <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
-        <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
-      </nav>
 
-      <div class="now" [class.live]="lesson()?.hasLesson">
-        @if (lesson(); as l) {
-          @if (l.hasLesson) {
-            <span class="dot"></span>
-            {{ l.subjectName }} · {{ l.schoolClassName }}
-            <span class="muted small">bis {{ l.endTime }}</span>
-          } @else {
-            <span class="muted small">Gerade kein Unterricht</span>
+        <nav>
+          <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Unterricht
+          </a>
+          <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
+          <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
+          <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
+        </nav>
+
+        <div class="now" [class.live]="lesson()?.hasLesson">
+          @if (lesson(); as l) {
+            @if (l.hasLesson) {
+              <span class="dot"></span>
+              {{ l.subjectName }} · {{ l.schoolClassName }}
+              <span class="muted small">bis {{ l.endTime }}</span>
+            } @else {
+              <span class="muted small">Gerade kein Unterricht</span>
+            }
           }
-        }
-      </div>
-    </header>
+        </div>
 
-    <main>
+        <div class="konto">
+          <a routerLink="/konto" routerLinkActive="active" title="Konto und Passwort">
+            {{ auth.user()?.username }}
+          </a>
+          <button class="btn small" type="button" (click)="logout()">Abmelden</button>
+        </div>
+      </header>
+    }
+
+    <main [class.weit]="auth.isSignedIn()">
       <router-outlet />
     </main>
 
@@ -52,7 +63,7 @@ import { ToastHost } from './core/toast-host';
       .topbar {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
+        gap: 1.25rem;
         flex-wrap: wrap;
         padding: 0.75rem 1.5rem;
         background: var(--surface);
@@ -140,6 +151,26 @@ import { ToastHost } from './core/toast-host';
         background: var(--positive);
       }
 
+      .konto {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .konto a {
+        padding: 0.35rem 0.6rem;
+        border-radius: 0.45rem;
+        text-decoration: none;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      .konto a:hover,
+      .konto a.active {
+        background: var(--surface-muted);
+        color: var(--text);
+      }
+
       main {
         max-width: 1400px;
         margin: 0 auto;
@@ -151,7 +182,9 @@ import { ToastHost } from './core/toast-host';
 export class App implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly toasts = inject(ToastService);
 
+  readonly auth = inject(AuthService);
   readonly lesson = signal<CurrentLesson | null>(null);
 
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
@@ -172,9 +205,25 @@ export class App implements OnDestroy {
   }
 
   private refresh(): void {
+    // Ohne Anmeldung liefert die API ohnehin nur 401.
+    if (!this.auth.isSignedIn()) {
+      this.lesson.set(null);
+      return;
+    }
+
     this.api.getCurrentLesson().subscribe({
       next: (lesson) => this.lesson.set(lesson),
       error: () => this.lesson.set(null),
+    });
+  }
+
+  logout(): void {
+    this.auth.logout().subscribe({
+      next: () => {
+        this.lesson.set(null);
+        this.router.navigate(['/anmelden']);
+      },
+      error: (err) => this.toasts.error(err, 'Das Abmelden hat nicht geklappt.'),
     });
   }
 }
