@@ -7,8 +7,15 @@ export const routes: Routes = [
     title: 'Anmelden',
     loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage),
   },
+  // Der Stundenplan ist die Startseite - er wird täglich gebraucht.
   {
     path: '',
+    canActivate: [authGuard],
+    title: 'Stundenplan',
+    loadComponent: () => import('./pages/timetable/timetable').then((m) => m.TimetablePage),
+  },
+  {
+    path: 'unterricht',
     canActivate: [authGuard],
     title: 'Unterricht',
     loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage),
@@ -25,11 +32,13 @@ export const routes: Routes = [
     title: 'Klassen & Schüler',
     loadComponent: () => import('./pages/data/data').then((m) => m.DataPage),
   },
+  { path: 'stundenplan', redirectTo: '', pathMatch: 'full' },
   {
-    path: 'stundenplan',
+    path: 'verwaltung/import',
     canActivate: [authGuard],
-    title: 'Stundenplan',
-    loadComponent: () => import('./pages/timetable/timetable').then((m) => m.TimetablePage),
+    title: 'Schüler importieren',
+    loadComponent: () =>
+      import('./pages/student-import/student-import').then((m) => m.StudentImportPage),
   },
   {
     path: 'stundenplan/import',

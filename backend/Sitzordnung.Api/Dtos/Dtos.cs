@@ -324,3 +324,39 @@ public record TimetableImportResultDto(
     int CreatedCourses,
     int CreatedLessons,
     IReadOnlyList<string> Skipped);
+
+// --- Schülerimport aus einer Tabelle ----------------------------------------
+
+/// <summary>Eine gelesene Zeile aus der Schülerliste.</summary>
+public record StudentImportRowDto(string FirstName, string LastName, string ClassName);
+
+public record StudentImportPreviewDto(
+    IReadOnlyList<StudentImportRowDto> Rows,
+    IReadOnlyList<string> Warnings);
+
+public class StudentImportRowInput
+{
+    [MaxLength(80)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [MaxLength(80)]
+    public string LastName { get; set; } = string.Empty;
+
+    /// <summary>Leer, wenn die Datei keine Klassenspalte hatte.</summary>
+    [MaxLength(60)]
+    public string ClassName { get; set; } = string.Empty;
+}
+
+public class StudentImportApplyInput
+{
+    public List<StudentImportRowInput> Rows { get; set; } = new();
+
+    /// <summary>Klasse für alle Zeilen ohne eigene Klassenangabe.</summary>
+    [MaxLength(60)]
+    public string? FallbackClassName { get; set; }
+}
+
+public record StudentImportResultDto(
+    int CreatedClasses,
+    int CreatedStudents,
+    IReadOnlyList<string> Skipped);

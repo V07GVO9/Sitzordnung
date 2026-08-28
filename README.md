@@ -11,10 +11,10 @@ vergeben. Bewertet werden kann nur, wenn der Kurs laut Stundenplan gerade läuft
 
 | Bereich | Beschreibung |
 | --- | --- |
-| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hochladen |
+| Klassen & Schüler | Klassen anlegen, Schülerlisten aus WebUntis als CSV importieren oder Namen einfügen, Foto je Schüler hochladen |
 | Fächer & Kurse | Fächer anlegen und einer Klasse zuordnen – daraus entsteht ein Kurs |
 | Sitzordnung | Ein bis zwei Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
-| Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |
+| Zwei Modi | **Bewerten** im Unterricht, **Sitzplan bearbeiten** zum Umbauen der Sitzordnung |
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet – eine Bewertung je Unterrichtsstunde |
 | Stundenplan | Wochenplan je Kurs, wahlweise aus WebUntis als Kalenderdatei importiert |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
@@ -39,6 +39,15 @@ Hat ein Kurs keinen Stundenplaneintrag, zählt der **Tag** als eine Einheit. Die
 Kursansicht zeigt oben immer an, auf welche Stunde eine Bewertung gerade einzahlt,
 und hebt die bereits vergebene Bewertung hervor.
 
+### Die Oberfläche
+
+Startseite ist der **Stundenplan** als Wochentabelle: die Uhrzeiten stehen einmal
+links in der Zeitspalte, in den Zellen nur Fach und Klasse. Ein Klick auf eine
+Stunde öffnet den Kurs zum Bewerten; die laufende Stunde ist hervorgehoben.
+
+Alles, was selten gebraucht wird – Tagesübersicht, Klassen und Schüler,
+Auswertung, Konto –, liegt hinter dem Knopf **Einstellungen** oben rechts.
+
 ### Stundenplan aus WebUntis übernehmen
 
 Statt jede Stunde einzeln einzutragen, lässt sich der Plan als Kalenderdatei
@@ -53,6 +62,21 @@ Weil die Titelformate sich je Schule unterscheiden („D - KDM23", „MA - 10a -
 werden Klasse und Fach geraten – bereits angelegte Namen haben dabei Vorrang.
 Einträge, die nur einmal vorkommen, sind vermutlich Vertretungen und deshalb nicht
 vorausgewählt.
+
+### Schülerlisten aus WebUntis übernehmen
+
+Unter *Klassen & Schüler → Schüler importieren* lässt sich eine Klassenliste als
+CSV hochladen – in WebUntis unter *Stammdaten → Schüler* zu exportieren. Erkannt
+werden die Spalten *Langname* beziehungsweise *Nachname*, *Vorname* und *Klasse*
+in beliebiger Reihenfolge, mit Semikolon, Komma oder Tabulator getrennt.
+
+Enthält die Datei eine Klassenspalte, verteilt der Import die Schüler auf mehrere
+Klassen und legt fehlende an. Ohne Klassenspalte wählen Sie eine Klasse für alle
+Zeilen. Wie beim Stundenplan gibt es vorher eine Vorschau zum Korrigieren; bereits
+vorhandene Namen werden übersprungen.
+
+Wer keinen Export hat, kopiert die Namen aus der Klassenliste und fügt sie ein –
+erkannt werden „Nachname, Vorname" und „Vorname Nachname".
 
 ### Anmeldung
 
@@ -163,7 +187,8 @@ dotnet test
 Die Testsuite umfasst:
 
 - **Fachlogik** – Zuordnung einer Bewertung zur richtigen Unterrichtsstunde;
-  Notenschlüssel; CSV-Erzeugung; Kalenderimport samt Sommer- und Winterzeit.
+  Notenschlüssel; CSV-Erzeugung; Kalenderimport samt Sommer- und Winterzeit;
+  Einlesen von Schülerlisten in den gängigen Spalten- und Trennzeichenvarianten.
 - **API-Tests** – die vollständige Anwendung läuft gegen eine SQLite-Datenbank im
   Arbeitsspeicher, sodass auch Abfragen auffallen, die SQLite nicht übersetzen kann.
 
@@ -214,14 +239,15 @@ backend/
     Models/        Datenmodell (Klasse, Fach, Kurs, Schüler, Sitzordnung, Bewertung …)
     Data/          EF-Core-Kontext und Migrationen
     Dtos/          Datenstrukturen der API
-    Services/      Unterrichtsstunden, Notenschlüssel, Fotoablage, CSV, ICS-Import
+    Services/      Unterrichtsstunden, Notenschlüssel, Fotoablage, CSV,
+                   ICS-Import, Schülerlisten-Import
     Controllers/   Die API-Endpunkte
   Sitzordnung.Api.Tests/
 frontend/
   src/app/
     core/          API-Zugriff, Datenmodelle, Hinweismeldungen
-    pages/         Übersicht, Kurs (Sitzordnung + Bewerten), Verwaltung,
-                   Stundenplan, Auswertung
+    pages/         Stundenplan (Startseite), Kurs (Sitzordnung + Bewerten),
+                   Verwaltung, Auswertung, Importe, Anmeldung, Konto
 ```
 
 ### Datenmodell in Kürze
@@ -241,6 +267,8 @@ der Punktestand eines Schülers ist die Summe seiner Bewertungen, beginnend bei 
 | `POST` | `/api/ratings` | Bewertung abgeben (ersetzt eine vorhandene derselben Stunde) |
 | `POST` | `/api/timetable/import/preview` | Kalenderdatei einlesen und Vorschau zeigen |
 | `POST` | `/api/timetable/import/apply` | Bestätigte Stunden übernehmen |
+| `POST` | `/api/students/import/preview` | Schülerliste einlesen und Vorschau zeigen |
+| `POST` | `/api/students/import/apply` | Bestätigte Schüler übernehmen |
 | `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses |
 | `PUT` | `/api/seatingplans/{id}/layout` | Sitzordnung speichern |
 | `GET` | `/api/export/summary.csv` | Punktestand als CSV |

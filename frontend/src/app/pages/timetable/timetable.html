@@ -77,34 +77,56 @@
       </form>
     </section>
 
-    <section class="week">
-      @for (day of days; track day) {
-        <div class="day card" [class.today]="day === today">
-          <h3>{{ weekdayNames[day] }}</h3>
+    <section class="card">
+      @if (zeitschienen().length === 0) {
+        <div class="empty">
+          <p>Im Stundenplan steht noch nichts.</p>
+          <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="plan">
+            <thead>
+              <tr>
+                <th class="zeitspalte">Zeit</th>
+                @for (day of days; track day) {
+                  <th [class.heute]="day === today">{{ weekdayNames[day] }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (schiene of zeitschienen(); track schiene.startTime + schiene.endTime) {
+                <tr>
+                  <th class="zeitspalte" scope="row">
+                    <span class="von">{{ schiene.startTime }}</span>
+                    <span class="bis">{{ schiene.endTime }}</span>
+                  </th>
 
-          @for (entry of entriesFor(day); track entry.id) {
-            <div class="lesson">
-              <span class="time">{{ entry.startTime }}–{{ entry.endTime }}</span>
-              <a class="what" [routerLink]="['/kurs', entry.courseId]">
-                <strong>{{ entry.subjectName }}</strong>
-                <span class="muted small">{{ entry.schoolClassName }}</span>
-              </a>
-              @if (entry.room) {
-                <span class="badge">{{ entry.room }}</span>
+                  @for (day of days; track day) {
+                    <td [class.heute]="day === today">
+                      @for (entry of stundenIn(schiene, day); track entry.id) {
+                        <div class="stunde" [class.jetzt]="laeuftGerade(entry)">
+                          <a class="stunde-text" [routerLink]="['/kurs', entry.courseId]">
+                            <strong>{{ entry.subjectName }}</strong>
+                            <span>{{ entry.schoolClassName }}</span>
+                          </a>
+                          <button
+                            class="remove"
+                            type="button"
+                            (click)="remove(entry)"
+                            [attr.aria-label]="'Stunde ' + entry.startTime + ' löschen'"
+                            title="Stunde löschen"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      }
+                    </td>
+                  }
+                </tr>
               }
-              <button
-                class="remove"
-                type="button"
-                (click)="remove(entry)"
-                [attr.aria-label]="'Stunde ' + entry.startTime + ' löschen'"
-                title="Stunde löschen"
-              >
-                ×
-              </button>
-            </div>
-          } @empty {
-            <p class="muted small">Kein Unterricht</p>
-          }
+            </tbody>
+          </table>
         </div>
       }
     </section>

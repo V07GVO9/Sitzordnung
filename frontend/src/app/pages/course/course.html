@@ -32,10 +32,10 @@
 
       <div class="mode-switch" role="group" aria-label="Modus wählen">
         <button type="button" [class.active]="!editMode()" (click)="toggleMode(false)">
-          Unterricht
+          Bewerten
         </button>
         <button type="button" [class.active]="editMode()" (click)="toggleMode(true)">
-          Einstellungen
+          Sitzplan bearbeiten
         </button>
       </div>
     </section>
@@ -50,13 +50,13 @@
           <span class="spacer"></span>
           <button class="btn small" type="button" (click)="refreshSlot()">Neu prüfen</button>
           @if (!slot.fromTimetable) {
-            <a class="btn small" routerLink="/stundenplan">Stundenplan ergänzen</a>
+            <a class="btn small" routerLink="/">Stundenplan ergänzen</a>
           }
         </div>
       }
     } @else {
       <div class="banner warn">
-        <strong>Einstellungsmodus</strong>
+        <strong>Sitzplan bearbeiten</strong>
         <span>
           Schüler per Drag and Drop auf die Plätze ziehen. Änderungen werden sofort gespeichert.
         </span>

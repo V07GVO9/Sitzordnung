@@ -14,6 +14,9 @@ import {
   SeatLayoutInput,
   SeatingPlan,
   Student,
+  StudentImportPreview,
+  StudentImportResult,
+  StudentImportRow,
   Subject,
   TimetableEntry,
   TimetableEntryInput,
@@ -134,6 +137,28 @@ export class ApiService {
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<Student>(`${this.base}/students/${studentId}/photo`, form);
+  }
+
+  /** Liest eine Schülerliste (CSV oder eingefügter Text) und zeigt eine Vorschau. */
+  previewStudentImport(file: File | null, content: string | null): Observable<StudentImportPreview> {
+    const form = new FormData();
+    if (file) {
+      form.append('file', file, file.name);
+    }
+    if (content) {
+      form.append('content', content);
+    }
+    return this.http.post<StudentImportPreview>(`${this.base}/students/import/preview`, form);
+  }
+
+  applyStudentImport(
+    rows: StudentImportRow[],
+    fallbackClassName: string | null,
+  ): Observable<StudentImportResult> {
+    return this.http.post<StudentImportResult>(`${this.base}/students/import/apply`, {
+      rows,
+      fallbackClassName,
+    });
   }
 
   deletePhoto(studentId: number): Observable<Student> {

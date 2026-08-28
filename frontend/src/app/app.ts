@@ -24,11 +24,8 @@ import { ToastService } from './core/toast.service';
 
         <nav>
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            Unterricht
+            Stundenplan
           </a>
-          <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
-          <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
-          <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
         </nav>
 
         <div class="now" [class.live]="lesson()?.hasLesson">
@@ -43,11 +40,29 @@ import { ToastService } from './core/toast.service';
           }
         </div>
 
-        <div class="konto">
-          <a routerLink="/konto" routerLinkActive="active" title="Konto und Passwort">
-            {{ auth.user()?.username }}
-          </a>
-          <button class="btn small" type="button" (click)="logout()">Abmelden</button>
+        <!-- Was selten gebraucht wird, liegt hinter diesem Menü. -->
+        <div class="menue">
+          <button
+            class="btn"
+            type="button"
+            [attr.aria-expanded]="menueOffen()"
+            (click)="menueOffen.set(!menueOffen())"
+          >
+            Einstellungen ▾
+          </button>
+
+          @if (menueOffen()) {
+            <div class="menue-liste" role="menu">
+              <a routerLink="/unterricht" (click)="menueOffen.set(false)">Unterricht</a>
+              <a routerLink="/verwaltung" (click)="menueOffen.set(false)">Klassen &amp; Schüler</a>
+              <a routerLink="/auswertung" (click)="menueOffen.set(false)">Auswertung</a>
+              <hr />
+              <a routerLink="/konto" (click)="menueOffen.set(false)">
+                Konto ({{ auth.user()?.username }})
+              </a>
+              <button type="button" (click)="logout()">Abmelden</button>
+            </div>
+          }
         </div>
       </header>
     }
@@ -151,24 +166,46 @@ import { ToastService } from './core/toast.service';
         background: var(--positive);
       }
 
-      .konto {
+      .menue {
+        position: relative;
+      }
+
+      .menue-liste {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.4rem);
+        min-width: 13rem;
         display: flex;
-        align-items: center;
-        gap: 0.4rem;
+        flex-direction: column;
+        padding: 0.3rem;
+        border-radius: 0.55rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        box-shadow: var(--shadow-lg);
+        z-index: 30;
       }
 
-      .konto a {
-        padding: 0.35rem 0.6rem;
-        border-radius: 0.45rem;
+      .menue-liste a,
+      .menue-liste button {
+        text-align: left;
+        padding: 0.5rem 0.7rem;
+        border: 0;
+        border-radius: 0.4rem;
+        background: transparent;
         text-decoration: none;
-        color: var(--text-muted);
-        font-size: 0.9rem;
+        color: var(--text);
+        font: inherit;
       }
 
-      .konto a:hover,
-      .konto a.active {
+      .menue-liste a:hover,
+      .menue-liste button:hover {
         background: var(--surface-muted);
-        color: var(--text);
+      }
+
+      .menue-liste hr {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 0.3rem 0;
       }
 
       main {
@@ -186,6 +223,7 @@ export class App implements OnDestroy {
 
   readonly auth = inject(AuthService);
   readonly lesson = signal<CurrentLesson | null>(null);
+  readonly menueOffen = signal(false);
 
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
   private readonly timer = setInterval(() => this.refresh(), 60_000);
@@ -195,9 +233,10 @@ export class App implements OnDestroy {
 
     // Nach dem Bearbeiten des Stundenplans soll die Anzeige sofort stimmen,
     // nicht erst beim nächsten Takt.
-    this.router.events
-      .pipe(filter((event) => event instanceof NavigationEnd))
-      .subscribe(() => this.refresh());
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+      this.menueOffen.set(false);
+      this.refresh();
+    });
   }
 
   ngOnDestroy(): void {
@@ -218,6 +257,7 @@ export class App implements OnDestroy {
   }
 
   logout(): void {
+    this.menueOffen.set(false);
     this.auth.logout().subscribe({
       next: () => {
         this.lesson.set(null);

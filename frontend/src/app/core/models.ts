@@ -210,3 +210,22 @@ export interface TimetableImportResult {
   createdLessons: number;
   skipped: string[];
 }
+
+// --- Schülerimport ----------------------------------------------------------
+
+export interface StudentImportRow {
+  firstName: string;
+  lastName: string;
+  className: string;
+}
+
+export interface StudentImportPreview {
+  rows: StudentImportRow[];
+  warnings: string[];
+}
+
+export interface StudentImportResult {
+  createdClasses: number;
+  createdStudents: number;
+  skipped: string[];
+}

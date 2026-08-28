@@ -24,6 +24,7 @@ builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<GradingService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TimetableImportService>();
+builder.Services.AddScoped<StudentImportService>();
 
 // Anmeldung über ein Sitzungs-Cookie. Die App wird von derselben Adresse
 // ausgeliefert wie die API, deshalb genügt SameSite=Strict als Schutz davor,
