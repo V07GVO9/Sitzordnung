@@ -33,6 +33,34 @@ Zwei Stellschrauben unter *Auswertung → Einstellungen*:
 - **Notfall-Freigabe** (Standard aus): Hebt die Sperre ganz auf, falls der
   Stundenplan einmal kurzfristig abweicht.
 
+## Ohne lokale Installation ausprobieren (GitHub Codespaces)
+
+Das Repository bringt eine Codespaces-Konfiguration mit. Damit läuft die
+Anwendung in einem Container bei GitHub, und der Browser zeigt sie über eine
+weitergeleitete Adresse – lokal muss nichts installiert werden.
+
+1. Auf GitHub im Repository auf **Code → Codespaces → Create codespace** klicken
+   (beim Branch den gewünschten auswählen).
+2. Der Container installiert die Abhängigkeiten und baut das Frontend von selbst.
+   Das dauert beim ersten Mal einige Minuten.
+3. Im Terminal des Codespace starten:
+
+   ```bash
+   ./start.sh
+   ```
+
+4. VS Code meldet den weitergeleiteten Port 5099 und öffnet die Anwendung. Über
+   den Reiter *Ports* lässt sich die Adresse auch später wieder aufrufen.
+
+Der Port ist zunächst **privat** – nur Sie sehen ihn. Zum Vorführen kann er im
+Reiter *Ports* per Rechtsklick auf *Public* gestellt werden; dann ist die
+Adresse für jeden erreichbar, der sie kennt. Da die App keine Anmeldung hat,
+sollte das nur kurz und ohne echte Schülerdaten geschehen.
+
+Codespaces ist für private Konten in gewissem Umfang kostenlos; darüber hinaus
+rechnet GitHub nach Laufzeit ab. Ein Codespace lässt sich jederzeit unter
+<https://github.com/codespaces> stoppen oder löschen.
+
 ## Starten
 
 Voraussetzungen: [.NET SDK 8](https://dotnet.microsoft.com/download) und
@@ -66,6 +94,10 @@ cd ../backend/Sitzordnung.Api && dotnet run
 ```
 
 Danach ist die komplette Anwendung unter <http://localhost:5099> erreichbar.
+
+Beide Schritte zusammen erledigt auch `./start.sh` – das Skript baut das Frontend
+nach, falls es noch fehlt, und startet die Anwendung. Mit `PORT=8080 ./start.sh`
+läuft sie auf einem anderen Port.
 
 ## Tests
 
