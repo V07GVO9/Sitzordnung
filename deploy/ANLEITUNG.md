@@ -4,8 +4,8 @@ Diese Anleitung richtet zwei Umgebungen auf **einem** Server ein:
 
 | Umgebung | Branch | Beispieladresse |
 | --- | --- | --- |
-| Produktion | `master` | `sitzordnung.example.de` |
-| Test | `test` | `test.sitzordnung.example.de` |
+| Produktion | `master` | `sitzordnung.celik-soft.de` |
+| Test | `test` | `test.sitzordnung.celik-soft.de` |
 
 Davor sitzt Caddy als Reverse-Proxy und holt die HTTPS-Zertifikate automatisch
 von Let's Encrypt. Beide Umgebungen haben **getrennte Daten** – auf der
@@ -40,12 +40,12 @@ Notieren Sie die IPv4-Adresse des Servers.
 Beim Domain-Anbieter zwei A-Einträge auf die IP des Servers setzen:
 
 ```
-sitzordnung.example.de.        A    <IP des Servers>
-test.sitzordnung.example.de.   A    <IP des Servers>
+sitzordnung.celik-soft.de.        A    <IP des Servers>
+test.sitzordnung.celik-soft.de.   A    <IP des Servers>
 ```
 
 Erst wenn die Namen auflösen, kann Caddy Zertifikate holen. Prüfen mit
-`nslookup sitzordnung.example.de`.
+`nslookup sitzordnung.celik-soft.de`.
 
 ## 3. Server einrichten
 
@@ -107,7 +107,7 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 ```
 
-Danach `https://sitzordnung.example.de` aufrufen, anmelden und **sofort unter
+Danach `https://sitzordnung.celik-soft.de` aufrufen, anmelden und **sofort unter
 *Konto* ein eigenes Passwort setzen**.
 
 Falls das Startpasswort in `.env` zu kurz war, hat die App ein zufälliges
