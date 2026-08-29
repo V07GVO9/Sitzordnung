@@ -20,7 +20,7 @@
     <section class="card">
       <h2>Stunde eintragen</h2>
       <form class="form-row" (ngSubmit)="add()">
-        <label>
+        <label class="weit">
           Kurs
           <select [ngModel]="formCourseId()" (ngModelChange)="formCourseId.set($event)" name="course">
             @for (course of courses(); track course.id) {
@@ -73,7 +73,7 @@
           />
         </label>
 
-        <button class="btn primary" type="submit">Eintragen</button>
+        <button class="btn primary weit" type="submit">Eintragen</button>
       </form>
     </section>
 
@@ -84,7 +84,44 @@
           <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
         </div>
       } @else {
-        <div class="table-wrap">
+        <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->
+        <div class="tagesliste">
+          @for (tag of wochentage(); track tag.day) {
+            <section class="tag" [class.heute]="tag.day === today">
+              <h3>
+                {{ tag.name }}
+                @if (tag.day === today) {
+                  <span class="badge">heute</span>
+                }
+              </h3>
+
+              @for (entry of tag.stunden; track entry.id) {
+                <div class="stunde" [class.jetzt]="laeuftGerade(entry)">
+                  <span class="zeit">
+                    <span class="von">{{ entry.startTime }}</span>
+                    <span class="bis">{{ entry.endTime }}</span>
+                  </span>
+                  <a class="stunde-text" [routerLink]="['/kurs', entry.courseId]">
+                    <strong>{{ entry.subjectName }}</strong>
+                    <span>{{ entry.schoolClassName }}</span>
+                  </a>
+                  <button
+                    class="remove"
+                    type="button"
+                    (click)="remove(entry)"
+                    [attr.aria-label]="'Stunde ' + entry.startTime + ' löschen'"
+                    title="Stunde löschen"
+                  >
+                    ×
+                  </button>
+                </div>
+              }
+            </section>
+          }
+        </div>
+
+        <!-- Ab Tablet die gewohnte Wochenübersicht. -->
+        <div class="wochenplan">
           <table class="plan">
             <thead>
               <tr>
@@ -106,7 +143,11 @@
                     <td [class.heute]="day === today">
                       @for (entry of stundenIn(schiene, day); track entry.id) {
                         <div class="stunde" [class.jetzt]="laeuftGerade(entry)">
-                          <a class="stunde-text" [routerLink]="['/kurs', entry.courseId]">
+                          <a
+                            class="stunde-text"
+                            [routerLink]="['/kurs', entry.courseId]"
+                            [title]="entry.subjectName + ' · ' + entry.schoolClassName"
+                          >
                             <strong>{{ entry.subjectName }}</strong>
                             <span>{{ entry.schoolClassName }}</span>
                           </a>

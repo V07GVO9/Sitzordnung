@@ -65,6 +65,24 @@ export class TimetablePage {
     return map;
   });
 
+  /**
+   * Für die schmale Ansicht: je Wochentag die Stunden nach Uhrzeit sortiert.
+   * So passt der Plan auch aufs Handy, ohne seitlich zu scrollen.
+   */
+  readonly wochentage = computed(() => {
+    const eintraege = this.entries();
+
+    return this.days
+      .map((day) => ({
+        day,
+        name: WEEKDAY_NAMES[day],
+        stunden: eintraege
+          .filter((eintrag) => eintrag.dayOfWeek === day)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+      }))
+      .filter((tag) => tag.stunden.length > 0);
+  });
+
   readonly today = new Date().getDay();
 
   constructor() {

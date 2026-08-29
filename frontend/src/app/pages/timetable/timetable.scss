@@ -1,82 +1,61 @@
+/* Mobile first: auf dem Handy eine Liste je Wochentag,
+   ab Tablet die klassische Wochentabelle. */
+
 .form-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
 
-  input[type='time'] {
-    width: 7.5rem;
+  label {
+    min-width: 0;
+  }
+
+  /* Kurswahl und Absendeknopf über die volle Breite. */
+  .weit {
+    grid-column: 1 / -1;
+  }
+
+  select,
+  input {
+    width: 100%;
   }
 }
 
-/* --- Der Wochenplan als Tabelle --- */
+@media (min-width: 40rem) {
+  .form-row {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 
-table.plan {
-  table-layout: fixed;
-  min-width: 46rem;
+    select,
+    input {
+      width: auto;
+    }
 
-  th,
-  td {
-    border: 1px solid var(--border);
-    vertical-align: top;
-    padding: 0.3rem;
-    white-space: normal;
-  }
+    input[type='time'] {
+      width: 7.5rem;
+    }
 
-  thead th {
-    text-align: center;
-    background: var(--surface-muted);
-    padding: 0.5rem 0.3rem;
-  }
-
-  thead th.heute {
-    background: var(--accent-soft);
-    color: var(--accent-dark);
-  }
-
-  tbody tr:hover {
-    background: transparent;
-  }
-
-  td.heute {
-    background: rgb(47 91 215 / 3%);
+    .weit {
+      grid-column: auto;
+    }
   }
 }
 
-/* Die Uhrzeit steht einmal links statt in jeder Stunde. */
-.zeitspalte {
-  width: 5.5rem;
-  text-align: right;
-  background: var(--surface-muted);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-
-  .von {
-    display: block;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text);
-  }
-
-  .bis {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: var(--text-muted);
-  }
-}
+/* --- Eine Stunde, in beiden Ansichten gleich --- */
 
 .stunde {
   display: flex;
-  align-items: flex-start;
-  gap: 0.2rem;
-  padding: 0.35rem 0.4rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
   border-radius: 0.4rem;
   background: var(--accent-soft);
   border: 1px solid transparent;
 
   & + .stunde {
-    margin-top: 0.25rem;
+    margin-top: 0.3rem;
   }
 
   &.jetzt {
@@ -95,13 +74,13 @@ table.plan {
   flex: 1;
 
   strong {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   span {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
   }
 
@@ -114,16 +93,156 @@ table.plan {
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 1.2rem;
   line-height: 1;
-  padding: 0 0.15rem;
-  opacity: 0;
+
+  /* Auf dem Touchscreen gibt es kein Hover – der Knopf bleibt sichtbar. */
+  padding: 0.25rem 0.4rem;
 
   &:hover {
     color: var(--negative);
   }
 }
 
-.stunde:hover .remove {
-  opacity: 1;
+/* --- Handy: Liste je Wochentag --- */
+
+.tagesliste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.tag {
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  &.heute h3 {
+    color: var(--accent-dark);
+    border-color: var(--accent);
+  }
+}
+
+.zeit {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 3.4rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+
+  .von {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .bis {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+}
+
+/* Die Wochentabelle bleibt dem breiten Bildschirm vorbehalten. */
+.wochenplan {
+  display: none;
+}
+
+/* --- Ab Tablet: Wochentabelle --- */
+
+@media (min-width: 48rem) {
+  .tagesliste {
+    display: none;
+  }
+
+  .wochenplan {
+    display: block;
+    overflow-x: auto;
+  }
+
+  table.plan {
+    table-layout: fixed;
+    width: 100%;
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      vertical-align: top;
+      padding: 0.3rem;
+      white-space: normal;
+    }
+
+    thead th {
+      text-align: center;
+      background: var(--surface-muted);
+      padding: 0.5rem 0.3rem;
+    }
+
+    thead th.heute {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+    }
+
+    tbody tr:hover {
+      background: transparent;
+    }
+
+    td.heute {
+      background: rgb(47 91 215 / 3%);
+    }
+
+    .stunde {
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding: 0.35rem 0.4rem;
+    }
+
+    .stunde-text strong {
+      font-size: 0.85rem;
+    }
+
+    .stunde-text span {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Die Uhrzeit steht einmal links statt in jeder Stunde. */
+  .zeitspalte {
+    width: 4.6rem;
+    text-align: right;
+    background: var(--surface-muted);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+
+    .von {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .bis {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+  }
+}
+
+/* Mit Maus darf der Löschknopf dezent bleiben. */
+@media (min-width: 48rem) and (hover: hover) {
+  .remove {
+    padding: 0 0.15rem;
+    opacity: 0;
+  }
+
+  .stunde:hover .remove,
+  .stunde:focus-within .remove {
+    opacity: 1;
+  }
 }

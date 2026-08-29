@@ -1,4 +1,6 @@
-/* Grundlayout und gemeinsame Bausteine der Oberfläche. */
+/* Grundlayout und gemeinsame Bausteine der Oberfläche.
+   Mobile first: die Grundwerte gelten für das Handy, größere Bildschirme
+   bekommen über min-width-Abfragen mehr Luft. */
 
 :root {
   --bg: #f4f6fa;
@@ -19,6 +21,19 @@
   --radius: 0.7rem;
   --shadow: 0 1px 2px rgb(16 24 40 / 8%);
   --shadow-lg: 0 8px 24px rgb(16 24 40 / 14%);
+
+  /* Abstände wachsen mit dem Bildschirm. */
+  --pad-card: 0.85rem;
+  --pad-seite: 0.75rem;
+  --gap: 0.75rem;
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --pad-card: 1.25rem;
+    --pad-seite: 1.5rem;
+    --gap: 1rem;
+  }
 }
 
 * {
@@ -50,18 +65,33 @@ h2,
 h3 {
   margin: 0 0 0.5rem;
   line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: 1.3rem;
 }
 
 h2 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
 h3 {
-  font-size: 1rem;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 48rem) {
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
 }
 
 p {
@@ -72,6 +102,10 @@ a {
   color: var(--accent);
 }
 
+img {
+  max-width: 100%;
+}
+
 /* --- Flächen --- */
 
 .card {
@@ -79,11 +113,11 @@ a {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.25rem;
+  padding: var(--pad-card);
 }
 
 .card + .card {
-  margin-top: 1rem;
+  margin-top: var(--gap);
 }
 
 .muted {
@@ -108,15 +142,21 @@ a {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--gap);
 }
 
 .empty {
-  padding: 2rem 1rem;
+  padding: 1.25rem 0.75rem;
   text-align: center;
   color: var(--text-muted);
   border: 1px dashed var(--border);
   border-radius: var(--radius);
+}
+
+@media (min-width: 48rem) {
+  .empty {
+    padding: 2rem 1rem;
+  }
 }
 
 /* --- Bedienelemente --- */
@@ -129,13 +169,17 @@ button {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
+  min-height: 2.5rem;
   padding: 0.5rem 0.9rem;
   border-radius: 0.5rem;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   font-weight: 500;
+  text-align: center;
+  text-decoration: none;
   transition:
     background 0.12s ease,
     border-color 0.12s ease;
@@ -170,6 +214,7 @@ button {
 }
 
 .btn.small {
+  min-height: 2rem;
   padding: 0.3rem 0.6rem;
   font-size: 0.85rem;
 }
@@ -177,7 +222,10 @@ button {
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
+
+  /* 16px verhindert, dass iOS beim Antippen hineinzoomt. */
+  font-size: 1rem;
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 0.45rem;
@@ -200,6 +248,7 @@ label {
   gap: 0.25rem;
   font-size: 0.85rem;
   color: var(--text-muted);
+  min-width: 0;
 }
 
 label.inline {
@@ -214,20 +263,32 @@ label.inline {
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 th,
 td {
-  padding: 0.5rem 0.6rem;
+  padding: 0.4rem 0.45rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+
+@media (min-width: 48rem) {
+  table {
+    font-size: 0.92rem;
+  }
+
+  th,
+  td {
+    padding: 0.5rem 0.6rem;
+  }
 }
 
 th {
@@ -246,13 +307,22 @@ tbody tr:hover {
 
 .banner {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.5rem;
   align-items: center;
-  padding: 0.75rem 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface-muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 48rem) {
+  .banner {
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
 }
 
 .banner.ok {

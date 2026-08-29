@@ -48,6 +48,27 @@ Stunde öffnet den Kurs zum Bewerten; die laufende Stunde ist hervorgehoben.
 Alles, was selten gebraucht wird – Tagesübersicht, Klassen und Schüler,
 Auswertung, Konto –, liegt hinter dem Knopf **Einstellungen** oben rechts.
 
+### Auf dem Handy
+
+Die Oberfläche ist nach dem Mobile-first-Ansatz gebaut: die Grundgestaltung
+gilt für das Handy, größere Bildschirme bekommen über Breakpoints mehr Luft.
+Seitliches Scrollen gibt es dabei nicht.
+
+- **Stundenplan:** auf schmalen Bildschirmen ein Block je Wochentag mit der
+  Uhrzeit links neben Fach und Klasse; ab Tablet (48 rem ≈ 768 px) die
+  gewohnte Wochentabelle.
+- **Sitzordnung:** die Sitzreihen teilen sich immer die vorhandene Breite. Die
+  Kacheln werden dafür kleiner und zeigen je nach Platz mehr oder weniger –
+  auf sehr engen Plätzen entfällt das Foto, die vier Bewertungsknöpfe stehen
+  dann zweispaltig. Beim Bewerten fallen leere Sitzreihen zusammen.
+- **Kopfzeile:** auf dem Handy nur Logo, Stundenplan und ein Zahnrad für die
+  Einstellungen; die laufende Stunde wird dort nur angezeigt, solange
+  tatsächlich Unterricht ist.
+
+Geprüft wird das automatisch: `frontend`-Bau plus ein Playwright-Durchlauf über
+alle Seiten bei 320, 390, 768 und 1400 Pixeln Breite, der jedes Mal
+`scrollWidth <= clientWidth` verlangt.
+
 ### Stundenplan aus WebUntis übernehmen
 
 Statt jede Stunde einzeln einzutragen, lässt sich der Plan als Kalenderdatei

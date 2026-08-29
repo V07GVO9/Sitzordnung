@@ -1,6 +1,6 @@
 .cols {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
   gap: 1rem;
   align-items: start;
 }
@@ -103,7 +103,7 @@ td.grow {
 
 .student-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
   gap: 0.6rem;
   margin-top: 0.75rem;
 }

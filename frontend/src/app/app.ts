@@ -43,12 +43,14 @@ import { ToastService } from './core/toast.service';
         <!-- Was selten gebraucht wird, liegt hinter diesem Menü. -->
         <div class="menue">
           <button
-            class="btn"
+            class="btn menue-knopf"
             type="button"
+            aria-label="Einstellungen"
             [attr.aria-expanded]="menueOffen()"
             (click)="menueOffen.set(!menueOffen())"
           >
-            Einstellungen ▾
+            <span class="menue-zeichen" aria-hidden="true">⚙</span>
+            <span class="menue-text">Einstellungen ▾</span>
           </button>
 
           @if (menueOffen()) {
@@ -75,12 +77,13 @@ import { ToastService } from './core/toast.service';
   `,
   styles: [
     `
+      /* Mobile first: kompakte Kopfzeile, ab Tablet mehr Luft. */
       .topbar {
         display: flex;
         align-items: center;
-        gap: 1.25rem;
+        gap: 0.4rem 0.6rem;
         flex-wrap: wrap;
-        padding: 0.75rem 1.5rem;
+        padding: 0.5rem 0.75rem;
         background: var(--surface);
         border-bottom: 1px solid var(--border);
         box-shadow: var(--shadow);
@@ -92,9 +95,10 @@ import { ToastService } from './core/toast.service';
       .brand {
         display: flex;
         align-items: center;
-        gap: 0.6rem;
+        gap: 0.5rem;
         text-decoration: none;
         color: var(--text);
+        min-width: 0;
       }
 
       .brand-mark {
@@ -102,6 +106,7 @@ import { ToastService } from './core/toast.service';
         place-items: center;
         width: 2.2rem;
         height: 2.2rem;
+        flex: none;
         border-radius: 0.55rem;
         background: var(--accent);
         color: #fff;
@@ -113,7 +118,9 @@ import { ToastService } from './core/toast.service';
         display: block;
       }
 
-      .brand-sub {
+      /* Der Untertitel ist auf dem Handy nur Ballast. */
+      .brand .brand-sub {
+        display: none;
         font-size: 0.75rem;
         color: var(--text-muted);
       }
@@ -125,11 +132,15 @@ import { ToastService } from './core/toast.service';
       }
 
       nav a {
-        padding: 0.4rem 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.25rem;
+        padding: 0.35rem 0.6rem;
         border-radius: 0.45rem;
         text-decoration: none;
         color: var(--text-muted);
         font-weight: 500;
+        font-size: 0.9rem;
       }
 
       nav a:hover {
@@ -142,18 +153,27 @@ import { ToastService } from './core/toast.service';
         color: var(--accent-dark);
       }
 
+      /* Bis zum breiten Bildschirm steht die laufende Stunde in einer eigenen
+         Zeile – und nur dann, wenn gerade wirklich Unterricht ist. */
       .now {
-        margin-left: auto;
-        display: flex;
+        order: 9;
+        flex: 1 1 100%;
+        display: none;
         align-items: center;
+        justify-content: center;
         gap: 0.4rem;
-        font-size: 0.9rem;
-        padding: 0.35rem 0.7rem;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
         border-radius: 999px;
         border: 1px solid var(--border);
       }
 
+      .now:empty {
+        display: none;
+      }
+
       .now.live {
+        display: flex;
         background: var(--positive-soft);
         border-color: #b6e0c6;
         color: #14512e;
@@ -162,12 +182,28 @@ import { ToastService } from './core/toast.service';
       .dot {
         width: 0.55rem;
         height: 0.55rem;
+        flex: none;
         border-radius: 50%;
         background: var(--positive);
       }
 
       .menue {
         position: relative;
+        margin-left: auto;
+      }
+
+      .menue-knopf {
+        white-space: nowrap;
+        padding: 0.5rem 0.7rem;
+      }
+
+      .menue-zeichen {
+        font-size: 1.15rem;
+        line-height: 1;
+      }
+
+      .menue-text {
+        display: none;
       }
 
       .menue-liste {
@@ -188,7 +224,7 @@ import { ToastService } from './core/toast.service';
       .menue-liste a,
       .menue-liste button {
         text-align: left;
-        padding: 0.5rem 0.7rem;
+        padding: 0.6rem 0.7rem;
         border: 0;
         border-radius: 0.4rem;
         background: transparent;
@@ -209,9 +245,56 @@ import { ToastService } from './core/toast.service';
       }
 
       main {
-        max-width: 1400px;
         margin: 0 auto;
-        padding: 1.5rem;
+        padding: var(--pad-seite);
+      }
+
+      main.weit {
+        max-width: 1400px;
+      }
+
+      @media (min-width: 48rem) {
+        .topbar {
+          gap: 1.25rem;
+          padding: 0.75rem 1.5rem;
+        }
+
+        .brand .brand-sub {
+          display: block;
+        }
+
+        nav a {
+          padding: 0.4rem 0.75rem;
+          font-size: 1rem;
+        }
+
+        .menue-knopf {
+          padding: 0.5rem 0.9rem;
+        }
+
+        .menue-zeichen {
+          display: none;
+        }
+
+        .menue-text {
+          display: inline;
+        }
+      }
+
+      /* Erst wenn wirklich Platz ist, wandert die Statuszeile in die Kopfzeile. */
+      @media (min-width: 62rem) {
+        .now {
+          order: 0;
+          display: flex;
+          flex: 0 1 auto;
+          margin-left: auto;
+          font-size: 0.9rem;
+          padding: 0.35rem 0.7rem;
+        }
+
+        .menue {
+          margin-left: 0;
+        }
       }
     `,
   ],
