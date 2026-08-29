@@ -85,12 +85,24 @@ export interface CurrentLesson {
   message: string;
 }
 
-/** Die Unterrichtsstunde, der eine Bewertung gerade zugerechnet wird. */
+/** Die Unterrichtsstunde, auf die eine Bewertung gerade zählt. */
 export interface LessonSlot {
   date: string;
   startTime: string;
   label: string;
   fromTimetable: boolean;
+  /** Gibt es eine frühere Stunde dieses Kurses? */
+  hasPrevious: boolean;
+  /** Gibt es eine spätere? Über die aktuelle Stunde hinaus geht es nicht. */
+  hasNext: boolean;
+  /** Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird? */
+  isCurrent: boolean;
+}
+
+/** Eine bestimmte Unterrichtsstunde, wie sie an die API übergeben wird. */
+export interface LessonRef {
+  date: string;
+  startTime: string;
 }
 
 /** Die vier möglichen Bewertungen. */
@@ -115,7 +127,7 @@ export interface StudentScore {
   ratingCount: number;
   pointsToday: number;
   grade: string | null;
-  /** Die Bewertung dieser Unterrichtsstunde, falls schon eine vergeben wurde. */
+  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
   currentLessonValue: number | null;
 }
 

@@ -193,4 +193,151 @@ public class LessonServiceTests
 
         Assert.False((await service.GetCurrentLessonAsync()).HasLesson);
     }
+
+    // --- Blättern zwischen den Unterrichtsstunden ---
+
+    [Fact]
+    public async Task Zurueckblaettern_findet_die_Stunde_der_Vorwoche()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+        AddLesson(test.Context, courseId, DayOfWeek.Wednesday, "10:00", "10:45");
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+        var vorher = await service.GetNeighbourSlotAsync(courseId, new DateOnly(2025, 9, 3), new TimeOnly(10, 0), -1);
+
+        Assert.NotNull(vorher);
+        Assert.Equal(new DateOnly(2025, 8, 27), vorher!.Date);
+        Assert.Equal("10:00", vorher.StartTime);
+        Assert.False(vorher.IsCurrent);
+        Assert.True(vorher.HasNext);
+        Assert.True(vorher.HasPrevious);
+    }
+
+    [Fact]
+    public async Task Zurueckblaettern_nimmt_bei_mehreren_Stunden_die_naechstliegende()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+        AddLesson(test.Context, courseId, DayOfWeek.Monday, "08:00", "08:45");
+        AddLesson(test.Context, courseId, DayOfWeek.Wednesday, "10:00", "10:45");
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+        var vorher = await service.GetNeighbourSlotAsync(courseId, new DateOnly(2025, 9, 3), new TimeOnly(10, 0), -1);
+
+        // Montag, 1. September liegt näher als der Mittwoch der Vorwoche.
+        Assert.Equal(new DateOnly(2025, 9, 1), vorher!.Date);
+        Assert.Equal("08:00", vorher.StartTime);
+    }
+
+    [Fact]
+    public async Task Mehrere_Wochen_am_Stueck_zurueckblaettern()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+        AddLesson(test.Context, courseId, DayOfWeek.Wednesday, "10:00", "10:45");
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+
+        var slot = await service.GetCurrentSlotAsync(courseId);
+        for (var i = 0; i < 4; i++)
+        {
+            slot = (await service.GetNeighbourSlotAsync(
+                courseId, slot.Date, TimeOnly.Parse(slot.StartTime), -1))!;
+            Assert.NotNull(slot);
+        }
+
+        Assert.Equal(new DateOnly(2025, 8, 6), slot.Date);
+    }
+
+    [Fact]
+    public async Task Vorwaerts_geht_es_hoechstens_bis_zur_aktuellen_Stunde()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+        AddLesson(test.Context, courseId, DayOfWeek.Wednesday, "10:00", "10:45");
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+
+        var aktuell = await service.GetCurrentSlotAsync(courseId);
+        Assert.True(aktuell.IsCurrent);
+        Assert.False(aktuell.HasNext);
+
+        var weiter = await service.GetNeighbourSlotAsync(
+            courseId, aktuell.Date, TimeOnly.Parse(aktuell.StartTime), 1);
+
+        Assert.Null(weiter);
+    }
+
+    [Fact]
+    public async Task Vor_und_zurueck_fuehrt_zur_selben_Stunde()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+        AddLesson(test.Context, courseId, DayOfWeek.Monday, "08:00", "08:45");
+        AddLesson(test.Context, courseId, DayOfWeek.Wednesday, "10:00", "10:45");
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+
+        var start = await service.GetCurrentSlotAsync(courseId);
+        var zurueck = (await service.GetNeighbourSlotAsync(
+            courseId, start.Date, TimeOnly.Parse(start.StartTime), -1))!;
+        var wieder = (await service.GetNeighbourSlotAsync(
+            courseId, zurueck.Date, TimeOnly.Parse(zurueck.StartTime), 1))!;
+
+        Assert.Equal(start.Date, wieder.Date);
+        Assert.Equal(start.StartTime, wieder.StartTime);
+        Assert.True(wieder.IsCurrent);
+    }
+
+    [Fact]
+    public async Task Ohne_Stundenplan_blaettert_es_zu_bewerteten_Tagen()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+
+        var schueler = new Student { SchoolClassId = 1, FirstName = "Anna", LastName = "Berger" };
+        test.Context.Students.Add(schueler);
+        test.Context.SaveChanges();
+
+        // Eine Bewertung von vor zwei Wochen, ohne jeden Stundenplaneintrag.
+        test.Context.Ratings.Add(new Rating
+        {
+            CourseId = courseId,
+            StudentId = schueler.Id,
+            Value = 2,
+            LessonDate = new DateOnly(2025, 8, 20),
+            LessonStart = new TimeOnly(0, 0),
+        });
+        test.Context.SaveChanges();
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+
+        var aktuell = await service.GetCurrentSlotAsync(courseId);
+        Assert.False(aktuell.FromTimetable);
+        Assert.True(aktuell.HasPrevious);
+
+        var vorher = await service.GetNeighbourSlotAsync(
+            courseId, aktuell.Date, TimeOnly.Parse(aktuell.StartTime), -1);
+
+        Assert.Equal(new DateOnly(2025, 8, 20), vorher!.Date);
+        Assert.False(vorher.HasPrevious);
+    }
+
+    [Fact]
+    public async Task Ganz_am_Anfang_gibt_es_kein_Zurueck_mehr()
+    {
+        using var test = new TestDatabase();
+        var courseId = SetupCourse(test.Context);
+
+        var service = new LessonService(test.Context, new FixedClock(AmMittwochUm(10, 20)));
+        var aktuell = await service.GetCurrentSlotAsync(courseId);
+
+        // Kein Stundenplan, keine Bewertungen: es gibt nichts zu blättern.
+        Assert.False(aktuell.HasPrevious);
+        Assert.False(aktuell.HasNext);
+
+        Assert.Null(await service.GetNeighbourSlotAsync(
+            courseId, aktuell.Date, TimeOnly.Parse(aktuell.StartTime), -1));
+    }
 }

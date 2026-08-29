@@ -71,6 +71,71 @@
   flex-wrap: wrap;
 }
 
+/* --- Die Leiste mit der bewerteten Stunde --- */
+
+.stunde-leiste {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  /* Eine frühere Stunde sieht anders aus als die laufende. */
+  &.vergangen {
+    background: var(--surface-muted);
+    border-color: var(--border);
+  }
+}
+
+.stunde-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+/* Die Pfeile links und rechts führen zur vorherigen bzw. nächsten Stunde. */
+.blaettern {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.stunde-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  /* Auf dem Handy in eine eigene Zeile unter Pfeilen und Text. */
+  flex: 1 1 100%;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@media (min-width: 40rem) {
+  .stunde-extra {
+    flex: 0 0 auto;
+  }
+}
+
 .toolbar {
   display: flex;
   align-items: flex-end;
@@ -343,13 +408,14 @@
     border-color: #f0c3be;
   }
 
-  &.plus2:hover:not(:disabled),
-  &.plus1:hover:not(:disabled) {
+  /* :not(.aktiv), sonst überdeckt der Mauszeiger die vergebene Bewertung. */
+  &.plus2:hover:not(:disabled):not(.aktiv),
+  &.plus1:hover:not(:disabled):not(.aktiv) {
     background: var(--positive-soft);
   }
 
-  &.minus1:hover:not(:disabled),
-  &.minus2:hover:not(:disabled) {
+  &.minus1:hover:not(:disabled):not(.aktiv),
+  &.minus2:hover:not(:disabled):not(.aktiv) {
     background: var(--negative-soft);
   }
 }

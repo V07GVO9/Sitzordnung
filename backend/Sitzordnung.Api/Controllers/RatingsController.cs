@@ -33,14 +33,69 @@ public class RatingsController : ControllerBase
     /// Die Oberfläche zeigt das an, damit klar ist, worauf sich ein Klick bezieht.
     /// </summary>
     [HttpGet("courses/{courseId:int}/current-lesson")]
-    public async Task<ActionResult<LessonSlotDto>> GetCurrentSlot(int courseId, CancellationToken ct)
+    public async Task<ActionResult<LessonSlotDto>> GetCurrentSlot(
+        int courseId,
+        [FromQuery] DateOnly? date,
+        [FromQuery] string? start,
+        [FromQuery] string? direction,
+        CancellationToken ct)
     {
         if (!await _db.Courses.AnyAsync(c => c.Id == courseId, ct))
         {
             return NotFound();
         }
 
-        return Ok(await _lessons.GetCurrentSlotAsync(courseId, ct));
+        // Ohne Angabe einer Stunde gilt die, der eine Bewertung gerade zugerechnet wird.
+        if (date is null || !TryParseTime(start, out var von))
+        {
+            return Ok(await _lessons.GetCurrentSlotAsync(courseId, ct));
+        }
+
+        var schritt = direction?.ToLowerInvariant() switch
+        {
+            "prev" or "previous" or "zurueck" => -1,
+            "next" or "weiter" => 1,
+            _ => 0,
+        };
+
+        if (schritt == 0)
+        {
+            return Ok(await _lessons.GetSlotAsync(courseId, date.Value, von, ct));
+        }
+
+        var nachbar = await _lessons.GetNeighbourSlotAsync(courseId, date.Value, von, schritt, ct);
+        if (nachbar is null)
+        {
+            return NotFound(schritt < 0
+                ? "Davor gibt es keine Unterrichtsstunde dieses Kurses."
+                : "Danach gibt es keine weitere Unterrichtsstunde dieses Kurses.");
+        }
+
+        return Ok(nachbar);
+    }
+
+    /// <summary>Liest "HH:mm"; leer oder unlesbar heißt "nicht angegeben".</summary>
+    private static bool TryParseTime(string? wert, out TimeOnly zeit)
+    {
+        zeit = default;
+        return !string.IsNullOrWhiteSpace(wert)
+            && TimeOnly.TryParseExact(wert, "HH\\:mm", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out zeit);
+    }
+
+    /// <summary>
+    /// Die Stunde, auf die eine Anfrage sich bezieht: die angegebene, sonst die
+    /// aktuelle. So zählt eine Bewertung beim Blättern auf die angezeigte Stunde.
+    /// </summary>
+    private async Task<LessonSlotDto> ResolveSlotAsync(
+        int courseId, DateOnly? date, string? start, CancellationToken ct)
+    {
+        if (date is not null && TryParseTime(start, out var von))
+        {
+            return await _lessons.GetSlotAsync(courseId, date.Value, von, ct);
+        }
+
+        return await _lessons.GetCurrentSlotAsync(courseId, ct);
     }
 
     /// <summary>
@@ -74,7 +129,7 @@ public class RatingsController : ControllerBase
             return BadRequest("Der Schüler gehört nicht zur Klasse dieses Kurses.");
         }
 
-        var slot = await _lessons.GetCurrentSlotAsync(input.CourseId, ct);
+        var slot = await ResolveSlotAsync(input.CourseId, input.LessonDate, input.LessonStart, ct);
         var start = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
         var now = _clock.Now;
 
@@ -122,24 +177,46 @@ public class RatingsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Die letzte Bewertung eines Schülers in diesem Kurs zurücknehmen.</summary>
+    /// <summary>
+    /// Nimmt die Bewertung einer Unterrichtsstunde zurück - ohne Angabe die der
+    /// Stunde, die gerade zählt. Gibt es dort keine, fällt es auf die zuletzt
+    /// vergebene Bewertung zurück.
+    /// </summary>
     [HttpPost("courses/{courseId:int}/students/{studentId:int}/undo")]
-    public async Task<IActionResult> UndoLast(int courseId, int studentId, CancellationToken ct)
+    public async Task<IActionResult> UndoLast(
+        int courseId,
+        int studentId,
+        [FromQuery] DateOnly? date,
+        [FromQuery] string? start,
+        CancellationToken ct)
     {
-        // Die Id wächst mit jeder Bewertung, ist also die zuletzt vergebene.
-        // Nach CreatedAt zu sortieren geht nicht - SQLite kann DateTimeOffset
-        // nicht in ORDER BY verwenden.
-        var last = await _db.Ratings
-            .Where(r => r.CourseId == courseId && r.StudentId == studentId)
-            .OrderByDescending(r => r.Id)
-            .FirstOrDefaultAsync(ct);
+        var slot = await ResolveSlotAsync(courseId, date, start, ct);
+        var slotStart = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
 
-        if (last is null)
+        var treffer = await _db.Ratings.FirstOrDefaultAsync(
+            r => r.CourseId == courseId && r.StudentId == studentId
+                 && r.LessonDate == slot.Date && r.LessonStart == slotStart,
+            ct);
+
+        // Wurde keine bestimmte Stunde angefragt, greift der alte Weg: die zuletzt
+        // vergebene Bewertung. Beim Blättern wäre das die falsche Stunde, deshalb
+        // nur ohne Angabe. Die Id wächst mit jeder Bewertung, ist also die letzte -
+        // nach CreatedAt zu sortieren geht nicht, SQLite kann DateTimeOffset nicht
+        // in ORDER BY verwenden.
+        if (treffer is null && date is null)
+        {
+            treffer = await _db.Ratings
+                .Where(r => r.CourseId == courseId && r.StudentId == studentId)
+                .OrderByDescending(r => r.Id)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (treffer is null)
         {
             return NotFound("Für diesen Schüler gibt es noch keine Bewertung.");
         }
 
-        _db.Ratings.Remove(last);
+        _db.Ratings.Remove(treffer);
         await _db.SaveChangesAsync(ct);
 
         return NoContent();
@@ -182,7 +259,12 @@ public class RatingsController : ControllerBase
     /// </summary>
     [HttpGet("courses/{courseId:int}/scoreboard")]
     public async Task<ActionResult<CourseScoreboardDto>> GetScoreboard(
-        int courseId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+        int courseId,
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        [FromQuery] DateOnly? slotDate,
+        [FromQuery] string? slotStart,
+        CancellationToken ct)
     {
         var course = await _db.Courses
             .Include(c => c.SchoolClass)
@@ -220,9 +302,21 @@ public class RatingsController : ControllerBase
         var byStudent = ratings.ToLookup(r => r.StudentId);
         var scale = await _grading.GetEffectiveScaleAsync(courseId, ct);
 
-        // Was in der aktuellen Stunde schon vergeben wurde, zeigt die Oberfläche an.
-        var slot = await _lessons.GetCurrentSlotAsync(courseId, ct);
-        var slotStart = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
+        // Was in der angezeigten Stunde schon vergeben wurde, zeigt die Oberfläche an.
+        var slot = await ResolveSlotAsync(courseId, slotDate, slotStart, ct);
+        var slotBeginn = TimeOnly.ParseExact(slot.StartTime, "HH:mm", CultureInfo.InvariantCulture);
+
+        // Wird eine frühere Stunde angesehen, zählt auch nur, was es bis dahin gab -
+        // so zeigt die Ansicht den damaligen Stand und nicht den von heute.
+        if (!slot.IsCurrent)
+        {
+            ratings = ratings
+                .Where(r => r.LessonDate < slot.Date
+                            || (r.LessonDate == slot.Date && r.LessonStart <= slotBeginn))
+                .ToList();
+
+            byStudent = ratings.ToLookup(r => r.StudentId);
+        }
 
         var rows = students.Select(s =>
         {
@@ -237,7 +331,7 @@ public class RatingsController : ControllerBase
                 own.Count,
                 own.Where(r => r.LessonDate == today).Sum(r => r.Value),
                 GradingService.ResolveGrade(scale, points),
-                own.FirstOrDefault(r => r.LessonDate == slot.Date && r.LessonStart == slotStart)?.Value);
+                own.FirstOrDefault(r => r.LessonDate == slot.Date && r.LessonStart == slotBeginn)?.Value);
         }).ToList();
 
         return Ok(new CourseScoreboardDto(

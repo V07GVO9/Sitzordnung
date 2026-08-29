@@ -43,15 +43,61 @@
     <!-- Auf welche Unterrichtsstunde zahlt eine Bewertung gerade ein? -->
     @if (!editMode()) {
       @if (lessonSlot(); as slot) {
-        <div class="banner" [class.ok]="slot.fromTimetable" [class.warn]="!slot.fromTimetable">
-          <strong>Bewertete Stunde:</strong>
-          <span>{{ slot.label }}</span>
-          <span class="muted small">Je Stunde eine Bewertung – eine weitere ersetzt sie.</span>
-          <span class="spacer"></span>
-          <button class="btn small" type="button" (click)="refreshSlot()">Neu prüfen</button>
-          @if (!slot.fromTimetable) {
-            <a class="btn small" routerLink="/">Stundenplan ergänzen</a>
-          }
+        <div
+          class="banner stunde-leiste"
+          [class.ok]="slot.fromTimetable && slot.isCurrent"
+          [class.warn]="!slot.fromTimetable"
+          [class.vergangen]="slot.fromTimetable && !slot.isCurrent"
+        >
+          <!-- Zurück zur vorherigen Unterrichtsstunde dieser Klasse. -->
+          <button
+            class="blaettern"
+            type="button"
+            [disabled]="!slot.hasPrevious || switchingLesson()"
+            (click)="gotoLesson('prev')"
+            aria-label="Vorherige Unterrichtsstunde"
+            title="Vorherige Unterrichtsstunde"
+          >
+            ‹
+          </button>
+
+          <div class="stunde-text">
+            <strong>
+              {{ slot.isCurrent ? 'Bewertete Stunde' : 'Frühere Stunde' }}
+            </strong>
+            <span>{{ slot.label }}</span>
+            <span class="muted small">
+              @if (slot.isCurrent) {
+                Je Stunde eine Bewertung – eine weitere ersetzt sie.
+              } @else {
+                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und
+                werden sofort gespeichert.
+              }
+            </span>
+          </div>
+
+          <!-- Weiter Richtung Gegenwart; über die aktuelle Stunde hinaus geht es nicht. -->
+          <button
+            class="blaettern"
+            type="button"
+            [disabled]="!slot.hasNext || switchingLesson()"
+            (click)="gotoLesson('next')"
+            aria-label="Nächste Unterrichtsstunde"
+            title="Nächste Unterrichtsstunde"
+          >
+            ›
+          </button>
+
+          <div class="stunde-extra">
+            @if (!slot.isCurrent) {
+              <button class="btn small" type="button" (click)="gotoCurrentLesson()">
+                Zur aktuellen Stunde
+              </button>
+            }
+            @if (!slot.fromTimetable) {
+              <a class="btn small" routerLink="/">Stundenplan ergänzen</a>
+            }
+          </div>
         </div>
       }
     } @else {

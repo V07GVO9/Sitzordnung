@@ -168,7 +168,13 @@ public record LessonSlotDto(
     /// <summary>Für die Anzeige, z.B. "Mittwoch, 03.09.2025, 08:00 Uhr".</summary>
     string Label,
     /// <summary>false = der Kurs hat keinen Stundenplaneintrag, es zählt der Tag.</summary>
-    bool FromTimetable);
+    bool FromTimetable,
+    /// <summary>Gibt es eine frühere Stunde dieses Kurses, zu der geblättert werden kann?</summary>
+    bool HasPrevious = false,
+    /// <summary>Gibt es eine spätere Stunde? Über die aktuelle hinaus geht es nicht.</summary>
+    bool HasNext = false,
+    /// <summary>Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird?</summary>
+    bool IsCurrent = true);
 
 // --- Bewertungen ------------------------------------------------------------
 
@@ -185,6 +191,15 @@ public class RatingInput
 
     [MaxLength(300)]
     public string? Comment { get; set; }
+
+    /// <summary>
+    /// Auf welche Unterrichtsstunde die Bewertung zählt. Ohne Angabe ist es die
+    /// Stunde, die gerade zählt; gesetzt wird sie beim Blättern in frühere Stunden.
+    /// </summary>
+    public DateOnly? LessonDate { get; set; }
+
+    /// <summary>Beginn der Unterrichtsstunde im Format HH:mm, gehört zu LessonDate.</summary>
+    public string? LessonStart { get; set; }
 }
 
 public record RatingDto(

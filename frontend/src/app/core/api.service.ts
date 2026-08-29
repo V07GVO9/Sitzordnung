@@ -9,6 +9,7 @@ import {
   GradeScaleInput,
   Rating,
   RatingValue,
+  LessonRef,
   LessonSlot,
   SchoolClass,
   SeatLayoutInput,
@@ -252,10 +253,25 @@ export class ApiService {
     return this.http.get<LessonSlot>(`${this.base}/courses/${courseId}/current-lesson`);
   }
 
+  /**
+   * Blättert von einer Unterrichtsstunde zur vorherigen oder nächsten desselben
+   * Kurses. Vorwärts geht es höchstens bis zur Stunde, die gerade zählt.
+   */
+  getNeighbourLessonSlot(
+    courseId: number,
+    lesson: LessonRef,
+    direction: 'prev' | 'next',
+  ): Observable<LessonSlot> {
+    return this.http.get<LessonSlot>(`${this.base}/courses/${courseId}/current-lesson`, {
+      params: { date: lesson.date, start: lesson.startTime, direction },
+    });
+  }
+
   rate(
     courseId: number,
     studentId: number,
     value: RatingValue,
+    lesson?: LessonRef | null,
     comment?: string,
   ): Observable<Rating> {
     return this.http.post<Rating>(`${this.base}/ratings`, {
@@ -263,19 +279,32 @@ export class ApiService {
       studentId,
       value,
       comment: comment ?? null,
+      lessonDate: lesson?.date ?? null,
+      lessonStart: lesson?.startTime ?? null,
     });
   }
 
-  undoLastRating(courseId: number, studentId: number): Observable<void> {
+  /** Nimmt die Bewertung der angegebenen Stunde zurück. */
+  undoLastRating(courseId: number, studentId: number, lesson?: LessonRef | null): Observable<void> {
     return this.http.post<void>(
       `${this.base}/courses/${courseId}/students/${studentId}/undo`,
       {},
+      { params: lesson ? { date: lesson.date, start: lesson.startTime } : {} },
     );
   }
 
-  getScoreboard(courseId: number, range?: DateRange): Observable<CourseScoreboard> {
+  getScoreboard(
+    courseId: number,
+    range?: DateRange,
+    lesson?: LessonRef | null,
+  ): Observable<CourseScoreboard> {
+    let params = this.range(range);
+    if (lesson) {
+      params = params.set('slotDate', lesson.date).set('slotStart', lesson.startTime);
+    }
+
     return this.http.get<CourseScoreboard>(`${this.base}/courses/${courseId}/scoreboard`, {
-      params: this.range(range),
+      params,
     });
   }
 

@@ -39,6 +39,21 @@ Hat ein Kurs keinen Stundenplaneintrag, zählt der **Tag** als eine Einheit. Die
 Kursansicht zeigt oben immer an, auf welche Stunde eine Bewertung gerade einzahlt,
 und hebt die bereits vergebene Bewertung hervor.
 
+### In früheren Stunden blättern
+
+Die Leiste „Bewertete Stunde" hat links und rechts einen Pfeil. Damit geht es zur
+**vorherigen** bzw. **nächsten** Unterrichtsstunde derselben Klasse im selben Fach –
+Woche für Woche beliebig weit zurück, bis zu zwei Jahre. Vorwärts endet es bei der
+Stunde, die gerade zählt; in die Zukunft geht es nicht.
+
+Beim Blättern zeigt die Sitzordnung den **damaligen Stand**: die Punkte und die
+Note, wie sie nach dieser Stunde waren, und die Bewertung, die in ihr vergeben
+wurde. Wer dort klickt, bewertet **diese** Stunde nach – auch das gespeichert,
+sobald geklickt wird, ohne Bestätigung. Die Rücknahme (↶) trifft ebenfalls nur
+die angezeigte Stunde. Der Knopf **Zur aktuellen Stunde** springt zurück in die
+Gegenwart; die Anzeige aktualisiert sich dort auch von selbst, wenn eine neue
+Stunde beginnt.
+
 ### Die Oberfläche
 
 Startseite ist der **Stundenplan** als Wochentabelle: die Uhrzeiten stehen einmal
@@ -285,12 +300,14 @@ der Punktestand eines Schülers ist die Summe seiner Bewertungen, beginnend bei 
 | `GET` | `/api/courses` | Alle Kurse |
 | `GET` | `/api/timetable/current` | Welcher Unterricht läuft gerade? |
 | `GET` | `/api/courses/{id}/current-lesson` | Welcher Stunde wird eine Bewertung zugerechnet? |
+| `GET` | `/api/courses/{id}/current-lesson?date=…&start=…&direction=prev\|next` | Zur vorherigen bzw. nächsten Stunde blättern |
 | `POST` | `/api/ratings` | Bewertung abgeben (ersetzt eine vorhandene derselben Stunde) |
 | `POST` | `/api/timetable/import/preview` | Kalenderdatei einlesen und Vorschau zeigen |
 | `POST` | `/api/timetable/import/apply` | Bestätigte Stunden übernehmen |
 | `POST` | `/api/students/import/preview` | Schülerliste einlesen und Vorschau zeigen |
 | `POST` | `/api/students/import/apply` | Bestätigte Schüler übernehmen |
-| `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses |
+| `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses (mit `slotDate`/`slotStart`: Stand nach dieser Stunde) |
+| `POST` | `/api/courses/{id}/students/{id}/undo` | Bewertung zurücknehmen (mit `date`/`start`: die dieser Stunde) |
 | `PUT` | `/api/seatingplans/{id}/layout` | Sitzordnung speichern |
 | `GET` | `/api/export/summary.csv` | Punktestand als CSV |
 | `GET` | `/api/export/ratings.csv` | Einzelbewertungen als CSV |

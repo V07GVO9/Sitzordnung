@@ -212,6 +212,145 @@ public class ApiEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Zurueckblaettern_zeigt_eine_frueherere_Stunde_und_laesst_sie_bewerten()
+    {
+        var (courseId, students) = await SetupCourseAsync("Blaettern-10g", "Rueckfach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        Assert.True(aktuell!.IsCurrent);
+        Assert.False(aktuell.HasNext);
+        Assert.True(aktuell.HasPrevious);
+
+        var vorher = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=prev");
+
+        Assert.Equal(aktuell.Date.AddDays(-7), vorher!.Date);
+        Assert.False(vorher.IsCurrent);
+        Assert.True(vorher.HasNext);
+
+        // In beiden Stunden je eine Bewertung - sie stehen nebeneinander.
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 1,
+            lessonDate = vorher.Date.ToString("yyyy-MM-dd"),
+            lessonStart = vorher.StartTime,
+        });
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        Assert.Equal(3, anna.Points);
+        Assert.Equal(2, anna.RatingCount);
+
+        // Der Punktestand der frueheren Stunde zeigt deren eigene Bewertung.
+        var frueher = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard" +
+            $"?slotDate={vorher.Date:yyyy-MM-dd}&slotStart={vorher.StartTime}");
+
+        Assert.Equal(1, frueher!.Students.Single(s => s.StudentId == students[0]).CurrentLessonValue);
+        Assert.Equal(vorher.Date, frueher.CurrentLesson.Date);
+    }
+
+    [Fact]
+    public async Task Die_Ruecknahme_trifft_die_angezeigte_Stunde()
+    {
+        var (courseId, students) = await SetupCourseAsync("Undo-Blaettern-10h", "Ruecknahmefach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+        var vorher = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell!.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=prev");
+
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 1,
+            lessonDate = vorher!.Date.ToString("yyyy-MM-dd"),
+            lessonStart = vorher.StartTime,
+        });
+
+        var undo = await _client.PostAsync(
+            $"/api/courses/{courseId}/students/{students[0]}/undo" +
+            $"?date={vorher.Date:yyyy-MM-dd}&start={vorher.StartTime}",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, undo.StatusCode);
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        // Die Bewertung der aktuellen Stunde bleibt stehen.
+        Assert.Equal(2, anna.Points);
+        Assert.Equal(1, anna.RatingCount);
+        Assert.Equal(2, anna.CurrentLessonValue);
+    }
+
+    [Fact]
+    public async Task Eine_fruehere_Stunde_zeigt_den_damaligen_Punktestand()
+    {
+        var (courseId, students) = await SetupCourseAsync("Damals-10j", "Rueckblickfach");
+        await AddRunningLessonAsync(courseId);
+
+        var alt = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        // Vor drei Wochen +2, heute noch einmal +2.
+        var frueher = alt!.Date.AddDays(-21);
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 2,
+            lessonDate = frueher.ToString("yyyy-MM-dd"),
+            lessonStart = alt.StartTime,
+        });
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+
+        var heute = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        Assert.Equal(4, heute!.Students.Single(s => s.StudentId == students[0]).Points);
+
+        // In der alten Stunde zählt nur, was es bis dahin gab.
+        var damals = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard" +
+            $"?slotDate={frueher:yyyy-MM-dd}&slotStart={alt.StartTime}");
+
+        var anna = damals!.Students.Single(s => s.StudentId == students[0]);
+        Assert.Equal(2, anna.Points);
+        Assert.Equal(1, anna.RatingCount);
+        Assert.Equal(2, anna.CurrentLessonValue);
+        Assert.False(damals.CurrentLesson.IsCurrent);
+    }
+
+    [Fact]
+    public async Task Hinter_der_aktuellen_Stunde_gibt_es_nichts_mehr()
+    {
+        var (courseId, _) = await SetupCourseAsync("Ende-10i", "Grenzfach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        var weiter = await _client.GetAsync(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell!.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=next");
+
+        Assert.Equal(HttpStatusCode.NotFound, weiter.StatusCode);
+    }
+
+    [Fact]
     public async Task Pro_Kurs_sind_hoechstens_zwei_Sitzordnungen_moeglich()
     {
         var (courseId, _) = await SetupCourseAsync("Plaene-10g", "Planfach");
