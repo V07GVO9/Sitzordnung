@@ -15,9 +15,10 @@ services:
       PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN fehlt}
       TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN fehlt}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL fehlt}
-    depends_on:
-      - app-prod
-      - app-test
+    # Bewusst kein depends_on: Caddy soll auch dann starten, wenn nur eine der
+    # beiden Umgebungen vorhanden ist. Sonst zieht ein Ausrollen der
+    # Testumgebung das Produktiv-Image mit, das es beim ersten Mal noch gar
+    # nicht gibt. Die Adressen loest Caddy erst bei der Anfrage auf.
 
   # Produktivumgebung - wird aus dem Branch master gebaut.
   app-prod:
