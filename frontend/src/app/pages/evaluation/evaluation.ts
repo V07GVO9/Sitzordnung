@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import {
-  AppSettings,
   Course,
   CourseScoreboard,
   GradeScale,
@@ -15,7 +15,7 @@ import { ToastService } from '../../core/toast.service';
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -28,8 +28,6 @@ export class EvaluationPage {
   readonly scoreboard = signal<CourseScoreboard | null>(null);
   readonly from = signal('');
   readonly to = signal('');
-
-  readonly settings = signal<AppSettings | null>(null);
 
   /** Der Schlüssel, der gerade bearbeitet wird. */
   readonly scaleName = signal('Standard-Notenschlüssel');
@@ -53,12 +51,10 @@ export class EvaluationPage {
   constructor() {
     forkJoin({
       courses: this.api.getCourses(),
-      settings: this.api.getSettings(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, settings, scale }) => {
+      next: ({ courses, scale }) => {
         this.courses.set(courses);
-        this.settings.set(settings);
         this.applyScale(scale);
 
         if (courses.length) {
@@ -168,29 +164,6 @@ export class EvaluationPage {
         this.refreshScoreboard();
       },
       error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht entfernt werden.'),
-    });
-  }
-
-  // --- Einstellungen ---
-
-  saveSettings(patch: Partial<AppSettings>): void {
-    const current = this.settings();
-    if (!current) {
-      return;
-    }
-
-    const next = { ...current, ...patch };
-    this.settings.set(next);
-
-    this.api.saveSettings(next).subscribe({
-      next: (saved) => {
-        this.settings.set(saved);
-        this.toasts.success('Die Einstellung wurde gespeichert.');
-      },
-      error: (err) => {
-        this.settings.set(current);
-        this.toasts.error(err, 'Die Einstellung konnte nicht gespeichert werden.');
-      },
     });
   }
 

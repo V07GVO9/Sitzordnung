@@ -11,61 +11,207 @@ vergeben. Bewertet werden kann nur, wenn der Kurs laut Stundenplan gerade läuft
 
 | Bereich | Beschreibung |
 | --- | --- |
-| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hochladen |
+| Klassen & Schüler | Klassen anlegen, Schülerlisten aus WebUntis als CSV importieren oder Namen einfügen, Foto je Schüler hochladen |
 | Fächer & Kurse | Fächer anlegen und einer Klasse zuordnen – daraus entsteht ein Kurs |
 | Sitzordnung | Ein bis zwei Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
-| Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |
-| Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
-| Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
+| Zwei Modi | **Bewerten** im Unterricht, **Sitzplan bearbeiten** zum Umbauen der Sitzordnung |
+| Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet – eine Bewertung je Unterrichtsstunde |
+| Stundenplan | Wochenplan je Kurs, wahlweise aus WebUntis als Kalenderdatei importiert |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
+| Anmeldung | Alle Daten liegen hinter einem Login; ohne Anmeldung liefert die API nichts aus |
 
-### Die Sperre für Bewertungen
+### Eine Bewertung je Unterrichtsstunde
 
-Bewertungen sind nur innerhalb einer eingetragenen Unterrichtsstunde möglich. Die
-Prüfung findet im Backend statt, nicht nur in der Oberfläche – ein Aufruf außerhalb
-der Unterrichtszeit wird mit `403` abgelehnt.
+Bewertet werden darf **jederzeit** – auch abends, wenn die Stunde längst vorbei
+ist. Begrenzt ist nur die Menge: je Unterrichtsstunde und Schüler zählt genau
+eine Bewertung. Ein zweiter Klick in derselben Stunde **ersetzt** die vorherige,
+statt Punkte zu häufen. So lässt sich ein Vertipper korrigieren, ohne dass eine
+einzelne Stunde den Punktestand verzerrt.
 
-Zwei Stellschrauben unter *Auswertung → Einstellungen*:
+Welche Stunde gerade gemeint ist, ergibt sich aus dem Stundenplan:
 
-- **Kulanzzeit** (Standard 15 Minuten): So lange vor Beginn und nach Ende einer
-  Stunde ist das Bewerten noch möglich.
-- **Notfall-Freigabe** (Standard aus): Hebt die Sperre ganz auf, falls der
-  Stundenplan einmal kurzfristig abweicht.
+- die **laufende** Stunde des Kurses, sonst
+- die **zuletzt gehaltene** – wer abends nachträgt, bewertet also den Unterricht
+  von heute Vormittag.
+
+Hat ein Kurs keinen Stundenplaneintrag, zählt der **Tag** als eine Einheit. Die
+Kursansicht zeigt oben immer an, auf welche Stunde eine Bewertung gerade einzahlt,
+und hebt die bereits vergebene Bewertung hervor.
+
+### In früheren Stunden blättern
+
+Die Leiste „Bewertete Stunde" hat links und rechts einen Pfeil. Damit geht es zur
+**vorherigen** bzw. **nächsten** Unterrichtsstunde derselben Klasse im selben Fach –
+Woche für Woche beliebig weit zurück, bis zu zwei Jahre. Vorwärts endet es bei der
+Stunde, die gerade zählt; in die Zukunft geht es nicht.
+
+Beim Blättern zeigt die Sitzordnung den **damaligen Stand**: die Punkte und die
+Note, wie sie nach dieser Stunde waren, und die Bewertung, die in ihr vergeben
+wurde. Wer dort klickt, bewertet **diese** Stunde nach – auch das gespeichert,
+sobald geklickt wird, ohne Bestätigung. Die Rücknahme (↶) trifft ebenfalls nur
+die angezeigte Stunde. Der Knopf **Zur aktuellen Stunde** springt zurück in die
+Gegenwart; die Anzeige aktualisiert sich dort auch von selbst, wenn eine neue
+Stunde beginnt.
+
+### Die Oberfläche
+
+Startseite ist der **Stundenplan** als Wochentabelle: die Uhrzeiten stehen einmal
+links in der Zeitspalte, in den Zellen nur Fach und Klasse. Ein Klick auf eine
+Stunde öffnet den Kurs zum Bewerten; die laufende Stunde ist hervorgehoben.
+
+Alles, was selten gebraucht wird – Tagesübersicht, Klassen und Schüler,
+Auswertung, Konto –, liegt hinter dem Knopf **Einstellungen** oben rechts.
+
+### Auf dem Handy
+
+Die Oberfläche ist nach dem Mobile-first-Ansatz gebaut: die Grundgestaltung
+gilt für das Handy, größere Bildschirme bekommen über Breakpoints mehr Luft.
+Seitliches Scrollen gibt es dabei nicht.
+
+- **Stundenplan:** auf schmalen Bildschirmen ein Block je Wochentag mit der
+  Uhrzeit links neben Fach und Klasse; ab Tablet (48 rem ≈ 768 px) die
+  gewohnte Wochentabelle.
+- **Sitzordnung:** die Sitzreihen teilen sich immer die vorhandene Breite. Die
+  Kacheln werden dafür kleiner und zeigen je nach Platz mehr oder weniger –
+  auf sehr engen Plätzen entfällt das Foto, die vier Bewertungsknöpfe stehen
+  dann zweispaltig. Beim Bewerten fallen leere Sitzreihen zusammen.
+- **Kopfzeile:** auf dem Handy nur Logo, Stundenplan und ein Zahnrad für die
+  Einstellungen; die laufende Stunde wird dort nur angezeigt, solange
+  tatsächlich Unterricht ist.
+
+Geprüft wird das automatisch: `frontend`-Bau plus ein Playwright-Durchlauf über
+alle Seiten bei 320, 390, 768 und 1400 Pixeln Breite, der jedes Mal
+`scrollWidth <= clientWidth` verlangt.
+
+### Stundenplan aus WebUntis übernehmen
+
+Statt jede Stunde einzeln einzutragen, lässt sich der Plan als Kalenderdatei
+importieren – in WebUntis über den iCal-Export des eigenen Stundenplans.
+
+Der Import läuft in zwei Schritten: Die App liest die Datei, rechnet die Zeiten in
+die lokale Zeitzone um und leitet aus den Einzelterminen die **Wochenmuster** ab.
+In einer Vorschau lassen sich Klasse, Fach und Raum je Zeile korrigieren, bevor
+etwas gespeichert wird. Fehlende Klassen, Fächer und Kurse legt der Import selbst an.
+
+Weil die Titelformate sich je Schule unterscheiden („D - KDM23", „MA - 10a - A101"),
+werden Klasse und Fach geraten – bereits angelegte Namen haben dabei Vorrang.
+Einträge, die nur einmal vorkommen, sind vermutlich Vertretungen und deshalb nicht
+vorausgewählt.
+
+### Schülerlisten aus WebUntis übernehmen
+
+Unter *Klassen & Schüler → Schüler importieren* lässt sich eine Klassenliste als
+CSV hochladen – in WebUntis unter *Stammdaten → Schüler* zu exportieren. Erkannt
+werden die Spalten *Langname* beziehungsweise *Nachname*, *Vorname* und *Klasse*
+in beliebiger Reihenfolge, mit Semikolon, Komma oder Tabulator getrennt.
+
+Enthält die Datei eine Klassenspalte, verteilt der Import die Schüler auf mehrere
+Klassen und legt fehlende an. Ohne Klassenspalte wählen Sie eine Klasse für alle
+Zeilen. Wie beim Stundenplan gibt es vorher eine Vorschau zum Korrigieren; bereits
+vorhandene Namen werden übersprungen.
+
+Wer keinen Export hat, kopiert die Namen aus der Klassenliste und fügt sie ein –
+erkannt werden „Nachname, Vorname" und „Vorname Nachname".
+
+### Anmeldung
+
+Die App verlangt eine Anmeldung. Ohne gültige Sitzung antwortet **jeder**
+API-Endpunkt mit `401` – geprüft wird im Backend, nicht in der Oberfläche.
+
+Beim ersten Start wird ein Konto angelegt. Benutzername und Startpasswort kommen
+aus der Konfiguration:
+
+```
+Auth__Username=lehrkraft
+Auth__InitialPassword=ein-langes-startpasswort
+```
+
+Fehlt das Passwort oder ist es kürzer als 10 Zeichen, erzeugt die App ein
+zufälliges und schreibt es einmalig ins Log. In beiden Fällen verlangt die App
+nach dem Anmelden, ein eigenes Passwort zu setzen – zu finden unter *Konto*.
+
+Weitere Eigenschaften: Passwörter werden nur als Hash gespeichert (PBKDF2), das
+Sitzungs-Cookie ist `HttpOnly`, `Secure` und `SameSite=Strict`, und zehn
+Fehlversuche je fünf Minuten und IP-Adresse bremsen das Durchprobieren aus.
+
+## Ohne lokale Installation ausprobieren (GitHub Codespaces)
+
+Das Repository bringt eine Codespaces-Konfiguration mit. Damit läuft die
+Anwendung in einem Container bei GitHub, und der Browser zeigt sie über eine
+weitergeleitete Adresse – lokal muss nichts installiert werden.
+
+1. Auf GitHub im Repository auf **Code → Codespaces → Create codespace** klicken
+   (beim Branch den gewünschten auswählen).
+2. Der Container installiert die Abhängigkeiten und baut das Frontend von selbst.
+   Das dauert beim ersten Mal einige Minuten.
+3. Im Terminal des Codespace starten:
+
+   ```bash
+   ./start.sh
+   ```
+
+4. VS Code meldet den weitergeleiteten Port 5099 und öffnet die Anwendung. Über
+   den Reiter *Ports* lässt sich die Adresse auch später wieder aufrufen.
+
+Der Port ist zunächst **privat** – nur Sie sehen ihn. Zum Vorführen kann er im
+Reiter *Ports* per Rechtsklick auf *Public* gestellt werden; dann ist die
+Adresse für jeden erreichbar, der sie kennt. Die Anmeldung schützt zwar die
+Daten, trotzdem gehören in einen Codespace nur Testdaten und keine echten Namen.
+
+Codespaces ist für private Konten in gewissem Umfang kostenlos; darüber hinaus
+rechnet GitHub nach Laufzeit ab. Ein Codespace lässt sich jederzeit unter
+<https://github.com/codespaces> stoppen oder löschen.
 
 ## Starten
 
 Voraussetzungen: [.NET SDK 8](https://dotnet.microsoft.com/download) und
-[Node.js 20+](https://nodejs.org/).
+[Node.js 20+](https://nodejs.org/). Kurz prüfen mit `dotnet --version` und
+`node --version`.
+
+### Der schnellste Weg
+
+Frontend einmal bauen, dann das Backend starten – es liefert die Oberfläche
+gleich mit:
+
+Die drei Befehle sind unter Windows, macOS und Linux dieselben – sie werden im
+Hauptordner des Projekts ausgeführt:
+
+```
+npm --prefix frontend install
+npm --prefix frontend run build
+dotnet run --project backend/Sitzordnung.Api
+```
+
+Die Anwendung läuft danach auf <http://localhost:5099> und der Browser öffnet
+sich von selbst.
+
+Dasselbe erledigen auch die Startskripte, die das Frontend bei Bedarf nachbauen:
+`.\start.ps1` unter Windows, `./start.sh` unter macOS und Linux. Ein anderer
+Port geht über `$env:PORT=8080` beziehungsweise `PORT=8080`.
 
 ### Zum Entwickeln (zwei Prozesse)
 
-```bash
-# 1. Backend – läuft auf http://localhost:5099
-cd backend/Sitzordnung.Api
-dotnet run
-
-# 2. Frontend – läuft auf http://localhost:4200
-cd frontend
-npm install
-npm start
-```
-
-Der Angular-Entwicklungsserver reicht alle Anfragen an `/api` über
-`frontend/proxy.conf.json` an das Backend weiter. Im Browser wird
-<http://localhost:4200> geöffnet.
-
-### Als fertige Anwendung (ein Prozess)
-
-Der Angular-Build legt seine Dateien direkt in `wwwroot` des Backends ab, das sie
-dann mit ausliefert:
+Wer am Frontend arbeitet, startet zusätzlich den Angular-Entwicklungsserver –
+dann werden Änderungen sofort im Browser sichtbar:
 
 ```bash
-cd frontend && npm install && npm run build
-cd ../backend/Sitzordnung.Api && dotnet run
+# Fenster 1 – Backend auf Port 5099
+dotnet run --project backend/Sitzordnung.Api
+
+# Fenster 2 – Angular auf Port 4200
+npm --prefix frontend start
 ```
 
-Danach ist die komplette Anwendung unter <http://localhost:5099> erreichbar.
+Geöffnet wird dann <http://localhost:4200>. Der Entwicklungsserver reicht alle
+Anfragen an `/api` über `frontend/proxy.conf.json` an das Backend auf Port 5099
+weiter.
+
+### In Visual Studio Code
+
+Das Terminal mit ``Strg + ` `` öffnen und dort die Befehle von oben eingeben.
+Ein Klick auf *Run and Debug* startet nur das Backend – ohne gebautes Frontend
+zeigt es dann lediglich die API.
 
 ## Tests
 
@@ -76,8 +222,9 @@ dotnet test
 
 Die Testsuite umfasst:
 
-- **Fachlogik** – Stundenplanprüfung inklusive Kulanzzeit, Tageswechsel und
-  Notfall-Freigabe; Notenschlüssel; CSV-Erzeugung.
+- **Fachlogik** – Zuordnung einer Bewertung zur richtigen Unterrichtsstunde;
+  Notenschlüssel; CSV-Erzeugung; Kalenderimport samt Sommer- und Winterzeit;
+  Einlesen von Schülerlisten in den gängigen Spalten- und Trennzeichenvarianten.
 - **API-Tests** – die vollständige Anwendung läuft gegen eine SQLite-Datenbank im
   Arbeitsspeicher, sodass auch Abfragen auffallen, die SQLite nicht übersetzen kann.
 
@@ -92,9 +239,33 @@ Beides ist von der Versionsverwaltung ausgenommen. Für eine Sicherung genügt e
 den Ordner `App_Data` zu kopieren. Fotos werden nur über die API ausgeliefert,
 nicht als statische Dateien, und der Dateiname wird serverseitig vergeben.
 
-Die Anwendung ist für **eine Lehrkraft auf einem Rechner** gedacht und hat keine
-Anmeldung. Wer sie im Netzwerk erreichbar macht, sollte einen Zugriffsschutz davor
-setzen – die Daten sind personenbezogen.
+Die Anwendung ist für **eine Lehrkraft** gedacht und kennt genau ein Konto. Die
+Daten sind personenbezogen und betreffen Minderjährige: Wer die App im Netz
+betreibt, sollte das mit der Schule abstimmen und mit dem Anbieter einen
+Auftragsverarbeitungsvertrag schließen. Siehe [deploy/ANLEITUNG.md](deploy/ANLEITUNG.md).
+
+## Auf einem Server betreiben
+
+Für den Betrieb bei einem Anbieter liegen ein `Dockerfile`, ein Compose-Setup mit
+Reverse-Proxy und automatischem HTTPS sowie GitHub-Actions-Pipelines bei:
+
+- `test` wird auf die Testumgebung ausgerollt,
+- `master` auf die Produktivumgebung,
+- beide Umgebungen laufen auf einem Server, haben aber getrennte Daten.
+
+Die vollständige Anleitung samt Sicherungen und Wiederherstellung steht in
+[deploy/ANLEITUNG.md](deploy/ANLEITUNG.md).
+
+Schnell ausprobieren lässt sich das Image auch lokal:
+
+```bash
+docker build -t sitzordnung .
+docker run --rm -p 8080:8080 -v sitzordnung-daten:/data \
+  -e Auth__Username=lehrkraft \
+  -e Auth__InitialPassword=ein-langes-startpasswort \
+  -e Auth__RequireHttps=false \
+  sitzordnung
+```
 
 ## Aufbau des Projekts
 
@@ -104,14 +275,15 @@ backend/
     Models/        Datenmodell (Klasse, Fach, Kurs, Schüler, Sitzordnung, Bewertung …)
     Data/          EF-Core-Kontext und Migrationen
     Dtos/          Datenstrukturen der API
-    Services/      Stundenplanprüfung, Notenschlüssel, Fotoablage, CSV
+    Services/      Unterrichtsstunden, Notenschlüssel, Fotoablage, CSV,
+                   ICS-Import, Schülerlisten-Import
     Controllers/   Die API-Endpunkte
   Sitzordnung.Api.Tests/
 frontend/
   src/app/
     core/          API-Zugriff, Datenmodelle, Hinweismeldungen
-    pages/         Übersicht, Kurs (Sitzordnung + Bewerten), Verwaltung,
-                   Stundenplan, Auswertung
+    pages/         Stundenplan (Startseite), Kurs (Sitzordnung + Bewerten),
+                   Verwaltung, Auswertung, Importe, Anmeldung, Konto
 ```
 
 ### Datenmodell in Kürze
@@ -127,9 +299,15 @@ der Punktestand eines Schülers ist die Summe seiner Bewertungen, beginnend bei 
 | --- | --- | --- |
 | `GET` | `/api/courses` | Alle Kurse |
 | `GET` | `/api/timetable/current` | Welcher Unterricht läuft gerade? |
-| `GET` | `/api/courses/{id}/rating-window` | Darf für diesen Kurs bewertet werden? |
-| `POST` | `/api/ratings` | Bewertung abgeben (nur während des Unterrichts) |
-| `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses |
+| `GET` | `/api/courses/{id}/current-lesson` | Welcher Stunde wird eine Bewertung zugerechnet? |
+| `GET` | `/api/courses/{id}/current-lesson?date=…&start=…&direction=prev\|next` | Zur vorherigen bzw. nächsten Stunde blättern |
+| `POST` | `/api/ratings` | Bewertung abgeben (ersetzt eine vorhandene derselben Stunde) |
+| `POST` | `/api/timetable/import/preview` | Kalenderdatei einlesen und Vorschau zeigen |
+| `POST` | `/api/timetable/import/apply` | Bestätigte Stunden übernehmen |
+| `POST` | `/api/students/import/preview` | Schülerliste einlesen und Vorschau zeigen |
+| `POST` | `/api/students/import/apply` | Bestätigte Schüler übernehmen |
+| `GET` | `/api/courses/{id}/scoreboard` | Punktestand und Noten des Kurses (mit `slotDate`/`slotStart`: Stand nach dieser Stunde) |
+| `POST` | `/api/courses/{id}/students/{id}/undo` | Bewertung zurücknehmen (mit `date`/`start`: die dieser Stunde) |
 | `PUT` | `/api/seatingplans/{id}/layout` | Sitzordnung speichern |
 | `GET` | `/api/export/summary.csv` | Punktestand als CSV |
 | `GET` | `/api/export/ratings.csv` | Einzelbewertungen als CSV |

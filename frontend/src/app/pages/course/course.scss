@@ -1,11 +1,20 @@
+/* Mobile first: kleine Kacheln, die sich über Container-Abfragen an die
+   tatsächliche Platzbreite anpassen – so muss nie seitlich gescrollt werden. */
+
 .head {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 
   h1 {
     margin: 0;
+  }
+}
+
+@media (min-width: 48rem) {
+  .head {
+    gap: 1rem;
   }
 }
 
@@ -19,17 +28,21 @@
 
 .mode-switch,
 .plan-switch {
-  display: inline-flex;
+  display: flex;
+  flex: 1 1 100%;
   border: 1px solid var(--border);
   border-radius: 0.55rem;
   overflow: hidden;
   background: var(--surface-muted);
 
   button {
+    flex: 1;
     border: 0;
     background: transparent;
-    padding: 0.45rem 0.9rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.6rem;
     font-weight: 500;
+    font-size: 0.9rem;
     color: var(--text-muted);
 
     &.active {
@@ -40,60 +53,187 @@
   }
 }
 
+@media (min-width: 40rem) {
+  .mode-switch,
+  .plan-switch {
+    display: inline-flex;
+    flex: 0 0 auto;
+
+    button {
+      flex: 0 0 auto;
+      padding: 0.45rem 0.9rem;
+      font-size: 1rem;
+    }
+  }
+}
+
 .banner {
   flex-wrap: wrap;
+}
+
+/* --- Die Leiste mit der bewerteten Stunde --- */
+
+.stunde-leiste {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  /* Eine frühere Stunde sieht anders aus als die laufende. */
+  &.vergangen {
+    background: var(--surface-muted);
+    border-color: var(--border);
+  }
+}
+
+.stunde-text {
+  flex: 1 1 8rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+/* Die Pfeile links und rechts führen zur vorherigen bzw. nächsten Stunde. */
+.blaettern {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.stunde-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+
+  /* Auf dem Handy in eine eigene Zeile unter Pfeilen und Text. */
+  flex: 1 1 100%;
+
+  &:empty {
+    display: none;
+  }
+}
+
+@media (min-width: 40rem) {
+  .stunde-extra {
+    flex: 0 0 auto;
+  }
 }
 
 .toolbar {
   display: flex;
   align-items: flex-end;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 
   input[type='number'] {
-    width: 5rem;
+    width: 4.5rem;
+  }
+
+  label:first-child {
+    flex: 1 1 100%;
+
+    input {
+      width: 100%;
+    }
+  }
+}
+
+@media (min-width: 40rem) {
+  .toolbar {
+    gap: 0.75rem;
+
+    input[type='number'] {
+      width: 5rem;
+    }
+
+    label:first-child {
+      flex: 0 1 auto;
+
+      input {
+        width: auto;
+      }
+    }
   }
 }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 19rem;
+  grid-template-columns: 1fr;
   gap: 1rem;
   align-items: start;
 
-  @media (max-width: 60rem) {
-    grid-template-columns: 1fr;
+  @media (min-width: 60rem) {
+    grid-template-columns: minmax(0, 1fr) 19rem;
   }
 }
 
 /* --- Der Raum --- */
 
 .room {
+  /* Notausgang: erst bei sehr vielen Sitzreihen auf sehr schmalem Gerät. */
   overflow-x: auto;
 }
 
 .board {
-  margin: 0 auto 1.25rem;
-  width: min(60%, 26rem);
-  padding: 0.4rem;
+  margin: 0 auto 0.75rem;
+  width: min(70%, 26rem);
+  padding: 0.35rem;
   text-align: center;
   border-radius: 0.4rem;
   background: #2f3a4f;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
+@media (min-width: 48rem) {
+  .board {
+    margin-bottom: 1.25rem;
+    width: min(60%, 26rem);
+    padding: 0.4rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Die Spalten teilen sich die vorhandene Breite, statt sie zu erzwingen:
+   auf dem Handy passt der Raum damit immer in den Bildschirm. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(var(--cols), minmax(7.5rem, 1fr));
-  gap: 0.5rem;
-  min-width: fit-content;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+@media (min-width: 48rem) {
+  .grid {
+    grid-template-columns: repeat(var(--cols), minmax(3.5rem, 1fr));
+    gap: 0.5rem;
+  }
 }
 
 .cell {
-  min-height: 6.5rem;
+  /* Bezugsgröße für die Container-Abfragen der Schülerkachel. */
+  container-type: inline-size;
+  container-name: platz;
+
+  min-height: 4.2rem;
   border-radius: 0.55rem;
   border: 1px dashed transparent;
   display: flex;
@@ -117,21 +257,33 @@
 
   .free {
     margin: auto;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
   }
 }
 
-/* --- Schülerkarte --- */
+@media (min-width: 48rem) {
+  .cell {
+    min-height: 6rem;
+  }
+}
+
+/* Beim Bewerten kosten komplett leere Reihen nur Platz. */
+.cell:not(.edit):not(.occupied) {
+  min-height: 0;
+}
+
+/* --- Schülerkarte: die schmalste Stufe ist der Ausgangspunkt --- */
 
 .student {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.5rem 0.35rem;
-  border-radius: 0.55rem;
+  gap: 0.15rem;
+  padding: 0.25rem 0.15rem;
+  border-radius: 0.5rem;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -172,16 +324,37 @@
   }
 }
 
+/* Auf sehr schmalen Plätzen weicht das Foto dem Namen. */
+.student .avatar {
+  display: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  font-size: 0.6rem;
+}
+
 .name {
-  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.6rem;
   line-height: 1.15;
   font-weight: 500;
+
+  /* Lieber kürzen als mitten im Wort umbrechen. */
+  span {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .score {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   display: flex;
   flex-direction: column;
   line-height: 1.1;
@@ -195,7 +368,7 @@
   }
 
   .grade {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     font-weight: 500;
     color: var(--text-muted);
   }
@@ -203,16 +376,17 @@
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.15rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.12rem;
   width: 100%;
 }
 
 .rate {
   border: 1px solid var(--border);
   border-radius: 0.35rem;
-  padding: 0.25rem 0;
-  font-size: 0.8rem;
+  min-height: 1.6rem;
+  padding: 0.3rem 0;
+  font-size: 0.72rem;
   font-weight: 700;
   background: var(--surface);
   line-height: 1;
@@ -234,13 +408,14 @@
     border-color: #f0c3be;
   }
 
-  &.plus2:hover:not(:disabled),
-  &.plus1:hover:not(:disabled) {
+  /* :not(.aktiv), sonst überdeckt der Mauszeiger die vergebene Bewertung. */
+  &.plus2:hover:not(:disabled):not(.aktiv),
+  &.plus1:hover:not(:disabled):not(.aktiv) {
     background: var(--positive-soft);
   }
 
-  &.minus1:hover:not(:disabled),
-  &.minus2:hover:not(:disabled) {
+  &.minus1:hover:not(:disabled):not(.aktiv),
+  &.minus2:hover:not(:disabled):not(.aktiv) {
     background: var(--negative-soft);
   }
 }
@@ -249,11 +424,101 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   padding: 0;
 
   &:hover {
     color: var(--accent);
+  }
+}
+
+/* --- Je breiter der Platz, desto mehr zeigt die Kachel --- */
+
+/* Ganz enge Plätze zeigen nur noch Name, Punkte und die vier Knöpfe. */
+@container platz (max-width: 3rem) {
+  .name {
+    font-size: 0.55rem;
+  }
+
+  .score .grade,
+  .undo {
+    display: none;
+  }
+
+  .rate {
+    min-height: 1.3rem;
+    padding: 0.15rem 0;
+    font-size: 0.6rem;
+  }
+}
+
+@container platz (min-width: 3.8rem) {
+  .student .avatar {
+    display: grid;
+  }
+
+  .name {
+    font-size: 0.66rem;
+  }
+}
+
+@container platz (min-width: 5.5rem) {
+  .student {
+    gap: 0.25rem;
+    padding: 0.4rem 0.3rem;
+  }
+
+  .student .avatar {
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 0.75rem;
+  }
+
+  .name {
+    font-size: 0.72rem;
+  }
+
+  .score {
+    font-size: 0.95rem;
+  }
+}
+
+@container platz (min-width: 7.5rem) {
+  .student {
+    gap: 0.3rem;
+    padding: 0.5rem 0.35rem;
+  }
+
+  .student .avatar {
+    width: 2.6rem;
+    height: 2.6rem;
+    font-size: 0.85rem;
+  }
+
+  .name {
+    font-size: 0.78rem;
+  }
+
+  .score {
+    font-size: 1.05rem;
+
+    .grade {
+      font-size: 0.65rem;
+    }
+  }
+
+  .actions {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.15rem;
+  }
+
+  .rate {
+    padding: 0.25rem 0;
+    font-size: 0.8rem;
+  }
+
+  .undo {
+    font-size: 0.68rem;
   }
 }
 
@@ -281,7 +546,7 @@
 .pool-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   padding: 0.35rem 0.45rem;
   border: 1px solid var(--border);
   border-radius: 0.45rem;
@@ -299,15 +564,16 @@
 
 .mini-actions {
   display: flex;
-  gap: 0.1rem;
+  gap: 0.15rem;
 
   button {
     border: 1px solid var(--border);
     background: var(--surface);
     border-radius: 0.3rem;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    padding: 0.15rem 0.3rem;
+    min-width: 1.9rem;
+    padding: 0.35rem 0.3rem;
     line-height: 1;
 
     &:disabled {
@@ -335,4 +601,28 @@
 
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Die Bewertung, die für die aktuelle Stunde gilt. */
+.rate.aktiv {
+  color: #fff;
+  font-weight: 800;
+}
+
+.rate.plus2.aktiv,
+.rate.plus1.aktiv {
+  background: var(--positive);
+  border-color: var(--positive);
+}
+
+.rate.minus1.aktiv,
+.rate.minus2.aktiv {
+  background: var(--negative);
+  border-color: var(--negative);
+}
+
+.mini-actions button.aktiv {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
 }

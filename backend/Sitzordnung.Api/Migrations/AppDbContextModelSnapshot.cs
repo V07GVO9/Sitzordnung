@@ -17,21 +17,37 @@ namespace Sitzordnung.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
 
-            modelBuilder.Entity("Sitzordnung.Api.Models.AppSettings", b =>
+            modelBuilder.Entity("Sitzordnung.Api.Models.AppUser", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("AllowRatingOutsideLesson")
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("MustChangePassword")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("ToleranceMinutes")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.ToTable("AppSettings");
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Sitzordnung.Api.Models.Course", b =>
@@ -121,6 +137,9 @@ namespace Sitzordnung.Api.Migrations
                     b.Property<DateOnly>("LessonDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<TimeOnly>("LessonStart")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("StudentId")
                         .HasColumnType("INTEGER");
 
@@ -131,7 +150,8 @@ namespace Sitzordnung.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.HasIndex("CourseId", "LessonDate");
+                    b.HasIndex("CourseId", "StudentId", "LessonDate", "LessonStart")
+                        .IsUnique();
 
                     b.ToTable("Ratings");
                 });

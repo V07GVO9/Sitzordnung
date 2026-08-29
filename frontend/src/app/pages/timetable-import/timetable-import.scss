@@ -1,0 +1,71 @@
+.hilfe {
+  margin: 0.75rem 0;
+
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--accent);
+  }
+
+  p {
+    margin: 0.5rem 0 0;
+  }
+}
+
+.upload {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: inline-flex;
+
+  input[type='file'] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.datei {
+  margin-left: 0.6rem;
+}
+
+.bilanz,
+.uebersprungen {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+}
+
+.uebersprungen {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+tr.abgewaehlt {
+  opacity: 0.5;
+}
+
+input.schmal {
+  width: 8rem;
+}
+
+input.fehlt {
+  border-color: var(--negative);
+  background: var(--negative-soft);
+}
+
+.badge.selten {
+  background: var(--warning-soft);
+  border-color: #edd3a4;
+  color: var(--warning);
+}
+
+td.quelle {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.abschluss {
+  margin-top: 1rem;
+}

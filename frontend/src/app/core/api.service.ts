@@ -2,7 +2,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
-  AppSettings,
   Course,
   CourseScoreboard,
   CurrentLesson,
@@ -10,14 +9,21 @@ import {
   GradeScaleInput,
   Rating,
   RatingValue,
-  RatingWindow,
+  LessonRef,
+  LessonSlot,
   SchoolClass,
   SeatLayoutInput,
   SeatingPlan,
   Student,
+  StudentImportPreview,
+  StudentImportResult,
+  StudentImportRow,
   Subject,
   TimetableEntry,
   TimetableEntryInput,
+  TimetableImportPreview,
+  TimetableImportResult,
+  TimetableImportRow,
 } from './models';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
@@ -134,6 +140,28 @@ export class ApiService {
     return this.http.post<Student>(`${this.base}/students/${studentId}/photo`, form);
   }
 
+  /** Liest eine Schülerliste (CSV oder eingefügter Text) und zeigt eine Vorschau. */
+  previewStudentImport(file: File | null, content: string | null): Observable<StudentImportPreview> {
+    const form = new FormData();
+    if (file) {
+      form.append('file', file, file.name);
+    }
+    if (content) {
+      form.append('content', content);
+    }
+    return this.http.post<StudentImportPreview>(`${this.base}/students/import/preview`, form);
+  }
+
+  applyStudentImport(
+    rows: StudentImportRow[],
+    fallbackClassName: string | null,
+  ): Observable<StudentImportResult> {
+    return this.http.post<StudentImportResult>(`${this.base}/students/import/apply`, {
+      rows,
+      fallbackClassName,
+    });
+  }
+
   deletePhoto(studentId: number): Observable<Student> {
     return this.http.delete<Student>(`${this.base}/students/${studentId}/photo`);
   }
@@ -196,16 +224,54 @@ export class ApiService {
     return this.http.delete<void>(`${this.base}/timetable/${id}`);
   }
 
+  /** Liest eine Kalenderdatei ein und zeigt, was daraus würde - speichert nichts. */
+  previewTimetableImport(file: File): Observable<TimetableImportPreview> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<TimetableImportPreview>(`${this.base}/timetable/import/preview`, form);
+  }
+
+  applyTimetableImport(entries: TimetableImportRow[]): Observable<TimetableImportResult> {
+    const nutzdaten = entries.map((e) => ({
+      dayOfWeek: e.dayOfWeek,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      schoolClassName: e.schoolClassName,
+      subjectName: e.subjectName,
+      room: e.room,
+    }));
+
+    return this.http.post<TimetableImportResult>(`${this.base}/timetable/import/apply`, {
+      entries: nutzdaten,
+    });
+  }
+
   // --- Bewertungen ---
 
-  getRatingWindow(courseId: number): Observable<RatingWindow> {
-    return this.http.get<RatingWindow>(`${this.base}/courses/${courseId}/rating-window`);
+  /** Welcher Unterrichtsstunde wird eine Bewertung gerade zugerechnet? */
+  getCurrentLessonSlot(courseId: number): Observable<LessonSlot> {
+    return this.http.get<LessonSlot>(`${this.base}/courses/${courseId}/current-lesson`);
+  }
+
+  /**
+   * Blättert von einer Unterrichtsstunde zur vorherigen oder nächsten desselben
+   * Kurses. Vorwärts geht es höchstens bis zur Stunde, die gerade zählt.
+   */
+  getNeighbourLessonSlot(
+    courseId: number,
+    lesson: LessonRef,
+    direction: 'prev' | 'next',
+  ): Observable<LessonSlot> {
+    return this.http.get<LessonSlot>(`${this.base}/courses/${courseId}/current-lesson`, {
+      params: { date: lesson.date, start: lesson.startTime, direction },
+    });
   }
 
   rate(
     courseId: number,
     studentId: number,
     value: RatingValue,
+    lesson?: LessonRef | null,
     comment?: string,
   ): Observable<Rating> {
     return this.http.post<Rating>(`${this.base}/ratings`, {
@@ -213,19 +279,32 @@ export class ApiService {
       studentId,
       value,
       comment: comment ?? null,
+      lessonDate: lesson?.date ?? null,
+      lessonStart: lesson?.startTime ?? null,
     });
   }
 
-  undoLastRating(courseId: number, studentId: number): Observable<void> {
+  /** Nimmt die Bewertung der angegebenen Stunde zurück. */
+  undoLastRating(courseId: number, studentId: number, lesson?: LessonRef | null): Observable<void> {
     return this.http.post<void>(
       `${this.base}/courses/${courseId}/students/${studentId}/undo`,
       {},
+      { params: lesson ? { date: lesson.date, start: lesson.startTime } : {} },
     );
   }
 
-  getScoreboard(courseId: number, range?: DateRange): Observable<CourseScoreboard> {
+  getScoreboard(
+    courseId: number,
+    range?: DateRange,
+    lesson?: LessonRef | null,
+  ): Observable<CourseScoreboard> {
+    let params = this.range(range);
+    if (lesson) {
+      params = params.set('slotDate', lesson.date).set('slotStart', lesson.startTime);
+    }
+
     return this.http.get<CourseScoreboard>(`${this.base}/courses/${courseId}/scoreboard`, {
-      params: this.range(range),
+      params,
     });
   }
 
@@ -257,15 +336,6 @@ export class ApiService {
     return this.http.delete<void>(`${this.base}/courses/${courseId}/gradescale`);
   }
 
-  // --- Einstellungen ---
-
-  getSettings(): Observable<AppSettings> {
-    return this.http.get<AppSettings>(`${this.base}/settings`);
-  }
-
-  saveSettings(settings: AppSettings): Observable<AppSettings> {
-    return this.http.put<AppSettings>(`${this.base}/settings`, settings);
-  }
 
   // --- Export ---
 

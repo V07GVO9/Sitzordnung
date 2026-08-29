@@ -1,0 +1,29 @@
+{
+  "name": "Sitzordnung",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-8.0-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "forwardPorts": [5099, 4200],
+  "portsAttributes": {
+    "5099": {
+      "label": "Sitzordnung (Anwendung)",
+      "onAutoForward": "openBrowser"
+    },
+    "4200": {
+      "label": "Angular-Entwicklungsserver",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "angular.ng-template"
+      ]
+    }
+  }
+}

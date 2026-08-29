@@ -19,10 +19,14 @@ public class AppDbContext : DbContext
     public DbSet<Rating> Ratings => Set<Rating>();
     public DbSet<GradeScale> GradeScales => Set<GradeScale>();
     public DbSet<GradeScaleEntry> GradeScaleEntries => Set<GradeScaleEntry>();
-    public DbSet<AppSettings> AppSettings => Set<AppSettings>();
+    public DbSet<AppUser> Users => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppUser>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
         modelBuilder.Entity<SchoolClass>()
             .HasIndex(c => c.Name)
             .IsUnique();
@@ -100,8 +104,10 @@ public class AppDbContext : DbContext
             .HasForeignKey(r => r.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Je Unterrichtsstunde und Schüler gibt es höchstens eine Bewertung.
         modelBuilder.Entity<Rating>()
-            .HasIndex(r => new { r.CourseId, r.LessonDate });
+            .HasIndex(r => new { r.CourseId, r.StudentId, r.LessonDate, r.LessonStart })
+            .IsUnique();
 
         // Pro Kurs höchstens ein eigener Notenschlüssel, dazu ein globaler
         // Schlüssel mit CourseId = null.

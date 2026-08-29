@@ -85,11 +85,24 @@ export interface CurrentLesson {
   message: string;
 }
 
-export interface RatingWindow {
-  canRate: boolean;
-  reason: string;
-  startTime: string | null;
-  endTime: string | null;
+/** Die Unterrichtsstunde, auf die eine Bewertung gerade zählt. */
+export interface LessonSlot {
+  date: string;
+  startTime: string;
+  label: string;
+  fromTimetable: boolean;
+  /** Gibt es eine frühere Stunde dieses Kurses? */
+  hasPrevious: boolean;
+  /** Gibt es eine spätere? Über die aktuelle Stunde hinaus geht es nicht. */
+  hasNext: boolean;
+  /** Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird? */
+  isCurrent: boolean;
+}
+
+/** Eine bestimmte Unterrichtsstunde, wie sie an die API übergeben wird. */
+export interface LessonRef {
+  date: string;
+  startTime: string;
 }
 
 /** Die vier möglichen Bewertungen. */
@@ -101,6 +114,7 @@ export interface Rating {
   studentId: number;
   value: number;
   lessonDate: string;
+  lessonStart: string;
   createdAt: string;
   comment: string | null;
 }
@@ -113,6 +127,8 @@ export interface StudentScore {
   ratingCount: number;
   pointsToday: number;
   grade: string | null;
+  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
+  currentLessonValue: number | null;
 }
 
 export interface CourseScoreboard {
@@ -120,6 +136,7 @@ export interface CourseScoreboard {
   schoolClassName: string;
   subjectName: string;
   date: string;
+  currentLesson: LessonSlot;
   students: StudentScore[];
 }
 
@@ -139,11 +156,6 @@ export interface GradeScale {
 export interface GradeScaleInput {
   name: string;
   entries: GradeScaleEntry[];
-}
-
-export interface AppSettings {
-  toleranceMinutes: number;
-  allowRatingOutsideLesson: boolean;
 }
 
 export const WEEKDAY_NAMES: Record<number, string> = {
@@ -182,4 +194,50 @@ export function initials(student: { firstName: string; lastName: string }): stri
   const first = student.firstName?.charAt(0) ?? '';
   const last = student.lastName?.charAt(0) ?? '';
   return (first + last).toUpperCase() || '?';
+}
+
+// --- Stundenplan-Import -----------------------------------------------------
+
+export interface TimetableImportRow {
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  schoolClassName: string;
+  subjectName: string;
+  room: string | null;
+  occurrences: number;
+  looksRegular: boolean;
+  sourceTitle: string;
+}
+
+export interface TimetableImportPreview {
+  rows: TimetableImportRow[];
+  warnings: string[];
+}
+
+export interface TimetableImportResult {
+  createdClasses: number;
+  createdSubjects: number;
+  createdCourses: number;
+  createdLessons: number;
+  skipped: string[];
+}
+
+// --- Schülerimport ----------------------------------------------------------
+
+export interface StudentImportRow {
+  firstName: string;
+  lastName: string;
+  className: string;
+}
+
+export interface StudentImportPreview {
+  rows: StudentImportRow[];
+  warnings: string[];
+}
+
+export interface StudentImportResult {
+  createdClasses: number;
+  createdStudents: number;
+  skipped: string[];
 }
