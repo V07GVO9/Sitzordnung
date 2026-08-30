@@ -205,17 +205,6 @@
                       </div>
 
                       @if (!editMode()) {
-                        <div
-                          class="score"
-                          [class.pos]="(cell.score?.points ?? 0) > 0"
-                          [class.neg]="(cell.score?.points ?? 0) < 0"
-                        >
-                          {{ cell.score?.points ?? 0 }}
-                          @if (cell.score?.grade) {
-                            <span class="grade">Note {{ cell.score?.grade }}</span>
-                          }
-                        </div>
-
                         <div class="actions">
                           <button
                             type="button"
@@ -254,17 +243,6 @@
                             −−
                           </button>
                         </div>
-
-                        @if (cell.score?.currentLessonValue !== null && cell.score?.currentLessonValue !== undefined) {
-                          <button
-                            type="button"
-                            class="undo"
-                            (click)="undo(student.id)"
-                            title="Bewertung dieser Stunde zurücknehmen"
-                          >
-                            ↶ diese Stunde
-                          </button>
-                        }
                       }
                     </div>
                   } @else {
