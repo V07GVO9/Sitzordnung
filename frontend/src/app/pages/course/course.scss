@@ -327,9 +327,9 @@
 /* Auf sehr schmalen Plätzen weicht das Foto dem Namen. */
 .student .avatar {
   display: none;
-  width: 1.8rem;
-  height: 1.8rem;
-  font-size: 0.6rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 0.8rem;
 }
 
 .name {
@@ -348,29 +348,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-}
-
-.score {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-
-  &.pos {
-    color: var(--positive);
-  }
-
-  &.neg {
-    color: var(--negative);
-  }
-
-  .grade {
-    font-size: 0.6rem;
-    font-weight: 500;
-    color: var(--text-muted);
   }
 }
 
@@ -420,29 +397,12 @@
   }
 }
 
-.undo {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.6rem;
-  padding: 0;
-
-  &:hover {
-    color: var(--accent);
-  }
-}
-
 /* --- Je breiter der Platz, desto mehr zeigt die Kachel --- */
 
-/* Ganz enge Plätze zeigen nur noch Name, Punkte und die vier Knöpfe. */
+/* Ganz enge Plätze zeigen nur noch Name und die vier Knöpfe. */
 @container platz (max-width: 3rem) {
   .name {
     font-size: 0.55rem;
-  }
-
-  .score .grade,
-  .undo {
-    display: none;
   }
 
   .rate {
@@ -469,17 +429,13 @@
   }
 
   .student .avatar {
-    width: 2.2rem;
-    height: 2.2rem;
-    font-size: 0.75rem;
+    width: 3.2rem;
+    height: 3.2rem;
+    font-size: 1rem;
   }
 
   .name {
     font-size: 0.72rem;
-  }
-
-  .score {
-    font-size: 0.95rem;
   }
 }
 
@@ -490,21 +446,13 @@
   }
 
   .student .avatar {
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: 0.85rem;
+    width: 4rem;
+    height: 4rem;
+    font-size: 1.3rem;
   }
 
   .name {
     font-size: 0.78rem;
-  }
-
-  .score {
-    font-size: 1.05rem;
-
-    .grade {
-      font-size: 0.65rem;
-    }
   }
 
   .actions {
@@ -515,10 +463,6 @@
   .rate {
     padding: 0.25rem 0;
     font-size: 0.8rem;
-  }
-
-  .undo {
-    font-size: 0.68rem;
   }
 }
 
