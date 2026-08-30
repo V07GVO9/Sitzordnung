@@ -9,20 +9,22 @@ namespace Sitzordnung.Api.Tests;
 /// Fährt die API einmal komplett durch. Die Tests laufen gegen SQLite und decken
 /// damit auch Abfragen auf, die sich nicht in SQL übersetzen lassen.
 /// </summary>
-public class ApiEndpointTests : IDisposable
+public class ApiEndpointTests : IAsyncLifetime
 {
     private readonly ApiFactory _factory = new();
-    private readonly HttpClient _client;
+    private HttpClient _client = null!;
 
-    public ApiEndpointTests()
+    /// <summary>Alle Endpunkte verlangen eine Anmeldung, daher zuerst anmelden.</summary>
+    public async Task InitializeAsync()
     {
-        _client = _factory.CreateClient();
+        _client = await _factory.CreateSignedInClientAsync();
     }
 
-    public void Dispose()
+    public Task DisposeAsync()
     {
         _client.Dispose();
         _factory.Dispose();
+        return Task.CompletedTask;
     }
 
     private async Task<T> PostAsync<T>(string url, object body)
@@ -76,8 +78,7 @@ public class ApiEndpointTests : IDisposable
         foreach (var url in new[]
                  {
                      "/api/classes", "/api/subjects", "/api/courses",
-                     "/api/timetable", "/api/timetable/current", "/api/settings",
-                     "/api/gradescales",
+                     "/api/timetable", "/api/timetable/current", "/api/gradescales",
                  })
         {
             var response = await _client.GetAsync(url);
@@ -101,17 +102,55 @@ public class ApiEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Ohne_Unterricht_wird_die_Bewertung_abgelehnt()
+    public async Task Auch_ohne_Stundenplan_laesst_sich_bewerten()
     {
-        var (courseId, students) = await SetupCourseAsync("Gesperrt-10c", "Sperrfach");
+        var (courseId, students) = await SetupCourseAsync("Ohneplan-10c", "Planlosfach");
 
-        var window = await _client.GetFromJsonAsync<RatingWindowDto>($"/api/courses/{courseId}/rating-window");
-        Assert.False(window!.CanRate);
+        var slot = await _client.GetFromJsonAsync<LessonSlotDto>($"/api/courses/{courseId}/current-lesson");
+        Assert.False(slot!.FromTimetable);
 
         var response = await _client.PostAsJsonAsync(
             "/api/ratings", new { courseId, studentId = students[0], value = 1 });
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Eine_zweite_Bewertung_in_derselben_Stunde_ersetzt_die_erste()
+    {
+        var (courseId, students) = await SetupCourseAsync("Ersetzen-10c", "Ersatzfach");
+        await AddRunningLessonAsync(courseId);
+
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = -1 });
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>($"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        // Nicht 2 + (-1) = 1, sondern nur die letzte Bewertung dieser Stunde.
+        Assert.Equal(-1, anna.Points);
+        Assert.Equal(1, anna.RatingCount);
+        Assert.Equal(-1, anna.CurrentLessonValue);
+    }
+
+    [Fact]
+    public async Task In_der_naechsten_Unterrichtsstunde_ist_wieder_eine_Bewertung_moeglich()
+    {
+        var (courseId, students) = await SetupCourseAsync("Naechste-10c", "Folgefach");
+        await AddRunningLessonAsync(courseId);
+
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+
+        // Eine Woche später ist es eine andere Unterrichtsstunde.
+        _factory.Clock.Now = _factory.Clock.Now.AddDays(7);
+
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 1 });
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>($"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        Assert.Equal(3, anna.Points);
+        Assert.Equal(2, anna.RatingCount);
     }
 
     [Fact]
@@ -120,15 +159,9 @@ public class ApiEndpointTests : IDisposable
         var (courseId, students) = await SetupCourseAsync("Bewerten-10d", "Wertfach");
         await AddRunningLessonAsync(courseId);
 
-        var window = await _client.GetFromJsonAsync<RatingWindowDto>($"/api/courses/{courseId}/rating-window");
-        Assert.True(window!.CanRate);
-
-        foreach (var value in new[] { 2, 1 })
-        {
-            var response = await _client.PostAsJsonAsync(
-                "/api/ratings", new { courseId, studentId = students[0], value });
-            response.EnsureSuccessStatusCode();
-        }
+        var plus = await _client.PostAsJsonAsync(
+            "/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        plus.EnsureSuccessStatusCode();
 
         var minus = await _client.PostAsJsonAsync(
             "/api/ratings", new { courseId, studentId = students[1], value = -2 });
@@ -139,8 +172,8 @@ public class ApiEndpointTests : IDisposable
         var anna = board!.Students.Single(s => s.StudentId == students[0]);
         var ben = board.Students.Single(s => s.StudentId == students[1]);
 
-        Assert.Equal(3, anna.Points);
-        Assert.Equal(2, anna.RatingCount);
+        Assert.Equal(2, anna.Points);
+        Assert.Equal(1, anna.RatingCount);
         Assert.Equal(-2, ben.Points);
     }
 
@@ -166,7 +199,6 @@ public class ApiEndpointTests : IDisposable
         await AddRunningLessonAsync(courseId);
 
         await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
-        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 1 });
 
         var undo = await _client.PostAsync($"/api/courses/{courseId}/students/{students[0]}/undo", null);
         Assert.Equal(HttpStatusCode.NoContent, undo.StatusCode);
@@ -174,9 +206,148 @@ public class ApiEndpointTests : IDisposable
         var board = await _client.GetFromJsonAsync<CourseScoreboardDto>($"/api/courses/{courseId}/scoreboard");
         var anna = board!.Students.Single(s => s.StudentId == students[0]);
 
-        // Zurückgenommen wird das zuletzt vergebene "+", die 2 Punkte bleiben stehen.
+        Assert.Equal(0, anna.Points);
+        Assert.Equal(0, anna.RatingCount);
+        Assert.Null(anna.CurrentLessonValue);
+    }
+
+    [Fact]
+    public async Task Zurueckblaettern_zeigt_eine_frueherere_Stunde_und_laesst_sie_bewerten()
+    {
+        var (courseId, students) = await SetupCourseAsync("Blaettern-10g", "Rueckfach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        Assert.True(aktuell!.IsCurrent);
+        Assert.False(aktuell.HasNext);
+        Assert.True(aktuell.HasPrevious);
+
+        var vorher = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=prev");
+
+        Assert.Equal(aktuell.Date.AddDays(-7), vorher!.Date);
+        Assert.False(vorher.IsCurrent);
+        Assert.True(vorher.HasNext);
+
+        // In beiden Stunden je eine Bewertung - sie stehen nebeneinander.
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 1,
+            lessonDate = vorher.Date.ToString("yyyy-MM-dd"),
+            lessonStart = vorher.StartTime,
+        });
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        Assert.Equal(3, anna.Points);
+        Assert.Equal(2, anna.RatingCount);
+
+        // Der Punktestand der frueheren Stunde zeigt deren eigene Bewertung.
+        var frueher = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard" +
+            $"?slotDate={vorher.Date:yyyy-MM-dd}&slotStart={vorher.StartTime}");
+
+        Assert.Equal(1, frueher!.Students.Single(s => s.StudentId == students[0]).CurrentLessonValue);
+        Assert.Equal(vorher.Date, frueher.CurrentLesson.Date);
+    }
+
+    [Fact]
+    public async Task Die_Ruecknahme_trifft_die_angezeigte_Stunde()
+    {
+        var (courseId, students) = await SetupCourseAsync("Undo-Blaettern-10h", "Ruecknahmefach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+        var vorher = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell!.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=prev");
+
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 1,
+            lessonDate = vorher!.Date.ToString("yyyy-MM-dd"),
+            lessonStart = vorher.StartTime,
+        });
+
+        var undo = await _client.PostAsync(
+            $"/api/courses/{courseId}/students/{students[0]}/undo" +
+            $"?date={vorher.Date:yyyy-MM-dd}&start={vorher.StartTime}",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, undo.StatusCode);
+
+        var board = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        var anna = board!.Students.Single(s => s.StudentId == students[0]);
+
+        // Die Bewertung der aktuellen Stunde bleibt stehen.
         Assert.Equal(2, anna.Points);
         Assert.Equal(1, anna.RatingCount);
+        Assert.Equal(2, anna.CurrentLessonValue);
+    }
+
+    [Fact]
+    public async Task Eine_fruehere_Stunde_zeigt_den_damaligen_Punktestand()
+    {
+        var (courseId, students) = await SetupCourseAsync("Damals-10j", "Rueckblickfach");
+        await AddRunningLessonAsync(courseId);
+
+        var alt = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        // Vor drei Wochen +2, heute noch einmal +2.
+        var frueher = alt!.Date.AddDays(-21);
+        await _client.PostAsJsonAsync("/api/ratings", new
+        {
+            courseId,
+            studentId = students[0],
+            value = 2,
+            lessonDate = frueher.ToString("yyyy-MM-dd"),
+            lessonStart = alt.StartTime,
+        });
+        await _client.PostAsJsonAsync("/api/ratings", new { courseId, studentId = students[0], value = 2 });
+
+        var heute = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard");
+        Assert.Equal(4, heute!.Students.Single(s => s.StudentId == students[0]).Points);
+
+        // In der alten Stunde zählt nur, was es bis dahin gab.
+        var damals = await _client.GetFromJsonAsync<CourseScoreboardDto>(
+            $"/api/courses/{courseId}/scoreboard" +
+            $"?slotDate={frueher:yyyy-MM-dd}&slotStart={alt.StartTime}");
+
+        var anna = damals!.Students.Single(s => s.StudentId == students[0]);
+        Assert.Equal(2, anna.Points);
+        Assert.Equal(1, anna.RatingCount);
+        Assert.Equal(2, anna.CurrentLessonValue);
+        Assert.False(damals.CurrentLesson.IsCurrent);
+    }
+
+    [Fact]
+    public async Task Hinter_der_aktuellen_Stunde_gibt_es_nichts_mehr()
+    {
+        var (courseId, _) = await SetupCourseAsync("Ende-10i", "Grenzfach");
+        await AddRunningLessonAsync(courseId);
+
+        var aktuell = await _client.GetFromJsonAsync<LessonSlotDto>(
+            $"/api/courses/{courseId}/current-lesson");
+
+        var weiter = await _client.GetAsync(
+            $"/api/courses/{courseId}/current-lesson" +
+            $"?date={aktuell!.Date:yyyy-MM-dd}&start={aktuell.StartTime}&direction=next");
+
+        Assert.Equal(HttpStatusCode.NotFound, weiter.StatusCode);
     }
 
     [Fact]
@@ -365,21 +536,4 @@ public class ApiEndpointTests : IDisposable
         Assert.Contains("Berger", summaryText);
     }
 
-    [Fact]
-    public async Task Die_Notfall_Freigabe_laesst_sich_ein_und_ausschalten()
-    {
-        var (courseId, students) = await SetupCourseAsync("Freigabe-10p", "Freigabefach");
-
-        var blocked = await _client.PostAsJsonAsync(
-            "/api/ratings", new { courseId, studentId = students[0], value = 1 });
-        Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
-
-        var enable = await _client.PutAsJsonAsync(
-            "/api/settings", new { toleranceMinutes = 15, allowRatingOutsideLesson = true });
-        enable.EnsureSuccessStatusCode();
-
-        var allowed = await _client.PostAsJsonAsync(
-            "/api/ratings", new { courseId, studentId = students[0], value = 1 });
-        allowed.EnsureSuccessStatusCode();
-    }
 }

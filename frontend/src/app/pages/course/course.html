@@ -32,30 +32,77 @@
 
       <div class="mode-switch" role="group" aria-label="Modus wählen">
         <button type="button" [class.active]="!editMode()" (click)="toggleMode(false)">
-          Unterricht
+          Bewerten
         </button>
         <button type="button" [class.active]="editMode()" (click)="toggleMode(true)">
-          Einstellungen
+          Sitzplan bearbeiten
         </button>
       </div>
     </section>
 
-    <!-- Statusleiste: darf gerade bewertet werden? -->
+    <!-- Auf welche Unterrichtsstunde zahlt eine Bewertung gerade ein? -->
     @if (!editMode()) {
-      @if (window(); as w) {
-        <div class="banner" [class.ok]="w.canRate" [class.blocked]="!w.canRate">
-          <strong>{{ w.canRate ? 'Bewerten möglich' : 'Bewerten gesperrt' }}</strong>
-          <span>{{ w.reason }}</span>
-          <span class="spacer"></span>
-          <button class="btn small" type="button" (click)="refreshWindow()">Neu prüfen</button>
-          @if (!w.canRate) {
-            <a class="btn small" routerLink="/stundenplan">Stundenplan</a>
-          }
+      @if (lessonSlot(); as slot) {
+        <div
+          class="banner stunde-leiste"
+          [class.ok]="slot.fromTimetable && slot.isCurrent"
+          [class.warn]="!slot.fromTimetable"
+          [class.vergangen]="slot.fromTimetable && !slot.isCurrent"
+        >
+          <!-- Zurück zur vorherigen Unterrichtsstunde dieser Klasse. -->
+          <button
+            class="blaettern"
+            type="button"
+            [disabled]="!slot.hasPrevious || switchingLesson()"
+            (click)="gotoLesson('prev')"
+            aria-label="Vorherige Unterrichtsstunde"
+            title="Vorherige Unterrichtsstunde"
+          >
+            ‹
+          </button>
+
+          <div class="stunde-text">
+            <strong>
+              {{ slot.isCurrent ? 'Bewertete Stunde' : 'Frühere Stunde' }}
+            </strong>
+            <span>{{ slot.label }}</span>
+            <span class="muted small">
+              @if (slot.isCurrent) {
+                Je Stunde eine Bewertung – eine weitere ersetzt sie.
+              } @else {
+                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und
+                werden sofort gespeichert.
+              }
+            </span>
+          </div>
+
+          <!-- Weiter Richtung Gegenwart; über die aktuelle Stunde hinaus geht es nicht. -->
+          <button
+            class="blaettern"
+            type="button"
+            [disabled]="!slot.hasNext || switchingLesson()"
+            (click)="gotoLesson('next')"
+            aria-label="Nächste Unterrichtsstunde"
+            title="Nächste Unterrichtsstunde"
+          >
+            ›
+          </button>
+
+          <div class="stunde-extra">
+            @if (!slot.isCurrent) {
+              <button class="btn small" type="button" (click)="gotoCurrentLesson()">
+                Zur aktuellen Stunde
+              </button>
+            }
+            @if (!slot.fromTimetable) {
+              <a class="btn small" routerLink="/">Stundenplan ergänzen</a>
+            }
+          </div>
         </div>
       }
     } @else {
       <div class="banner warn">
-        <strong>Einstellungsmodus</strong>
+        <strong>Sitzplan bearbeiten</strong>
         <span>
           Schüler per Drag and Drop auf die Plätze ziehen. Änderungen werden sofort gespeichert.
         </span>
@@ -152,25 +199,17 @@
                         }
                       </div>
 
-                      <div class="name">{{ student.firstName }}<br />{{ student.lastName }}</div>
+                      <div class="name">
+                        <span>{{ student.firstName }}</span>
+                        <span>{{ student.lastName }}</span>
+                      </div>
 
                       @if (!editMode()) {
-                        <div
-                          class="score"
-                          [class.pos]="(cell.score?.points ?? 0) > 0"
-                          [class.neg]="(cell.score?.points ?? 0) < 0"
-                        >
-                          {{ cell.score?.points ?? 0 }}
-                          @if (cell.score?.grade) {
-                            <span class="grade">Note {{ cell.score?.grade }}</span>
-                          }
-                        </div>
-
                         <div class="actions">
                           <button
                             type="button"
                             class="rate plus2"
-                            [disabled]="!canRate()"
+                            [class.aktiv]="cell.score?.currentLessonValue === 2"
                             (click)="rate(student.id, 2)"
                             title="Sehr gute Mitarbeit (++)"
                           >
@@ -179,7 +218,7 @@
                           <button
                             type="button"
                             class="rate plus1"
-                            [disabled]="!canRate()"
+                            [class.aktiv]="cell.score?.currentLessonValue === 1"
                             (click)="rate(student.id, 1)"
                             title="Gute Mitarbeit (+)"
                           >
@@ -188,7 +227,7 @@
                           <button
                             type="button"
                             class="rate minus1"
-                            [disabled]="!canRate()"
+                            [class.aktiv]="cell.score?.currentLessonValue === -1"
                             (click)="rate(student.id, -1)"
                             title="Schwache Mitarbeit (−)"
                           >
@@ -197,24 +236,13 @@
                           <button
                             type="button"
                             class="rate minus2"
-                            [disabled]="!canRate()"
+                            [class.aktiv]="cell.score?.currentLessonValue === -2"
                             (click)="rate(student.id, -2)"
                             title="Keine Mitarbeit / Störung (−−)"
                           >
                             −−
                           </button>
                         </div>
-
-                        @if ((cell.score?.ratingCount ?? 0) > 0) {
-                          <button
-                            type="button"
-                            class="undo"
-                            (click)="undo(student.id)"
-                            title="Letzte Bewertung zurücknehmen"
-                          >
-                            ↶ zurück
-                          </button>
-                        }
                       }
                     </div>
                   } @else {
@@ -273,16 +301,32 @@
                     {{ scoreFor(student.id)?.points ?? 0 }}
                   </span>
                   <span class="mini-actions">
-                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, 2)">
+                    <button
+                      type="button"
+                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === 2"
+                      (click)="rate(student.id, 2)"
+                    >
                       ++
                     </button>
-                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, 1)">
+                    <button
+                      type="button"
+                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === 1"
+                      (click)="rate(student.id, 1)"
+                    >
                       +
                     </button>
-                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, -1)">
+                    <button
+                      type="button"
+                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === -1"
+                      (click)="rate(student.id, -1)"
+                    >
                       −
                     </button>
-                    <button type="button" [disabled]="!canRate()" (click)="rate(student.id, -2)">
+                    <button
+                      type="button"
+                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === -2"
+                      (click)="rate(student.id, -2)"
+                    >
                       −−
                     </button>
                   </span>

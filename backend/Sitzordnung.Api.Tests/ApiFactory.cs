@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -28,7 +29,24 @@ public class ApiFactory : WebApplicationFactory<Program>
     private SqliteConnection? _connection;
     private string? _photoDirectory;
 
+    public const string TestUsername = "testlehrkraft";
+    public const string TestPassword = "test-passwort-123";
+
     public TestClock Clock { get; } = new();
+
+    /// <summary>Ein Client, der bereits angemeldet ist - das Cookie bleibt erhalten.</summary>
+    public async Task<HttpClient> CreateSignedInClientAsync()
+    {
+        var client = CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { username = TestUsername, password = TestPassword });
+
+        response.EnsureSuccessStatusCode();
+
+        return client;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -40,6 +58,13 @@ public class ApiFactory : WebApplicationFactory<Program>
 
         builder.UseEnvironment(Environments.Production);
         builder.UseSetting("Storage:PhotoDirectory", _photoDirectory);
+
+        // Feste Anmeldedaten, damit die Tests sich anmelden können.
+        builder.UseSetting("Auth:Username", TestUsername);
+        builder.UseSetting("Auth:InitialPassword", TestPassword);
+
+        // Der Testserver spricht HTTP; ein "Secure"-Cookie käme nicht zurück.
+        builder.UseSetting("Auth:RequireHttps", "false");
 
         builder.ConfigureServices(services =>
         {

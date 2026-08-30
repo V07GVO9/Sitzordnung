@@ -1,0 +1,53 @@
+# Betrieb auf einem Server: ein Reverse-Proxy, dahinter die Produktiv- und die
+# Testumgebung. Beide haben eigene Daten und sind über eigene Adressen erreichbar.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN fehlt}
+      TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN fehlt}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL fehlt}
+    # Bewusst kein depends_on: Caddy soll auch dann starten, wenn nur eine der
+    # beiden Umgebungen vorhanden ist. Sonst zieht ein Ausrollen der
+    # Testumgebung das Produktiv-Image mit, das es beim ersten Mal noch gar
+    # nicht gibt. Die Adressen loest Caddy erst bei der Anfrage auf.
+
+  # Produktivumgebung - wird aus dem Branch master gebaut.
+  app-prod:
+    image: ${IMAGE_PROD:?IMAGE_PROD fehlt}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Caddy terminiert TLS; die App muss wissen, dass die Anfrage von außen
+      # über HTTPS kam.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Auth__Username: ${PROD_AUTH_USERNAME:?PROD_AUTH_USERNAME fehlt}
+      Auth__InitialPassword: ${PROD_AUTH_INITIAL_PASSWORD:?PROD_AUTH_INITIAL_PASSWORD fehlt}
+    volumes:
+      - prod-data:/data
+
+  # Testumgebung - wird aus dem Branch test gebaut.
+  app-test:
+    image: ${IMAGE_TEST:?IMAGE_TEST fehlt}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Auth__Username: ${TEST_AUTH_USERNAME:?TEST_AUTH_USERNAME fehlt}
+      Auth__InitialPassword: ${TEST_AUTH_INITIAL_PASSWORD:?TEST_AUTH_INITIAL_PASSWORD fehlt}
+    volumes:
+      - test-data:/data
+
+volumes:
+  caddy-data:
+  caddy-config:
+  prod-data:
+  test-data:

@@ -158,8 +158,23 @@ public record CurrentLessonDto(
     string? Room,
     string Message);
 
-/// <summary>Sagt für einen konkreten Kurs, ob gerade bewertet werden darf.</summary>
-public record RatingWindowDto(bool CanRate, string Reason, string? StartTime, string? EndTime);
+/// <summary>
+/// Die Unterrichtsstunde, der eine Bewertung gerade zugerechnet wird. Je Stunde
+/// und Schüler ist genau eine Bewertung möglich; eine weitere ersetzt sie.
+/// </summary>
+public record LessonSlotDto(
+    DateOnly Date,
+    string StartTime,
+    /// <summary>Für die Anzeige, z.B. "Mittwoch, 03.09.2025, 08:00 Uhr".</summary>
+    string Label,
+    /// <summary>false = der Kurs hat keinen Stundenplaneintrag, es zählt der Tag.</summary>
+    bool FromTimetable,
+    /// <summary>Gibt es eine frühere Stunde dieses Kurses, zu der geblättert werden kann?</summary>
+    bool HasPrevious = false,
+    /// <summary>Gibt es eine spätere Stunde? Über die aktuelle hinaus geht es nicht.</summary>
+    bool HasNext = false,
+    /// <summary>Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird?</summary>
+    bool IsCurrent = true);
 
 // --- Bewertungen ------------------------------------------------------------
 
@@ -176,6 +191,15 @@ public class RatingInput
 
     [MaxLength(300)]
     public string? Comment { get; set; }
+
+    /// <summary>
+    /// Auf welche Unterrichtsstunde die Bewertung zählt. Ohne Angabe ist es die
+    /// Stunde, die gerade zählt; gesetzt wird sie beim Blättern in frühere Stunden.
+    /// </summary>
+    public DateOnly? LessonDate { get; set; }
+
+    /// <summary>Beginn der Unterrichtsstunde im Format HH:mm, gehört zu LessonDate.</summary>
+    public string? LessonStart { get; set; }
 }
 
 public record RatingDto(
@@ -184,6 +208,7 @@ public record RatingDto(
     int StudentId,
     int Value,
     DateOnly LessonDate,
+    string LessonStart,
     DateTimeOffset CreatedAt,
     string? Comment);
 
@@ -195,13 +220,16 @@ public record StudentScoreDto(
     int Points,
     int RatingCount,
     int PointsToday,
-    string? Grade);
+    string? Grade,
+    /// <summary>Die Bewertung dieser Unterrichtsstunde, falls schon eine vergeben wurde.</summary>
+    int? CurrentLessonValue);
 
 public record CourseScoreboardDto(
     int CourseId,
     string SchoolClassName,
     string SubjectName,
     DateOnly Date,
+    LessonSlotDto CurrentLesson,
     IReadOnlyList<StudentScoreDto> Students);
 
 // --- Notenschlüssel ---------------------------------------------------------
@@ -231,14 +259,119 @@ public class GradeScaleEntryInput
     public string Grade { get; set; } = string.Empty;
 }
 
-// --- Einstellungen ----------------------------------------------------------
+// --- Anmeldung --------------------------------------------------------------
 
-public record AppSettingsDto(int ToleranceMinutes, bool AllowRatingOutsideLesson);
-
-public class AppSettingsInput
+public class LoginInput
 {
-    [Range(0, 120)]
-    public int ToleranceMinutes { get; set; } = 15;
+    [Required, MaxLength(80)]
+    public string Username { get; set; } = string.Empty;
 
-    public bool AllowRatingOutsideLesson { get; set; }
+    [Required, MaxLength(200)]
+    public string Password { get; set; } = string.Empty;
+
+    /// <summary>Hält die Anmeldung 30 Tage statt nur einen Tag.</summary>
+    public bool StayLoggedIn { get; set; }
 }
+
+public class ChangePasswordInput
+{
+    [Required, MaxLength(200)]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required, MaxLength(200)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>Wer ist angemeldet - und muss das Startpasswort noch geändert werden?</summary>
+public record CurrentUserDto(string Username, bool MustChangePassword);
+
+// --- Stundenplan-Import -----------------------------------------------------
+
+/// <summary>Eine erkannte Unterrichtsstunde aus dem Kalenderexport.</summary>
+public record TimetableImportRowDto(
+    DayOfWeek DayOfWeek,
+    string StartTime,
+    string EndTime,
+    string SchoolClassName,
+    string SubjectName,
+    string? Room,
+    /// <summary>Wie oft diese Stunde im Export vorkommt.</summary>
+    int Occurrences,
+    /// <summary>Kommt regelmäßig vor - also vermutlich kein Einzeltermin.</summary>
+    bool LooksRegular,
+    /// <summary>Der ursprüngliche Titel, falls die Zuordnung nachgebessert werden muss.</summary>
+    string SourceTitle);
+
+public record TimetableImportPreviewDto(
+    IReadOnlyList<TimetableImportRowDto> Rows,
+    IReadOnlyList<string> Warnings);
+
+/// <summary>Eine vom Anwender bestätigte Zeile, die übernommen werden soll.</summary>
+public class TimetableImportEntryInput
+{
+    public DayOfWeek DayOfWeek { get; set; }
+
+    [Required]
+    public string StartTime { get; set; } = string.Empty;
+
+    [Required]
+    public string EndTime { get; set; } = string.Empty;
+
+    [Required, MaxLength(60)]
+    public string SchoolClassName { get; set; } = string.Empty;
+
+    [Required, MaxLength(60)]
+    public string SubjectName { get; set; } = string.Empty;
+
+    [MaxLength(40)]
+    public string? Room { get; set; }
+}
+
+public class TimetableImportApplyInput
+{
+    public List<TimetableImportEntryInput> Entries { get; set; } = new();
+}
+
+/// <summary>Was der Import angelegt und was er ausgelassen hat.</summary>
+public record TimetableImportResultDto(
+    int CreatedClasses,
+    int CreatedSubjects,
+    int CreatedCourses,
+    int CreatedLessons,
+    IReadOnlyList<string> Skipped);
+
+// --- Schülerimport aus einer Tabelle ----------------------------------------
+
+/// <summary>Eine gelesene Zeile aus der Schülerliste.</summary>
+public record StudentImportRowDto(string FirstName, string LastName, string ClassName);
+
+public record StudentImportPreviewDto(
+    IReadOnlyList<StudentImportRowDto> Rows,
+    IReadOnlyList<string> Warnings);
+
+public class StudentImportRowInput
+{
+    [MaxLength(80)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [MaxLength(80)]
+    public string LastName { get; set; } = string.Empty;
+
+    /// <summary>Leer, wenn die Datei keine Klassenspalte hatte.</summary>
+    [MaxLength(60)]
+    public string ClassName { get; set; } = string.Empty;
+}
+
+public class StudentImportApplyInput
+{
+    public List<StudentImportRowInput> Rows { get; set; } = new();
+
+    /// <summary>Klasse für alle Zeilen ohne eigene Klassenangabe.</summary>
+    [MaxLength(60)]
+    public string? FallbackClassName { get; set; }
+}
+
+public record StudentImportResultDto(
+    int CreatedClasses,
+    int CreatedStudents,
+    IReadOnlyList<string> Skipped);

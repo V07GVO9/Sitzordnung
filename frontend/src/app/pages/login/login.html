@@ -1,0 +1,61 @@
+<div class="anmeldung">
+  <form class="card" (ngSubmit)="submit()">
+    <div class="marke">
+      <span class="marke-zeichen">SO</span>
+      <div>
+        <strong>Sitzordnung</strong>
+        <span class="muted small">Mitarbeitsnoten im Unterricht</span>
+      </div>
+    </div>
+
+    <h1>Anmelden</h1>
+
+    @if (error(); as fehler) {
+      <div class="banner blocked">{{ fehler }}</div>
+    }
+
+    <label class="feld">
+      Benutzername
+      <input
+        type="text"
+        name="username"
+        autocomplete="username"
+        required
+        autofocus
+        [ngModel]="username()"
+        (ngModelChange)="username.set($event)"
+      />
+    </label>
+
+    <label class="feld">
+      Passwort
+      <input
+        type="password"
+        name="password"
+        autocomplete="current-password"
+        required
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+      />
+    </label>
+
+    <label class="inline">
+      <input
+        type="checkbox"
+        name="stayLoggedIn"
+        [ngModel]="stayLoggedIn()"
+        (ngModelChange)="stayLoggedIn.set($event)"
+      />
+      Angemeldet bleiben
+    </label>
+
+    <button class="btn primary" type="submit" [disabled]="busy() || !username().trim() || !password()">
+      {{ busy() ? 'Wird geprüft …' : 'Anmelden' }}
+    </button>
+
+    <p class="muted small hinweis">
+      Diese App enthält personenbezogene Daten von Schülern. Bitte melden Sie sich
+      auf fremden Geräten nach der Nutzung wieder ab.
+    </p>
+  </form>
+</div>

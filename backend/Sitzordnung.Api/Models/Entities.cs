@@ -155,6 +155,14 @@ public class Rating
     /// <summary>Der Unterrichtstag, auf den sich die Bewertung bezieht.</summary>
     public DateOnly LessonDate { get; set; }
 
+    /// <summary>
+    /// Beginn der Unterrichtsstunde laut Stundenplan. Zusammen mit
+    /// <see cref="LessonDate"/> bezeichnet sie eindeutig eine Stunde - je Stunde
+    /// und Schüler gibt es genau eine Bewertung. Ohne Stundenplaneintrag steht
+    /// hier 00:00, dann gilt der ganze Tag als eine Einheit.
+    /// </summary>
+    public TimeOnly LessonStart { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     [MaxLength(300)]
@@ -196,22 +204,27 @@ public class GradeScaleEntry
     public string Grade { get; set; } = string.Empty;
 }
 
-/// <summary>Globale Einstellungen der App. Es gibt genau einen Datensatz mit Id = 1.</summary>
-public class AppSettings
+/// <summary>
+/// Das Konto der Lehrkraft. Die App ist für eine Person gedacht; es gibt daher
+/// in aller Regel genau einen Datensatz. Das Passwort wird nur als Hash abgelegt.
+/// </summary>
+public class AppUser
 {
-    public const int SingletonId = 1;
+    public int Id { get; set; }
 
-    public int Id { get; set; } = SingletonId;
+    [MaxLength(80)]
+    public string Username { get; set; } = string.Empty;
+
+    [MaxLength(400)]
+    public string PasswordHash { get; set; } = string.Empty;
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset? LastLoginAt { get; set; }
 
     /// <summary>
-    /// Kulanzzeitraum in Minuten vor und nach der Unterrichtsstunde,
-    /// in dem Bewertungen noch möglich sind.
+    /// Solange true, verlangt die App nach dem Anmelden das Setzen eines eigenen
+    /// Passworts - das Startpasswort taucht in Logs und Konfiguration auf.
     /// </summary>
-    public int ToleranceMinutes { get; set; } = 15;
-
-    /// <summary>
-    /// Notfall-Freigabe: wenn true, sind Bewertungen auch außerhalb des
-    /// Stundenplans möglich. Standardmäßig aus.
-    /// </summary>
-    public bool AllowRatingOutsideLesson { get; set; }
+    public bool MustChangePassword { get; set; }
 }
