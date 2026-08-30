@@ -67,6 +67,14 @@ cd ../backend/Sitzordnung.Api && dotnet run
 
 Danach ist die komplette Anwendung unter <http://localhost:5099> erreichbar.
 
+### Anmeldung
+
+Die App hat ein einziges Login für die Lehrkraft (keine Schülerzugänge). Beim
+allerersten Start fragt sie nach einem Kennwort, das anschließend gehasht (nicht
+im Klartext) in der Datenbank liegt. Ohne gültiges Login liefert das Backend auf
+jeden API-Aufruf `401`. Über *Abmelden* in der Kopfzeile lässt sich die Anmeldung
+beenden.
+
 ## Tests
 
 ```bash

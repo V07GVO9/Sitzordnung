@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Sitzordnung.Api.Data;
 using Sitzordnung.Api.Models;
@@ -17,7 +20,33 @@ builder.Services.AddSingleton<PhotoStorage>();
 builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<GradingService>();
 
-builder.Services.AddControllers();
+// Ein einziges Login für die Lehrkraft, keine Schülerzugänge. Jeder Endpunkt
+// ist standardmäßig geschützt (siehe AuthorizeFilter unten); AuthController
+// öffnet Anmeldung/Ersteinrichtung bewusst mit [AllowAnonymous].
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "sitzordnung_auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromHours(12);
+        options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    });
+builder.Services.AddAuthorization();
+
+builder.Services.AddControllers(options =>
+    options.Filters.Add(new AuthorizeFilter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -55,6 +84,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

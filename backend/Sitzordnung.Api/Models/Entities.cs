@@ -214,4 +214,11 @@ public class AppSettings
     /// Stundenplans möglich. Standardmäßig aus.
     /// </summary>
     public bool AllowRatingOutsideLesson { get; set; }
+
+    /// <summary>
+    /// Hash des Kennworts, mit dem sich die Lehrkraft anmeldet. Null, solange
+    /// noch kein Kennwort vergeben wurde (Ersteinrichtung steht dann noch aus).
+    /// </summary>
+    [MaxLength(200)]
+    public string? PasswordHash { get; set; }
 }

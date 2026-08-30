@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -49,6 +50,12 @@ public class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IClock>();
             services.AddSingleton<IClock>(Clock);
+
+            // Die Endpunkt-Tests prüfen die Fachlogik, nicht den Login - dafür
+            // meldet dieser Handler jede Anfrage automatisch als Lehrkraft an.
+            services
+                .AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
         });
     }
 
