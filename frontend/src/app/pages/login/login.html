@@ -1,0 +1,54 @@
+@if (!loading()) {
+  <div class="login-wrap">
+    <form class="card login-card" (ngSubmit)="submit()">
+      <div class="brand-mark">SO</div>
+      <h1>Sitzordnung</h1>
+
+      @if (isSetUp()) {
+        <p class="muted">Bitte melde dich mit deinem Kennwort an.</p>
+        <label>
+          Kennwort
+          <input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            [(ngModel)]="password"
+            required
+            autofocus
+          />
+        </label>
+      } @else {
+        <p class="muted">
+          Erster Start: Vergib ein Kennwort für die Anmeldung. Damit sind die
+          gespeicherten Schülerdaten geschützt.
+        </p>
+        <label>
+          Neues Kennwort
+          <input
+            type="password"
+            name="password"
+            autocomplete="new-password"
+            [(ngModel)]="password"
+            required
+            minlength="8"
+            autofocus
+          />
+        </label>
+        <label>
+          Kennwort wiederholen
+          <input
+            type="password"
+            name="passwordRepeat"
+            autocomplete="new-password"
+            [(ngModel)]="passwordRepeat"
+            required
+          />
+        </label>
+      }
+
+      <button class="btn primary" type="submit" [disabled]="submitting()">
+        {{ isSetUp() ? 'Anmelden' : 'Kennwort festlegen' }}
+      </button>
+    </form>
+  </div>
+}

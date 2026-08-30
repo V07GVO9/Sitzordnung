@@ -242,3 +242,28 @@ public class AppSettingsInput
 
     public bool AllowRatingOutsideLesson { get; set; }
 }
+
+// --- Anmeldung ---------------------------------------------------------------
+
+public record AuthStatusDto(bool IsSetUp, bool IsAuthenticated);
+
+public class SetupInput
+{
+    [Required, MinLength(8, ErrorMessage = "Das Kennwort muss mindestens 8 Zeichen lang sein.")]
+    public string Password { get; set; } = string.Empty;
+}
+
+public class LoginInput
+{
+    [Required]
+    public string Password { get; set; } = string.Empty;
+}
+
+public class ChangePasswordInput
+{
+    [Required]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required, MinLength(8, ErrorMessage = "Das neue Kennwort muss mindestens 8 Zeichen lang sein.")]
+    public string NewPassword { get; set; } = string.Empty;
+}

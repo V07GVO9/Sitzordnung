@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
+import { AuthService } from './core/auth.service';
 import { CurrentLesson } from './core/models';
 import { ToastHost } from './core/toast-host';
 
@@ -39,6 +40,10 @@ import { ToastHost } from './core/toast-host';
           }
         }
       </div>
+
+      @if (!router.url.startsWith('/anmeldung')) {
+        <button class="btn logout" type="button" (click)="logout()">Abmelden</button>
+      }
     </header>
 
     <main>
@@ -140,6 +145,21 @@ import { ToastHost } from './core/toast-host';
         background: var(--positive);
       }
 
+      .logout {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 0.45rem;
+        padding: 0.4rem 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .logout:hover {
+        background: var(--surface-muted);
+        color: var(--text);
+      }
+
       main {
         max-width: 1400px;
         margin: 0 auto;
@@ -150,7 +170,8 @@ import { ToastHost } from './core/toast-host';
 })
 export class App implements OnDestroy {
   private readonly api = inject(ApiService);
-  private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+  protected readonly router = inject(Router);
 
   readonly lesson = signal<CurrentLesson | null>(null);
 
@@ -171,7 +192,15 @@ export class App implements OnDestroy {
     clearInterval(this.timer);
   }
 
+  logout(): void {
+    this.auth.logout().subscribe(() => this.router.navigateByUrl('/anmeldung'));
+  }
+
   private refresh(): void {
+    if (this.router.url.startsWith('/anmeldung')) {
+      return;
+    }
+
     this.api.getCurrentLesson().subscribe({
       next: (lesson) => this.lesson.set(lesson),
       error: () => this.lesson.set(null),
