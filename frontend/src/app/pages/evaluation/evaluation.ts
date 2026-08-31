@@ -10,6 +10,8 @@ import {
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
+import { FilePickerCancelled } from '../../core/store/file-system';
+import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
@@ -22,6 +24,11 @@ import { ToastService } from '../../core/toast.service';
 export class EvaluationPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly vault = inject(VaultService);
+
+  readonly fileName = this.vault.fileName;
+  readonly currentPassword = signal('');
+  readonly newPassword = signal('');
 
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);
@@ -196,7 +203,41 @@ export class EvaluationPage {
 
   // --- Export ---
 
-  exportHref(kind: 'ratings' | 'summary', allCourses: boolean): string {
-    return this.api.exportUrl(kind, allCourses ? null : this.selectedCourseId(), this.range);
+  // --- Datenbestand ---
+
+  /** Fragt nach einer neuen Datei und speichert dorthin. */
+  async saveAs(): Promise<void> {
+    try {
+      await this.vault.saveAs();
+      this.toasts.success('Gespeichert.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  /** Vergibt ein neues Passwort und schreibt die Datei damit neu. */
+  async changePassword(): Promise<void> {
+    try {
+      await this.vault.changePassword(this.currentPassword(), this.newPassword());
+      this.currentPassword.set('');
+      this.newPassword.set('');
+      this.toasts.success('Das Passwort wurde geändert und der Bestand gespeichert.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Das Passwort konnte nicht geändert werden.');
+      }
+    }
+  }
+
+  // --- Export ---
+
+  /** Baut die CSV-Datei im Browser und legt sie in den Download-Ordner. */
+  exportCsv(kind: 'ratings' | 'summary', allCourses: boolean): void {
+    this.api.exportCsv(kind, allCourses ? null : this.selectedCourseId(), this.range).subscribe({
+      next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
   }
 }

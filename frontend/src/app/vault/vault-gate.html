@@ -1,0 +1,103 @@
+<div class="gate">
+  <div class="gate-card">
+    <div class="gate-head">
+      <span class="brand-mark">SO</span>
+      <div>
+        <h1>Sitzordnung &amp; Mitarbeitsnoten</h1>
+        <p class="muted">
+          Alle Daten liegen in einer verschlüsselten Datei auf diesem Rechner. Nichts wird an
+          einen Server übertragen.
+        </p>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" [class.active]="mode() === 'open'" (click)="setMode('open')">
+        Datei öffnen
+      </button>
+      <button type="button" [class.active]="mode() === 'create'" (click)="setMode('create')">
+        Neu anlegen
+      </button>
+    </div>
+
+    <form (ngSubmit)="submit()">
+      <label>
+        <span>Passwort</span>
+        <input
+          type="password"
+          autocomplete="current-password"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          name="password"
+          placeholder="mindestens 8 Zeichen"
+        />
+      </label>
+
+      @if (mode() === 'create') {
+        <label>
+          <span>Passwort wiederholen</span>
+          <input
+            type="password"
+            autocomplete="new-password"
+            [ngModel]="passwordRepeat()"
+            (ngModelChange)="passwordRepeat.set($event)"
+            name="passwordRepeat"
+          />
+        </label>
+
+        @if (!passwordsMatch()) {
+          <p class="hint error">Die beiden Passwörter stimmen nicht überein.</p>
+        }
+
+        <p class="hint warn">
+          Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der
+          Datenbestand verloren.
+        </p>
+      }
+
+      <button class="btn primary block" type="submit" [disabled]="!canSubmit()">
+        @if (busy()) {
+          Einen Moment …
+        } @else if (mode() === 'create') {
+          Neuen Datenbestand anlegen
+        } @else {
+          Datei auswählen und öffnen
+        }
+      </button>
+    </form>
+
+    @if (autosave(); as entry) {
+      <div class="autosave">
+        <strong>Zwischenstand gefunden</strong>
+        <p class="muted small">
+          Zuletzt gesichert am {{ savedAtText(entry) }}@if (entry.fileName) {
+            , zur Datei „{{ entry.fileName }}"
+          }. Der Zwischenstand liegt verschlüsselt im Browser und lässt sich mit demselben
+          Passwort öffnen.
+        </p>
+        <div class="row">
+          <button
+            class="btn"
+            type="button"
+            [disabled]="busy() || password().length === 0"
+            (click)="restore()"
+          >
+            Zwischenstand laden
+          </button>
+          <button class="btn danger small" type="button" (click)="discardAutosave()">
+            Verwerfen
+          </button>
+        </div>
+      </div>
+    }
+
+    <p class="hint small muted">
+      @if (canWriteInPlace) {
+        Dieser Browser kann direkt in die gewählte Datei zurückschreiben.
+      } @else {
+        Dieser Browser kann nicht in eine Datei zurückschreiben. Gespeichert wird deshalb als
+        Download – in Chrome oder Edge geht es bequemer.
+      }
+    </p>
+  </div>
+</div>

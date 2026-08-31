@@ -1,5 +1,6 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
+import { AppError } from './store/app-error';
+import { VaultFormatError, VaultPasswordError } from './store/vault-crypto';
 
 export interface Toast {
   id: number;
@@ -24,38 +25,20 @@ export class ToastService {
   }
 
   /**
-   * Zeigt die Meldung der API an. Das Backend antwortet bei Regelverstößen mit
-   * einem verständlichen Text, der hier direkt angezeigt wird.
+   * Zeigt die Meldung an, die zum Fehler gehört. Fachliche Fehler bringen
+   * einen verständlichen Text mit, der direkt angezeigt wird.
    */
   error(error: unknown, fallback = 'Es ist ein Fehler aufgetreten.'): void {
     this.show(this.describe(error, fallback), 'error', 6000);
   }
 
   private describe(error: unknown, fallback: string): string {
-    if (!(error instanceof HttpErrorResponse)) {
-      return fallback;
+    if (error instanceof AppError) {
+      return error.message;
     }
 
-    if (error.status === 0) {
-      return 'Der Server ist nicht erreichbar. Läuft das Backend?';
-    }
-
-    const body = error.error;
-
-    if (typeof body === 'string' && body.trim()) {
-      return body;
-    }
-
-    // Antwortet ASP.NET Core mit einem Validierungsfehler, steckt der Text in "errors".
-    if (body?.errors && typeof body.errors === 'object') {
-      const messages = Object.values(body.errors as Record<string, string[]>).flat();
-      if (messages.length) {
-        return messages.join(' ');
-      }
-    }
-
-    if (typeof body?.title === 'string') {
-      return body.title;
+    if (error instanceof VaultPasswordError || error instanceof VaultFormatError) {
+      return error.message;
     }
 
     return fallback;

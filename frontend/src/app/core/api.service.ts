@@ -1,6 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, defer, of, throwError } from 'rxjs';
 import {
   AppSettings,
   Course,
@@ -19,129 +18,144 @@ import {
   TimetableEntry,
   TimetableEntryInput,
 } from './models';
+import { DateRange, LocalStore } from './store/local-store';
+import { readPhoto } from './store/photo';
+import { download } from './store/file-system';
 
-/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
-export interface DateRange {
-  from?: string | null;
-  to?: string | null;
-}
+export type { DateRange } from './store/local-store';
 
+/**
+ * Die Schnittstelle, über die die Oberfläche an die Daten kommt.
+ *
+ * Früher lag dahinter eine Web-API mit Datenbank. Heute arbeitet sie gegen den
+ * Datenbestand im Browser - die Methoden geben weiterhin Observables zurück,
+ * damit die Seiten unverändert bleiben.
+ */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly http = inject(HttpClient);
-  private readonly base = '/api';
+  private readonly store = inject(LocalStore);
 
-  private range(range?: DateRange): HttpParams {
-    let params = new HttpParams();
-    if (range?.from) {
-      params = params.set('from', range.from);
-    }
-    if (range?.to) {
-      params = params.set('to', range.to);
-    }
-    return params;
+  /**
+   * Führt die Arbeit erst beim Abonnieren aus und macht aus einem Fehler
+   * einen fehlgeschlagenen Observable - so wie es eine HTTP-Antwort täte.
+   */
+  private run<T>(action: () => T): Observable<T> {
+    return defer(() => {
+      try {
+        return of(action());
+      } catch (error) {
+        return throwError(() => error);
+      }
+    });
+  }
+
+  private fromPromise<T>(action: () => Promise<T>): Observable<T> {
+    return defer(action);
   }
 
   // --- Klassen ---
 
   getClasses(): Observable<SchoolClass[]> {
-    return this.http.get<SchoolClass[]>(`${this.base}/classes`);
+    return this.run(() => this.store.getClasses());
   }
 
   createClass(name: string): Observable<SchoolClass> {
-    return this.http.post<SchoolClass>(`${this.base}/classes`, { name });
+    return this.run(() => this.store.createClass(name));
   }
 
   updateClass(id: number, name: string): Observable<SchoolClass> {
-    return this.http.put<SchoolClass>(`${this.base}/classes/${id}`, { name });
+    return this.run(() => this.store.updateClass(id, name));
   }
 
   deleteClass(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/classes/${id}`);
+    return this.run(() => this.store.deleteClass(id));
   }
 
   // --- Fächer ---
 
   getSubjects(): Observable<Subject[]> {
-    return this.http.get<Subject[]>(`${this.base}/subjects`);
+    return this.run(() => this.store.getSubjects());
   }
 
   createSubject(name: string, shortName: string): Observable<Subject> {
-    return this.http.post<Subject>(`${this.base}/subjects`, { name, shortName });
+    return this.run(() => this.store.createSubject(name, shortName));
   }
 
   updateSubject(id: number, name: string, shortName: string): Observable<Subject> {
-    return this.http.put<Subject>(`${this.base}/subjects/${id}`, { name, shortName });
+    return this.run(() => this.store.updateSubject(id, name, shortName));
   }
 
   deleteSubject(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/subjects/${id}`);
+    return this.run(() => this.store.deleteSubject(id));
   }
 
   // --- Kurse ---
 
   getCourses(): Observable<Course[]> {
-    return this.http.get<Course[]>(`${this.base}/courses`);
+    return this.run(() => this.store.getCourses());
   }
 
   getCourse(id: number): Observable<Course> {
-    return this.http.get<Course>(`${this.base}/courses/${id}`);
+    return this.run(() => this.store.getCourse(id));
   }
 
   createCourse(schoolClassId: number, subjectId: number): Observable<Course> {
-    return this.http.post<Course>(`${this.base}/courses`, { schoolClassId, subjectId });
+    return this.run(() => this.store.createCourse(schoolClassId, subjectId));
   }
 
   deleteCourse(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/courses/${id}`);
+    return this.run(() => this.store.deleteCourse(id));
   }
 
   getCourseStudents(courseId: number): Observable<Student[]> {
-    return this.http.get<Student[]>(`${this.base}/courses/${courseId}/students`);
+    return this.run(() => this.store.getCourseStudents(courseId));
   }
 
   // --- Schüler ---
 
   getStudents(classId: number): Observable<Student[]> {
-    return this.http.get<Student[]>(`${this.base}/classes/${classId}/students`);
+    return this.run(() => this.store.getStudents(classId));
   }
 
   createStudent(classId: number, firstName: string, lastName: string): Observable<Student> {
-    return this.http.post<Student>(`${this.base}/classes/${classId}/students`, {
-      firstName,
-      lastName,
-    });
+    return this.run(() => this.store.createStudent(classId, firstName, lastName));
   }
 
   importStudents(
     classId: number,
     students: { firstName: string; lastName: string }[],
   ): Observable<Student[]> {
-    return this.http.post<Student[]>(`${this.base}/classes/${classId}/students/import`, students);
+    return this.run(() => this.store.importStudents(classId, students));
   }
 
   updateStudent(id: number, firstName: string, lastName: string): Observable<Student> {
-    return this.http.put<Student>(`${this.base}/students/${id}`, { firstName, lastName });
+    return this.run(() => this.store.updateStudent(id, firstName, lastName));
   }
 
   deleteStudent(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/students/${id}`);
+    return this.run(() => this.store.deleteStudent(id));
   }
 
+  /**
+   * Nimmt das Foto entgegen. Es wird vorher verkleinert - die Bilder wandern
+   * in dieselbe Datei wie alles andere, ein Foto in Kameragröße würde sie
+   * unnötig aufblähen.
+   */
   uploadPhoto(studentId: number, file: File): Observable<Student> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<Student>(`${this.base}/students/${studentId}/photo`, form);
+    return this.fromPromise(async () => {
+      const dataUrl = await readPhoto(file);
+      return this.store.setPhoto(studentId, dataUrl);
+    });
   }
 
   deletePhoto(studentId: number): Observable<Student> {
-    return this.http.delete<Student>(`${this.base}/students/${studentId}/photo`);
+    return this.run(() => this.store.deletePhoto(studentId));
   }
 
   // --- Sitzordnungen ---
 
   getSeatingPlans(courseId: number): Observable<SeatingPlan[]> {
-    return this.http.get<SeatingPlan[]>(`${this.base}/courses/${courseId}/seatingplans`);
+    return this.run(() => this.store.getSeatingPlans(courseId));
   }
 
   createSeatingPlan(
@@ -150,11 +164,7 @@ export class ApiService {
     rows: number,
     columns: number,
   ): Observable<SeatingPlan> {
-    return this.http.post<SeatingPlan>(`${this.base}/courses/${courseId}/seatingplans`, {
-      name,
-      rows,
-      columns,
-    });
+    return this.run(() => this.store.createSeatingPlan(courseId, name, rows, columns));
   }
 
   updateSeatingPlan(
@@ -163,43 +173,43 @@ export class ApiService {
     rows: number,
     columns: number,
   ): Observable<SeatingPlan> {
-    return this.http.put<SeatingPlan>(`${this.base}/seatingplans/${id}`, { name, rows, columns });
+    return this.run(() => this.store.updateSeatingPlan(id, name, rows, columns));
   }
 
   saveLayout(planId: number, layout: SeatLayoutInput): Observable<SeatingPlan> {
-    return this.http.put<SeatingPlan>(`${this.base}/seatingplans/${planId}/layout`, layout);
+    return this.run(() => this.store.saveLayout(planId, layout));
   }
 
   deleteSeatingPlan(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/seatingplans/${id}`);
+    return this.run(() => this.store.deleteSeatingPlan(id));
   }
 
   // --- Stundenplan ---
 
   getTimetable(): Observable<TimetableEntry[]> {
-    return this.http.get<TimetableEntry[]>(`${this.base}/timetable`);
+    return this.run(() => this.store.getTimetable());
   }
 
   getCurrentLesson(): Observable<CurrentLesson> {
-    return this.http.get<CurrentLesson>(`${this.base}/timetable/current`);
+    return this.run(() => this.store.getCurrentLesson());
   }
 
   createTimetableEntry(input: TimetableEntryInput): Observable<TimetableEntry> {
-    return this.http.post<TimetableEntry>(`${this.base}/timetable`, input);
+    return this.run(() => this.store.createTimetableEntry(input));
   }
 
   updateTimetableEntry(id: number, input: TimetableEntryInput): Observable<TimetableEntry> {
-    return this.http.put<TimetableEntry>(`${this.base}/timetable/${id}`, input);
+    return this.run(() => this.store.updateTimetableEntry(id, input));
   }
 
   deleteTimetableEntry(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/timetable/${id}`);
+    return this.run(() => this.store.deleteTimetableEntry(id));
   }
 
   // --- Bewertungen ---
 
   getRatingWindow(courseId: number): Observable<RatingWindow> {
-    return this.http.get<RatingWindow>(`${this.base}/courses/${courseId}/rating-window`);
+    return this.run(() => this.store.getRatingWindow(courseId));
   }
 
   rate(
@@ -208,74 +218,71 @@ export class ApiService {
     value: RatingValue,
     comment?: string,
   ): Observable<Rating> {
-    return this.http.post<Rating>(`${this.base}/ratings`, {
-      courseId,
-      studentId,
-      value,
-      comment: comment ?? null,
-    });
+    return this.run(() => this.store.rate(courseId, studentId, value, comment));
   }
 
   undoLastRating(courseId: number, studentId: number): Observable<void> {
-    return this.http.post<void>(
-      `${this.base}/courses/${courseId}/students/${studentId}/undo`,
-      {},
-    );
+    return this.run(() => this.store.undoLastRating(courseId, studentId));
   }
 
   getScoreboard(courseId: number, range?: DateRange): Observable<CourseScoreboard> {
-    return this.http.get<CourseScoreboard>(`${this.base}/courses/${courseId}/scoreboard`, {
-      params: this.range(range),
-    });
+    return this.run(() => this.store.getScoreboard(courseId, range));
   }
 
   getRatings(courseId: number, range?: DateRange): Observable<Rating[]> {
-    return this.http.get<Rating[]>(`${this.base}/courses/${courseId}/ratings`, {
-      params: this.range(range),
-    });
+    return this.run(() => this.store.getRatings(courseId, range));
   }
 
   // --- Notenschlüssel ---
 
   getGlobalGradeScale(): Observable<GradeScale> {
-    return this.http.get<GradeScale>(`${this.base}/gradescales/global`);
+    return this.run(() => this.store.getGlobalGradeScale());
   }
 
   saveGlobalGradeScale(input: GradeScaleInput): Observable<GradeScale> {
-    return this.http.put<GradeScale>(`${this.base}/gradescales/global`, input);
+    return this.run(() => this.store.saveGradeScale(null, input));
   }
 
   getCourseGradeScale(courseId: number): Observable<GradeScale> {
-    return this.http.get<GradeScale>(`${this.base}/courses/${courseId}/gradescale`);
+    return this.run(() => this.store.getCourseGradeScale(courseId));
   }
 
   saveCourseGradeScale(courseId: number, input: GradeScaleInput): Observable<GradeScale> {
-    return this.http.put<GradeScale>(`${this.base}/courses/${courseId}/gradescale`, input);
+    return this.run(() => this.store.saveGradeScale(courseId, input));
   }
 
   deleteCourseGradeScale(courseId: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/courses/${courseId}/gradescale`);
+    return this.run(() => this.store.deleteCourseGradeScale(courseId));
   }
 
   // --- Einstellungen ---
 
   getSettings(): Observable<AppSettings> {
-    return this.http.get<AppSettings>(`${this.base}/settings`);
+    return this.run(() => this.store.getSettings());
   }
 
   saveSettings(settings: AppSettings): Observable<AppSettings> {
-    return this.http.put<AppSettings>(`${this.base}/settings`, settings);
+    return this.run(() => this.store.saveSettings(settings));
   }
 
   // --- Export ---
 
-  /** Baut die Adresse für einen CSV-Download. */
-  exportUrl(kind: 'ratings' | 'summary', courseId?: number | null, range?: DateRange): string {
-    let params = this.range(range);
-    if (courseId) {
-      params = params.set('courseId', String(courseId));
-    }
-    const query = params.toString();
-    return `${this.base}/export/${kind}.csv${query ? '?' + query : ''}`;
+  /**
+   * Baut die CSV-Datei und bietet sie zum Herunterladen an. Früher zeigte ein
+   * Link auf das Backend; jetzt entsteht die Datei im Browser.
+   */
+  exportCsv(
+    kind: 'ratings' | 'summary',
+    courseId?: number | null,
+    range?: DateRange,
+  ): Observable<void> {
+    return this.run(() => {
+      const result =
+        kind === 'ratings'
+          ? this.store.exportRatings(courseId ?? null, range)
+          : this.store.exportSummary(courseId ?? null, range);
+
+      download(result.blob, result.fileName);
+    });
   }
 }
