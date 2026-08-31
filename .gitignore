@@ -4,11 +4,11 @@ obj/
 *.user
 *.suo
 
-# Datenbank und hochgeladene Fotos bleiben lokal
-backend/Sitzordnung.Api/App_Data/
-
 # Das gebaute Frontend wird beim Build erzeugt
-backend/Sitzordnung.Api/wwwroot/
+backend/Sitzordnung.Host/wwwroot/
+
+# Datenbestände der App bleiben lokal und gehören nie in die Versionsverwaltung
+*.sitzordnung
 
 # Node
 node_modules/

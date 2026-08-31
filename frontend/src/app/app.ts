@@ -3,13 +3,22 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
 import { CurrentLesson } from './core/models';
+import { FilePickerCancelled } from './core/store/file-system';
+import { LocalStore } from './core/store/local-store';
+import { VaultService } from './core/store/vault.service';
 import { ToastHost } from './core/toast-host';
+import { ToastService } from './core/toast.service';
+import { VaultGate } from './vault/vault-gate';
 
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost, VaultGate],
   template: `
+    @if (!isOpen()) {
+      <app-vault-gate />
+      <app-toast-host />
+    } @else {
     <header class="topbar">
       <a class="brand" routerLink="/">
         <span class="brand-mark">SO</span>
@@ -27,6 +36,25 @@ import { ToastHost } from './core/toast-host';
         <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
         <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
       </nav>
+
+      <div class="vault" [class.dirty]="hasUnsavedChanges()">
+        <span class="file" [title]="fileName() ?? 'Noch keine Datei gewählt'">
+          {{ fileName() ?? 'Ohne Datei' }}
+        </span>
+        <span class="muted small">
+          @if (isSaving()) {
+            speichert …
+          } @else if (hasUnsavedChanges()) {
+            nicht gespeichert
+          } @else {
+            gespeichert
+          }
+        </span>
+        <button class="btn small primary" type="button" [disabled]="isSaving()" (click)="save()">
+          Speichern
+        </button>
+        <button class="btn small" type="button" (click)="closeVault()">Schließen</button>
+      </div>
 
       <div class="now" [class.live]="lesson()?.hasLesson">
         @if (lesson(); as l) {
@@ -46,6 +74,7 @@ import { ToastHost } from './core/toast-host';
     </main>
 
     <app-toast-host />
+    }
   `,
   styles: [
     `
@@ -116,8 +145,31 @@ import { ToastHost } from './core/toast-host';
         color: var(--accent-dark);
       }
 
-      .now {
+      .vault {
         margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 0.3rem 0.3rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 0.85rem;
+      }
+
+      .vault.dirty {
+        background: var(--warning-soft);
+        border-color: #e8cf9d;
+      }
+
+      .vault .file {
+        max-width: 12rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+
+      .now {
         display: flex;
         align-items: center;
         gap: 0.4rem;
@@ -151,8 +203,16 @@ import { ToastHost } from './core/toast-host';
 export class App implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly store = inject(LocalStore);
+  private readonly vault = inject(VaultService);
+  private readonly toasts = inject(ToastService);
 
   readonly lesson = signal<CurrentLesson | null>(null);
+
+  readonly isOpen = this.store.isOpen;
+  readonly hasUnsavedChanges = this.store.hasUnsavedChanges;
+  readonly fileName = this.vault.fileName;
+  readonly isSaving = this.vault.isSaving;
 
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
   private readonly timer = setInterval(() => this.refresh(), 60_000);
@@ -171,7 +231,39 @@ export class App implements OnDestroy {
     clearInterval(this.timer);
   }
 
+  /** Schreibt den Datenbestand in die Datei. */
+  async save(): Promise<void> {
+    try {
+      await this.vault.save();
+      this.toasts.success('Gespeichert.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  /** Schließt den Bestand - danach fragt die App wieder nach der Datei. */
+  async closeVault(): Promise<void> {
+    if (this.hasUnsavedChanges()) {
+      const confirmed = confirm(
+        'Es gibt ungespeicherte Änderungen. Wirklich schließen? Sie gehen dabei verloren.',
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    await this.vault.closeVault();
+    await this.router.navigateByUrl('/');
+  }
+
   private refresh(): void {
+    if (!this.store.isOpen()) {
+      this.lesson.set(null);
+      return;
+    }
+
     this.api.getCurrentLesson().subscribe({
       next: (lesson) => this.lesson.set(lesson),
       error: () => this.lesson.set(null),

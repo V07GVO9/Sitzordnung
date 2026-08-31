@@ -33,11 +33,13 @@
 
       <span class="spacer"></span>
 
-      <a class="btn primary" [href]="exportHref('summary', false)" download>
+      <button class="btn primary" type="button" (click)="exportCsv('summary', false)">
         Punktestand als CSV
-      </a>
-      <a class="btn" [href]="exportHref('ratings', false)" download>Einzelbewertungen</a>
-      <a class="btn" [href]="exportHref('summary', true)" download>Alle Kurse</a>
+      </button>
+      <button class="btn" type="button" (click)="exportCsv('ratings', false)">
+        Einzelbewertungen
+      </button>
+      <button class="btn" type="button" (click)="exportCsv('summary', true)">Alle Kurse</button>
     </div>
     <p class="muted small">
       Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet. Die CSV-Dateien öffnen sich direkt
@@ -215,7 +217,60 @@
             Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
           </div>
         }
+
+        <p class="muted small">
+          Die Sperre ist eine Hilfe für den Unterrichtsalltag, keine Zugriffskontrolle: sie
+          läuft im Browser und lässt sich dort umgehen.
+        </p>
       }
+    </section>
+
+    <section class="card">
+      <h2>Datenbestand</h2>
+      <p class="muted small">
+        Alle Daten liegen verschlüsselt in der Datei
+        <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
+      </p>
+
+      <div class="row">
+        <button class="btn" type="button" (click)="saveAs()">Speichern unter …</button>
+      </div>
+
+      <h3>Passwort ändern</h3>
+      <label class="full">
+        Bisheriges Passwort
+        <input
+          type="password"
+          autocomplete="current-password"
+          [ngModel]="currentPassword()"
+          (ngModelChange)="currentPassword.set($event)"
+          name="currentPassword"
+        />
+      </label>
+      <label class="full">
+        Neues Passwort
+        <input
+          type="password"
+          autocomplete="new-password"
+          [ngModel]="newPassword()"
+          (ngModelChange)="newPassword.set($event)"
+          name="newPassword"
+        />
+      </label>
+      <div class="row">
+        <button
+          class="btn"
+          type="button"
+          [disabled]="newPassword().length < 8"
+          (click)="changePassword()"
+        >
+          Passwort ändern und speichern
+        </button>
+      </div>
+      <p class="muted small">
+        Das neue Passwort gilt ab dem nächsten Speichern. Ältere Sicherungskopien behalten ihr
+        altes Passwort.
+      </p>
     </section>
   </div>
 </div>
