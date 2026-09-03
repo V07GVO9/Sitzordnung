@@ -114,7 +114,6 @@ export interface Rating {
   studentId: number;
   value: number;
   lessonDate: string;
-  lessonStart: string;
   createdAt: string;
   comment: string | null;
 }
@@ -136,7 +135,7 @@ export interface CourseScoreboard {
   schoolClassName: string;
   subjectName: string;
   date: string;
-  currentLesson: LessonSlot;
+  currentLesson?: LessonSlot;
   students: StudentScore[];
 }
 
@@ -170,6 +169,18 @@ export const WEEKDAY_NAMES: Record<number, string> = {
 
 /** Die Wochentage in der Reihenfolge, in der ein Stundenplan sie zeigt. */
 export const SCHOOL_DAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
+
+export interface AppSettings {
+  toleranceMinutes: number;
+  allowRatingOutsideLesson: boolean;
+}
+
+export interface RatingWindow {
+  canRate: boolean;
+  reason: string;
+  startTime: string | null;
+  endTime: string | null;
+}
 
 export function ratingSymbol(value: number): string {
   switch (value) {
