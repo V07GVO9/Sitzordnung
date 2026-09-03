@@ -303,9 +303,9 @@ export class DataPage {
 
     this.api.uploadPhoto(student.id, file).subscribe({
       next: (updated) => {
-        // Der Zeitstempel erzwingt, dass der Browser das neue Foto lädt.
-        const fresh = { ...updated, photoUrl: `${updated.photoUrl}?v=${Date.now()}` };
-        this.students.update((list) => list.map((s) => (s.id === fresh.id ? fresh : s)));
+        // Das Bild steckt jetzt als Data-URL im Datensatz - es gibt nichts
+        // nachzuladen, der neue Wert reicht.
+        this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
         input.value = '';
       },
       error: (err) => {

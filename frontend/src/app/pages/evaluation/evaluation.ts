@@ -1,27 +1,34 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import {
+  AppSettings,
   Course,
   CourseScoreboard,
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
+import { FilePickerCancelled } from '../../core/store/file-system';
+import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
 export class EvaluationPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly vault = inject(VaultService);
+
+  readonly fileName = this.vault.fileName;
+  readonly currentPassword = signal('');
+  readonly newPassword = signal('');
 
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);
@@ -34,6 +41,7 @@ export class EvaluationPage {
   readonly scaleEntries = signal<GradeScaleEntry[]>([]);
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
+  readonly settings = signal<AppSettings | null>(null);
 
   readonly selectedCourse = computed(
     () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
@@ -52,10 +60,12 @@ export class EvaluationPage {
     forkJoin({
       courses: this.api.getCourses(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
+      settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, scale }) => {
+      next: ({ courses, scale, settings }) => {
         this.courses.set(courses);
         this.applyScale(scale);
+        this.settings.set(settings);
 
         if (courses.length) {
           this.selectCourse(courses[0].id);
@@ -167,9 +177,56 @@ export class EvaluationPage {
     });
   }
 
+  saveSettings(partial: Partial<AppSettings>): void {
+    const current = this.settings() || { toleranceMinutes: 0, allowRatingOutsideLesson: false };
+    const updated = { ...current, ...partial };
+
+    this.api.saveSettings(updated).subscribe({
+      next: (settings) => {
+        this.settings.set(settings);
+        this.toasts.success('Einstellungen gespeichert.');
+      },
+      error: (err) => this.toasts.error(err, 'Einstellungen konnten nicht gespeichert werden.'),
+    });
+  }
+
   // --- Export ---
 
-  exportHref(kind: 'ratings' | 'summary', allCourses: boolean): string {
-    return this.api.exportUrl(kind, allCourses ? null : this.selectedCourseId(), this.range);
+  // --- Datenbestand ---
+
+  /** Fragt nach einer neuen Datei und speichert dorthin. */
+  async saveAs(): Promise<void> {
+    try {
+      await this.vault.saveAs();
+      this.toasts.success('Gespeichert.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  /** Vergibt ein neues Passwort und schreibt die Datei damit neu. */
+  async changePassword(): Promise<void> {
+    try {
+      await this.vault.changePassword(this.currentPassword(), this.newPassword());
+      this.currentPassword.set('');
+      this.newPassword.set('');
+      this.toasts.success('Das Passwort wurde geändert und der Bestand gespeichert.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Das Passwort konnte nicht geändert werden.');
+      }
+    }
+  }
+
+  // --- Export ---
+
+  /** Baut die CSV-Datei im Browser und legt sie in den Download-Ordner. */
+  exportCsv(kind: 'ratings' | 'summary', allCourses: boolean): void {
+    this.api.exportCsv(kind, allCourses ? null : this.selectedCourseId(), this.range).subscribe({
+      next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
   }
 }

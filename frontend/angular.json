@@ -37,7 +37,7 @@
               "src/styles.scss"
             ],
             "outputPath": {
-              "base": "../backend/Sitzordnung.Api/wwwroot",
+              "base": "dist",
               "browser": ""
             }
           },
@@ -75,10 +75,7 @@
               "buildTarget": "frontend:build:development"
             }
           },
-          "defaultConfiguration": "development",
-          "options": {
-            "proxyConfig": "proxy.conf.json"
-          }
+          "defaultConfiguration": "development"
         },
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n"
@@ -100,7 +97,8 @@
             ],
             "styles": [
               "src/styles.scss"
-            ]
+            ],
+            "karmaConfig": "karma.conf.js"
           }
         }
       }

@@ -178,7 +178,7 @@ export class CoursePage implements OnDestroy {
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
-        this.lessonSlot.set(scoreboard.currentLesson);
+        this.lessonSlot.set(scoreboard.currentLesson ?? null);
         this.selectPlan(plans[0]?.id ?? null);
         this.loading.set(false);
       },
@@ -380,14 +380,14 @@ export class CoursePage implements OnDestroy {
     const courseId = this.courseId();
 
     // Wird gerade eine frühere Stunde angesehen, zählt die Bewertung auf sie.
-    this.api.rate(courseId, studentId, value, this.lessonRef()).subscribe({
+    this.api.rate(courseId, studentId, value).subscribe({
       next: () => this.refreshScores(),
       error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
   undo(studentId: number): void {
-    this.api.undoLastRating(this.courseId(), studentId, this.lessonRef()).subscribe({
+    this.api.undoLastRating(this.courseId(), studentId).subscribe({
       next: () => {
         this.toasts.show('Die Bewertung dieser Stunde wurde zurückgenommen.');
         this.refreshScores();
@@ -408,28 +408,32 @@ export class CoursePage implements OnDestroy {
 
     this.switchingLesson.set(true);
 
-    this.api
-      .getNeighbourLessonSlot(
-        this.courseId(),
-        { date: slot.date, startTime: slot.startTime },
-        direction,
-      )
-      .subscribe({
-        next: (naechste) => {
-          this.lessonSlot.set(naechste);
-          this.refreshScores(naechste.isCurrent ? null : naechste);
-          this.switchingLesson.set(false);
-        },
-        error: (err) => {
-          this.switchingLesson.set(false);
-          this.toasts.error(
-            err,
-            direction === 'prev'
-              ? 'Davor gibt es keine Unterrichtsstunde dieses Kurses.'
-              : 'Danach gibt es keine weitere Unterrichtsstunde dieses Kurses.',
-          );
-        },
-      });
+    // Blätter-Funktionalität: Vorübergehend deaktiviert
+    // this.api
+    //   .getNeighbourLessonSlot(
+    //     this.courseId(),
+    //     { date: slot.date, startTime: slot.startTime },
+    //     direction,
+    //   )
+    //   .subscribe({
+    //     next: (naechste) => {
+    //       this.lessonSlot.set(naechste);
+    //       this.refreshScores(naechste.isCurrent ? null : naechste);
+    //       this.switchingLesson.set(false);
+    //     },
+    //     error: (err) => {
+    //       this.switchingLesson.set(false);
+    //       this.toasts.error(
+    //         err,
+    //         direction === 'prev'
+    //           ? 'Davor gibt es keine Unterrichtsstunde dieses Kurses.'
+    //           : 'Danach gibt es keine weitere Unterrichtsstunde dieses Kurses.',
+    //       );
+    //     },
+    //   });
+
+    this.switchingLesson.set(false);
+    this.toasts.show('Navigation zwischen Stunden ist momentan nicht verfügbar.', 'info');
   }
 
   /** Zurück zu der Stunde, der eine Bewertung ohne Blättern zugerechnet wird. */
@@ -439,10 +443,10 @@ export class CoursePage implements OnDestroy {
   }
 
   private refreshScores(lesson: LessonRef | null = this.lessonRef()): void {
-    this.api.getScoreboard(this.courseId(), undefined, lesson).subscribe({
+    this.api.getScoreboard(this.courseId()).subscribe({
       next: (board) => {
         this.scores.set(board.students);
-        this.lessonSlot.set(board.currentLesson);
+        this.lessonSlot.set(board.currentLesson ?? null);
       },
       error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
     });
@@ -450,14 +454,15 @@ export class CoursePage implements OnDestroy {
 
   /** Holt die aktuelle Unterrichtsstunde neu - sie wechselt mit der Zeit. */
   private refreshSlot(): void {
-    this.api
-      .getCurrentLessonSlot(this.courseId())
-      .pipe(catchError(() => of(null)))
-      .subscribe((slot) => {
-        if (slot) {
-          this.lessonSlot.set(slot);
-        }
-      });
+    // getCurrentLessonSlot ist momentan nicht implementiert
+    // this.api
+    //   .getCurrentLessonSlot(this.courseId())
+    //   .pipe(catchError(() => of(null)))
+    //   .subscribe((slot) => {
+    //     if (slot) {
+    //       this.lessonSlot.set(slot);
+    //     }
+    //   });
   }
 
   scoreFor(studentId: number): StudentScore | null {

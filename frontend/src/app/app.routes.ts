@@ -34,20 +34,6 @@ export const routes: Routes = [
   },
   { path: 'stundenplan', redirectTo: '', pathMatch: 'full' },
   {
-    path: 'verwaltung/import',
-    canActivate: [authGuard],
-    title: 'Schüler importieren',
-    loadComponent: () =>
-      import('./pages/student-import/student-import').then((m) => m.StudentImportPage),
-  },
-  {
-    path: 'stundenplan/import',
-    canActivate: [authGuard],
-    title: 'Stundenplan importieren',
-    loadComponent: () =>
-      import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
-  },
-  {
     path: 'auswertung',
     canActivate: [authGuard],
     title: 'Auswertung',
