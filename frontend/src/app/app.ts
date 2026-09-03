@@ -35,26 +35,42 @@ import { VaultGate } from './vault/vault-gate';
         <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
         <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
         <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
+
+        <!--
+          Das Abschließen bleibt erreichbar: auf einem Rechner, an dem noch
+          jemand anderes sitzt, ist es der Griff, mit dem die Schülerdaten
+          wieder unter Verschluss kommen.
+        -->
+        <button class="nav-schliessen" type="button" (click)="closeVault()">Abschließen</button>
       </nav>
 
-      <div class="vault" [class.dirty]="hasUnsavedChanges()">
-        <span class="file" [title]="fileName() ?? 'Noch keine Datei gewählt'">
-          {{ fileName() ?? 'Ohne Datei' }}
-        </span>
-        <span class="muted small">
-          @if (isSaving()) {
-            speichert …
-          } @else if (hasUnsavedChanges()) {
-            nicht gespeichert
-          } @else {
-            gespeichert
-          }
-        </span>
-        <button class="btn small primary" type="button" [disabled]="isSaving()" (click)="save()">
-          Speichern
+      <!--
+        Gespeichert wird von allein. Angezeigt wird nur, was der Benutzer wissen
+        muss: dass etwas schiefging, oder dass dieser Browser die Datei nicht
+        selbst beschreiben kann und sie von Hand gesichert werden will.
+      -->
+      @if (saveError(); as fehler) {
+        <button class="vault-hinweis fehler" type="button" [title]="fehler" (click)="save()">
+          Nicht gespeichert - erneut versuchen
         </button>
-        <button class="btn small" type="button" (click)="closeVault()">Schließen</button>
-      </div>
+      } @else if (brauchtHandarbeit()) {
+        <button
+          class="vault-hinweis"
+          type="button"
+          [disabled]="isSaving()"
+          [class.dirty]="hasUnsavedChanges()"
+          title="Dieser Browser kann die Datei nicht selbst beschreiben. Hier sicherst du sie."
+          (click)="save()"
+        >
+          @if (isSaving()) {
+            sichert …
+          } @else if (hasUnsavedChanges()) {
+            Datei sichern
+          } @else {
+            Datei gesichert
+          }
+        </button>
+      }
 
       <div class="now" [class.live]="lesson()?.hasLesson">
         @if (lesson(); as l) {
@@ -90,6 +106,40 @@ import { VaultGate } from './vault/vault-gate';
         position: sticky;
         top: 0;
         z-index: 20;
+      }
+
+      .vault-hinweis {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        border-radius: 999px;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+
+      .vault-hinweis.dirty {
+        border-color: var(--accent, #2d6cdf);
+        color: var(--accent, #2d6cdf);
+      }
+
+      .vault-hinweis.fehler {
+        border-color: #c0392b;
+        color: #c0392b;
+      }
+
+      .nav-schliessen {
+        border: 0;
+        background: none;
+        color: var(--muted);
+        cursor: pointer;
+        font: inherit;
+        padding: 0.25rem 0.5rem;
+      }
+
+      .nav-schliessen:hover {
+        color: var(--text);
+        text-decoration: underline;
       }
 
       .brand {
@@ -145,30 +195,6 @@ import { VaultGate } from './vault/vault-gate';
         color: var(--accent-dark);
       }
 
-      .vault {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.3rem 0.3rem 0.3rem 0.7rem;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        font-size: 0.85rem;
-      }
-
-      .vault.dirty {
-        background: var(--warning-soft);
-        border-color: #e8cf9d;
-      }
-
-      .vault .file {
-        max-width: 12rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-weight: 500;
-      }
-
       .now {
         display: flex;
         align-items: center;
@@ -213,6 +239,8 @@ export class App implements OnDestroy {
   readonly hasUnsavedChanges = this.store.hasUnsavedChanges;
   readonly fileName = this.vault.fileName;
   readonly isSaving = this.vault.isSaving;
+  readonly saveError = this.vault.saveError;
+  readonly brauchtHandarbeit = this.vault.brauchtHandarbeit;
 
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
   private readonly timer = setInterval(() => this.refresh(), 60_000);
@@ -231,11 +259,14 @@ export class App implements OnDestroy {
     clearInterval(this.timer);
   }
 
-  /** Schreibt den Datenbestand in die Datei. */
+  /**
+   * Sichert den Bestand von Hand. Nötig nur in Browsern ohne Dateizugriff und
+   * als zweiter Versuch, wenn das selbsttätige Speichern gescheitert ist.
+   */
   async save(): Promise<void> {
     try {
       await this.vault.save();
-      this.toasts.success('Gespeichert.');
+      this.toasts.success('Gesichert.');
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
@@ -245,9 +276,11 @@ export class App implements OnDestroy {
 
   /** Schließt den Bestand - danach fragt die App wieder nach der Datei. */
   async closeVault(): Promise<void> {
+    // Wo von allein gespeichert wird, ist beim Abschließen normalerweise alles
+    // in der Datei. Nur wenn doch etwas aussteht, wird nachgefragt.
     if (this.hasUnsavedChanges()) {
       const confirmed = confirm(
-        'Es gibt ungespeicherte Änderungen. Wirklich schließen? Sie gehen dabei verloren.',
+        'Es gibt noch ungesicherte Änderungen. Wirklich abschließen? Sie gehen dabei verloren.',
       );
       if (!confirmed) {
         return;
