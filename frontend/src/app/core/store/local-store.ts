@@ -26,6 +26,10 @@ import {
   Subject,
   TimetableEntry,
   TimetableEntryInput,
+  TimetableImportPreview,
+  TimetableImportResult,
+  TimetableImportRow,
+  WEEKDAY_NAMES,
 } from '../models';
 import { AppError } from './app-error';
 import {
@@ -40,6 +44,7 @@ import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
 import { effectiveScale, resolveGrade } from './grading.logic';
 import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
 import { Clock, isValidTime, toDateKey, toMinutes, toTimeKey } from './time';
+import { parseTimetableIcs } from './timetable-import';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 export interface DateRange {
@@ -1038,6 +1043,145 @@ export class LocalStore {
       blob: csv.toBlob(),
       fileName: `mitarbeit-${suffix}-${toDateKey(this.clock.now())}.csv`,
     };
+  }
+
+  // --- Stundenplan-Import ---------------------------------------------------
+
+  /**
+   * Liest einen Kalenderexport und zeigt, was daraus würde - ohne etwas zu
+   * speichern. Was bereits angelegt ist, hilft beim Erkennen von Klasse und
+   * Fach im Termintitel.
+   */
+  previewTimetableImport(ics: string): TimetableImportPreview {
+    const klassen = this.database.schoolClasses.map((c) => c.name);
+    const faecher = this.database.subjects.flatMap((s) =>
+      s.shortName.trim() === '' ? [s.name] : [s.name, s.shortName],
+    );
+
+    return parseTimetableIcs(ics, klassen, faecher);
+  }
+
+  /**
+   * Übernimmt die bestätigten Zeilen. Fehlende Klassen, Fächer und Kurse
+   * werden dabei angelegt; Dopplungen und Überschneidungen übersprungen.
+   */
+  applyTimetableImport(rows: readonly TimetableImportRow[]): TimetableImportResult {
+    if (rows.length === 0) {
+      throw new AppError('Es wurde keine Zeile zum Übernehmen ausgewählt.');
+    }
+
+    const skipped: string[] = [];
+    let createdClasses = 0;
+    let createdSubjects = 0;
+    let createdCourses = 0;
+    let createdLessons = 0;
+
+    for (const zeile of rows) {
+      const klassenName = zeile.schoolClassName.trim();
+      const fachName = zeile.subjectName.trim();
+      const beschreibung =
+        `${WEEKDAY_NAMES[zeile.dayOfWeek] ?? ''} ${zeile.startTime} ${fachName} ${klassenName}`.trim();
+
+      if (!isValidTime(zeile.startTime) || !isValidTime(zeile.endTime)) {
+        skipped.push(`${beschreibung}: unlesbare Uhrzeit.`);
+        continue;
+      }
+
+      if (toMinutes(zeile.endTime) <= toMinutes(zeile.startTime)) {
+        skipped.push(`${beschreibung}: das Ende liegt nicht nach dem Beginn.`);
+        continue;
+      }
+
+      if (klassenName === '' || fachName === '') {
+        skipped.push(`${beschreibung}: Klasse oder Fach fehlt.`);
+        continue;
+      }
+
+      let klasse = this.database.schoolClasses.find(
+        (c) => c.name.toLowerCase() === klassenName.toLowerCase(),
+      );
+      if (!klasse) {
+        klasse = { id: this.database.nextIds.schoolClass++, name: klassenName };
+        this.database.schoolClasses.push(klasse);
+        createdClasses++;
+      }
+
+      let fach = this.database.subjects.find(
+        (s) =>
+          s.name.toLowerCase() === fachName.toLowerCase() ||
+          (s.shortName.trim() !== '' && s.shortName.toLowerCase() === fachName.toLowerCase()),
+      );
+      if (!fach) {
+        fach = {
+          id: this.database.nextIds.subject++,
+          name: fachName,
+          shortName:
+            fachName.length <= 4 ? fachName.toUpperCase() : fachName.slice(0, 2).toUpperCase(),
+        };
+        this.database.subjects.push(fach);
+        createdSubjects++;
+      }
+
+      const klassenId = klasse.id;
+      const fachId = fach.id;
+
+      let kurs = this.database.courses.find(
+        (c) => c.schoolClassId === klassenId && c.subjectId === fachId,
+      );
+      if (!kurs) {
+        kurs = {
+          id: this.database.nextIds.course++,
+          schoolClassId: klassenId,
+          subjectId: fachId,
+        };
+        this.database.courses.push(kurs);
+        createdCourses++;
+      }
+
+      const kursId = kurs.id;
+
+      // Dieselbe Stunde ein zweites Mal anzulegen bringt nichts.
+      const schonDa = this.database.timetableEntries.some(
+        (e) =>
+          e.courseId === kursId &&
+          e.dayOfWeek === zeile.dayOfWeek &&
+          e.startTime === zeile.startTime &&
+          e.endTime === zeile.endTime,
+      );
+      if (schonDa) {
+        skipped.push(`${beschreibung}: steht schon im Stundenplan.`);
+        continue;
+      }
+
+      // Zwei Stunden zur selben Zeit wären im Stundenplan nicht auflösbar.
+      const kollision = this.database.timetableEntries.find(
+        (e) =>
+          e.dayOfWeek === zeile.dayOfWeek &&
+          toMinutes(zeile.startTime) < toMinutes(e.endTime) &&
+          toMinutes(zeile.endTime) > toMinutes(e.startTime),
+      );
+      if (kollision) {
+        skipped.push(
+          `${beschreibung}: überschneidet sich mit einer bereits eingetragenen Stunde ` +
+            `(${kollision.startTime}-${kollision.endTime} Uhr).`,
+        );
+        continue;
+      }
+
+      this.database.timetableEntries.push({
+        id: this.database.nextIds.timetableEntry++,
+        courseId: kursId,
+        dayOfWeek: zeile.dayOfWeek,
+        startTime: zeile.startTime,
+        endTime: zeile.endTime,
+        room: zeile.room?.trim() ? zeile.room.trim() : null,
+      });
+      createdLessons++;
+    }
+
+    this.changed();
+
+    return { createdClasses, createdSubjects, createdCourses, createdLessons, skipped };
   }
 }
 
