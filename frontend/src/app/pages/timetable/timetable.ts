@@ -36,18 +36,51 @@ export class TimetablePage {
   readonly formEnd = signal('08:45');
   readonly formRoom = signal('');
 
-  /** Die Einträge nach Wochentag gruppiert und nach Uhrzeit sortiert. */
-  readonly byDay = computed(() => {
-    const map = new Map<number, TimetableEntry[]>();
-    for (const day of this.days) {
-      map.set(
-        day,
-        this.entries()
-          .filter((e) => e.dayOfWeek === day)
-          .sort((a, b) => a.startTime.localeCompare(b.startTime)),
-      );
+  /**
+   * Alle vorkommenden Zeitschienen, nach Beginn sortiert. Sie bilden die Zeilen
+   * der Tabelle; die Uhrzeit steht dann einmal links statt in jeder Stunde.
+   */
+  readonly zeitschienen = computed(() => {
+    const gesehen = new Map<string, { startTime: string; endTime: string }>();
+
+    for (const eintrag of this.entries()) {
+      const schluessel = `${eintrag.startTime}-${eintrag.endTime}`;
+      if (!gesehen.has(schluessel)) {
+        gesehen.set(schluessel, { startTime: eintrag.startTime, endTime: eintrag.endTime });
+      }
     }
+
+    return [...gesehen.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  });
+
+  /** Die Einträge nach Zeitschiene und Wochentag, für den Zugriff aus der Tabelle. */
+  private readonly raster = computed(() => {
+    const map = new Map<string, TimetableEntry[]>();
+
+    for (const eintrag of this.entries()) {
+      const schluessel = `${eintrag.startTime}-${eintrag.endTime}|${eintrag.dayOfWeek}`;
+      map.set(schluessel, [...(map.get(schluessel) ?? []), eintrag]);
+    }
+
     return map;
+  });
+
+  /**
+   * Für die schmale Ansicht: je Wochentag die Stunden nach Uhrzeit sortiert.
+   * So passt der Plan auch aufs Handy, ohne seitlich zu scrollen.
+   */
+  readonly wochentage = computed(() => {
+    const eintraege = this.entries();
+
+    return this.days
+      .map((day) => ({
+        day,
+        name: WEEKDAY_NAMES[day],
+        stunden: eintraege
+          .filter((eintrag) => eintrag.dayOfWeek === day)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+      }))
+      .filter((tag) => tag.stunden.length > 0);
   });
 
   readonly today = new Date().getDay();
@@ -75,8 +108,20 @@ export class TimetablePage {
     });
   }
 
-  entriesFor(day: DayOfWeek): TimetableEntry[] {
-    return this.byDay().get(day) ?? [];
+  /** Was steht in dieser Zelle? Meist eine Stunde, in Ausnahmen mehrere. */
+  stundenIn(schiene: { startTime: string; endTime: string }, day: DayOfWeek): TimetableEntry[] {
+    return this.raster().get(`${schiene.startTime}-${schiene.endTime}|${day}`) ?? [];
+  }
+
+  /** Läuft diese Stunde gerade? Dann wird sie in der Tabelle hervorgehoben. */
+  laeuftGerade(entry: TimetableEntry): boolean {
+    const jetzt = new Date();
+    if (entry.dayOfWeek !== jetzt.getDay()) {
+      return false;
+    }
+
+    const uhr = `${String(jetzt.getHours()).padStart(2, '0')}:${String(jetzt.getMinutes()).padStart(2, '0')}`;
+    return entry.startTime <= uhr && uhr <= entry.endTime;
   }
 
   add(): void {

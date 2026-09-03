@@ -1,0 +1,31 @@
+# Caddy holt und erneuert die Zertifikate von Let's Encrypt automatisch.
+{
+	email {$ACME_EMAIL}
+}
+
+(gemeinsam) {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		# Die Anwendung lädt alles von der eigenen Adresse.
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+		-Server
+	}
+}
+
+{$PROD_DOMAIN} {
+	import gemeinsam
+	reverse_proxy app-prod:8080
+}
+
+{$TEST_DOMAIN} {
+	import gemeinsam
+	reverse_proxy app-test:8080
+
+	# Suchmaschinen sollen die Testumgebung nicht aufnehmen.
+	header X-Robots-Tag "noindex, nofollow"
+}

@@ -36,13 +36,12 @@ export class EvaluationPage {
   readonly from = signal('');
   readonly to = signal('');
 
-  readonly settings = signal<AppSettings | null>(null);
-
   /** Der Schlüssel, der gerade bearbeitet wird. */
   readonly scaleName = signal('Standard-Notenschlüssel');
   readonly scaleEntries = signal<GradeScaleEntry[]>([]);
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
+  readonly settings = signal<AppSettings | null>(null);
 
   readonly selectedCourse = computed(
     () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
@@ -60,13 +59,13 @@ export class EvaluationPage {
   constructor() {
     forkJoin({
       courses: this.api.getCourses(),
-      settings: this.api.getSettings(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
+      settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, settings, scale }) => {
+      next: ({ courses, scale, settings }) => {
         this.courses.set(courses);
-        this.settings.set(settings);
         this.applyScale(scale);
+        this.settings.set(settings);
 
         if (courses.length) {
           this.selectCourse(courses[0].id);
@@ -178,26 +177,16 @@ export class EvaluationPage {
     });
   }
 
-  // --- Einstellungen ---
+  saveSettings(partial: Partial<AppSettings>): void {
+    const current = this.settings() || { toleranceMinutes: 0, allowRatingOutsideLesson: false };
+    const updated = { ...current, ...partial };
 
-  saveSettings(patch: Partial<AppSettings>): void {
-    const current = this.settings();
-    if (!current) {
-      return;
-    }
-
-    const next = { ...current, ...patch };
-    this.settings.set(next);
-
-    this.api.saveSettings(next).subscribe({
-      next: (saved) => {
-        this.settings.set(saved);
-        this.toasts.success('Die Einstellung wurde gespeichert.');
+    this.api.saveSettings(updated).subscribe({
+      next: (settings) => {
+        this.settings.set(settings);
+        this.toasts.success('Einstellungen gespeichert.');
       },
-      error: (err) => {
-        this.settings.set(current);
-        this.toasts.error(err, 'Die Einstellung konnte nicht gespeichert werden.');
-      },
+      error: (err) => this.toasts.error(err, 'Einstellungen konnten nicht gespeichert werden.'),
     });
   }
 

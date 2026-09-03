@@ -149,6 +149,7 @@
       <div class="row">
         <h2>Schüler der Klasse {{ schoolClass.name }}</h2>
         <span class="spacer"></span>
+        <a class="btn small primary" routerLink="/verwaltung/import">Schüler importieren</a>
         <button class="btn small" type="button" (click)="showImport.set(!showImport())">
           {{ showImport() ? 'Liste schließen' : 'Namensliste einfügen' }}
         </button>

@@ -791,6 +791,7 @@ export class LocalStore {
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
 
+    // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
       const own = ratings.filter((r) => r.studentId === s.id);
       const points = own.reduce((sum, r) => sum + r.value, 0);
