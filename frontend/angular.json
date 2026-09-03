@@ -37,7 +37,7 @@
               "src/styles.scss"
             ],
             "outputPath": {
-              "base": "../backend/Sitzordnung.Host/wwwroot",
+              "base": "dist",
               "browser": ""
             }
           },

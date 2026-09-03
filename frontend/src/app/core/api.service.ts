@@ -285,4 +285,12 @@ export class ApiService {
       download(result.blob, result.fileName);
     });
   }
+
+  getNeighbourLessonSlot(courseId: number, lesson: any, direction: string): Observable<any> {
+    return throwError(() => new Error('Navigationsfunktion nicht verfügbar'));
+  }
+
+  getCurrentLessonSlot(courseId: number): Observable<any> {
+    return throwError(() => new Error('Funktionalität nicht verfügbar'));
+  }
 }

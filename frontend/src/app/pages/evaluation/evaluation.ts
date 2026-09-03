@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import {
+  AppSettings,
   Course,
   CourseScoreboard,
   GradeScale,
@@ -17,7 +17,7 @@ import { ToastService } from '../../core/toast.service';
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -41,6 +41,7 @@ export class EvaluationPage {
   readonly scaleEntries = signal<GradeScaleEntry[]>([]);
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
+  readonly settings = signal<AppSettings | null>(null);
 
   readonly selectedCourse = computed(
     () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
@@ -59,10 +60,12 @@ export class EvaluationPage {
     forkJoin({
       courses: this.api.getCourses(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
+      settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, scale }) => {
+      next: ({ courses, scale, settings }) => {
         this.courses.set(courses);
         this.applyScale(scale);
+        this.settings.set(settings);
 
         if (courses.length) {
           this.selectCourse(courses[0].id);
@@ -171,6 +174,19 @@ export class EvaluationPage {
         this.refreshScoreboard();
       },
       error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht entfernt werden.'),
+    });
+  }
+
+  saveSettings(partial: Partial<AppSettings>): void {
+    const current = this.settings() || { toleranceMinutes: 0, allowRatingOutsideLesson: false };
+    const updated = { ...current, ...partial };
+
+    this.api.saveSettings(updated).subscribe({
+      next: (settings) => {
+        this.settings.set(settings);
+        this.toasts.success('Einstellungen gespeichert.');
+      },
+      error: (err) => this.toasts.error(err, 'Einstellungen konnten nicht gespeichert werden.'),
     });
   }
 
