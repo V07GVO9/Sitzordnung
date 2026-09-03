@@ -17,6 +17,9 @@ import {
   Subject,
   TimetableEntry,
   TimetableEntryInput,
+  TimetableImportPreview,
+  TimetableImportResult,
+  TimetableImportRow,
 } from './models';
 import { DateRange, LocalStore } from './store/local-store';
 import { readPhoto } from './store/photo';
@@ -200,6 +203,14 @@ export class ApiService {
 
   updateTimetableEntry(id: number, input: TimetableEntryInput): Observable<TimetableEntry> {
     return this.run(() => this.store.updateTimetableEntry(id, input));
+  }
+
+  previewTimetableImport(ics: string): Observable<TimetableImportPreview> {
+    return this.run(() => this.store.previewTimetableImport(ics));
+  }
+
+  applyTimetableImport(rows: TimetableImportRow[]): Observable<TimetableImportResult> {
+    return this.run(() => this.store.applyTimetableImport(rows));
   }
 
   deleteTimetableEntry(id: number): Observable<void> {

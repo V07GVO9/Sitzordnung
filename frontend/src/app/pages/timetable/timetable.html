@@ -3,6 +3,7 @@
     <div class="row">
       <h1>Stundenplan</h1>
       <span class="spacer"></span>
+      <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
     </div>
   </section>
 
@@ -76,7 +77,7 @@
       @if (zeitschienen().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
-          <p class="muted">Trage die Stunden oben über das Formular ein.</p>
+          <p class="muted">Trage die Stunden oben ein oder importiere sie aus WebUntis.</p>
         </div>
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->

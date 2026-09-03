@@ -3,6 +3,7 @@
  * des Backends standen. Entspricht den ApiEndpointTests.
  */
 
+import { TimetableImportRow } from '../models';
 import { AppError } from './app-error';
 import { LocalStore } from './local-store';
 
@@ -470,5 +471,168 @@ describe('LocalStore - Ablage', () => {
 
     expect(second.getClasses()[0].name).toBe('10a');
     expect(second.isOpen()).toBe(true);
+  });
+});
+
+describe('Stundenplan-Import', () => {
+  /** Eine Zeile, wie die Vorschau sie liefert. */
+  function row(overrides: Partial<TimetableImportRow> = {}): TimetableImportRow {
+    return {
+      dayOfWeek: 1,
+      startTime: '08:00',
+      endTime: '08:45',
+      schoolClassName: '10a',
+      subjectName: 'Mathematik',
+      room: 'A101',
+      occurrences: 18,
+      looksRegular: true,
+      sourceTitle: 'Mathematik 10a',
+      ...overrides,
+    };
+  }
+
+  it('legt Klasse, Fach, Kurs und Stunde in einem Zug an', () => {
+    const store = setup();
+
+    const ergebnis = store.applyTimetableImport([row()]);
+
+    expect(ergebnis.createdClasses).toBe(1);
+    expect(ergebnis.createdSubjects).toBe(1);
+    expect(ergebnis.createdCourses).toBe(1);
+    expect(ergebnis.createdLessons).toBe(1);
+    expect(ergebnis.skipped).toEqual([]);
+
+    const stunde = store.getTimetable()[0];
+    expect(stunde.schoolClassName).toBe('10a');
+    expect(stunde.subjectName).toBe('Mathematik');
+    expect(stunde.room).toBe('A101');
+  });
+
+  it('benutzt vorhandene Klassen und Faecher weiter', () => {
+    const store = setup();
+    store.createClass('10a');
+    store.createSubject('Mathematik', 'MA');
+
+    const ergebnis = store.applyTimetableImport([row()]);
+
+    expect(ergebnis.createdClasses).toBe(0);
+    expect(ergebnis.createdSubjects).toBe(0);
+    expect(ergebnis.createdCourses).toBe(1);
+  });
+
+  it('erkennt ein Fach auch an seinem Kuerzel', () => {
+    const store = setup();
+    store.createSubject('Mathematik', 'MA');
+
+    const ergebnis = store.applyTimetableImport([row({ subjectName: 'MA' })]);
+
+    expect(ergebnis.createdSubjects).toBe(0);
+    expect(store.getSubjects().length).toBe(1);
+  });
+
+  it('legt fuer zwei Stunden desselben Kurses nur einen Kurs an', () => {
+    const store = setup();
+
+    const ergebnis = store.applyTimetableImport([
+      row(),
+      row({ dayOfWeek: 3, startTime: '10:00', endTime: '10:45' }),
+    ]);
+
+    expect(ergebnis.createdCourses).toBe(1);
+    expect(ergebnis.createdLessons).toBe(2);
+  });
+
+  it('ueberspringt eine Stunde, die schon im Stundenplan steht', () => {
+    const store = setup();
+    store.applyTimetableImport([row()]);
+
+    const ergebnis = store.applyTimetableImport([row()]);
+
+    expect(ergebnis.createdLessons).toBe(0);
+    expect(ergebnis.skipped[0]).toContain('steht schon im Stundenplan');
+  });
+
+  it('ueberspringt eine Stunde, die sich mit einer anderen ueberschneidet', () => {
+    const store = setup();
+    store.applyTimetableImport([row()]);
+
+    const ergebnis = store.applyTimetableImport([
+      row({ startTime: '08:30', endTime: '09:15', subjectName: 'Deutsch' }),
+    ]);
+
+    expect(ergebnis.createdLessons).toBe(0);
+    expect(ergebnis.skipped[0]).toContain('überschneidet sich');
+  });
+
+  it('ueberspringt Zeilen ohne Klasse oder Fach', () => {
+    const store = setup();
+
+    const ergebnis = store.applyTimetableImport([row({ schoolClassName: '  ' })]);
+
+    expect(ergebnis.createdLessons).toBe(0);
+    expect(ergebnis.skipped[0]).toContain('Klasse oder Fach fehlt');
+  });
+
+  it('ueberspringt Zeilen mit unlesbarer Uhrzeit', () => {
+    const store = setup();
+
+    const ergebnis = store.applyTimetableImport([row({ startTime: '25:99' })]);
+
+    expect(ergebnis.skipped[0]).toContain('unlesbare Uhrzeit');
+  });
+
+  it('ueberspringt Zeilen, deren Ende nicht nach dem Beginn liegt', () => {
+    const store = setup();
+
+    const ergebnis = store.applyTimetableImport([row({ startTime: '09:00', endTime: '08:00' })]);
+
+    expect(ergebnis.skipped[0]).toContain('nicht nach dem Beginn');
+  });
+
+  it('verlangt mindestens eine Zeile', () => {
+    const store = setup();
+
+    expect(() => store.applyTimetableImport([])).toThrowError(AppError);
+  });
+
+  it('nimmt die Vorschau als Grundlage fuer die Uebernahme', () => {
+    const store = setup();
+    const datei = [
+      'BEGIN:VCALENDAR',
+      'BEGIN:VEVENT',
+      'DTSTART;TZID=Europe/Berlin:20240115T080000',
+      'DTEND;TZID=Europe/Berlin:20240115T084500',
+      'SUMMARY:Mathematik 10a',
+      'RRULE:FREQ=WEEKLY;COUNT=18',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const vorschau = store.previewTimetableImport(datei);
+    expect(vorschau.rows.length).toBe(1);
+
+    const ergebnis = store.applyTimetableImport(vorschau.rows);
+    expect(ergebnis.createdLessons).toBe(1);
+    expect(store.getTimetable()[0].startTime).toBe('08:00');
+  });
+
+  it('zieht bereits angelegte Klassen fuer die Erkennung heran', () => {
+    const store = setup();
+    store.createClass('KDM23');
+
+    const datei = [
+      'BEGIN:VCALENDAR',
+      'BEGIN:VEVENT',
+      'DTSTART;TZID=Europe/Berlin:20240115T080000',
+      'DTEND;TZID=Europe/Berlin:20240115T084500',
+      'SUMMARY:Deutsch KDM23',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const vorschau = store.previewTimetableImport(datei);
+
+    expect(vorschau.rows[0].schoolClassName).toBe('KDM23');
+    expect(vorschau.rows[0].subjectName).toBe('Deutsch');
   });
 });

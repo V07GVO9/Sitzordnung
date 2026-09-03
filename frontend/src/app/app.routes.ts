@@ -25,6 +25,12 @@ export const routes: Routes = [
     title: 'Klassen & Schüler',
     loadComponent: () => import('./pages/data/data').then((m) => m.DataPage),
   },
+  {
+    path: 'stundenplan/import',
+    title: 'Stundenplan importieren',
+    loadComponent: () =>
+      import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
+  },
   { path: 'stundenplan', redirectTo: '', pathMatch: 'full' },
   {
     path: 'auswertung',
