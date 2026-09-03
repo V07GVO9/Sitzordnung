@@ -3,7 +3,6 @@
     <div class="row">
       <h1>Stundenplan</h1>
       <span class="spacer"></span>
-      <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
     </div>
   </section>
 
@@ -13,7 +12,7 @@
       <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
     </div>
   } @else {
-    <!--<section class="card">
+    <section class="card">
       <h2>Stunde eintragen</h2>
       <form class="form-row" (ngSubmit)="add()">
         <label class="weit">
@@ -71,13 +70,13 @@
 
         <button class="btn primary weit" type="submit">Eintragen</button>
       </form>
-    </section> -->
+    </section>
 
     <section class="card">
       @if (zeitschienen().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
-          <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
+          <p class="muted">Trage die Stunden oben über das Formular ein.</p>
         </div>
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->
