@@ -34,6 +34,14 @@ public class Datenbank extends SQLiteOpenHelper {
         getWritableDatabase().insert("eintrag", null, v);
     }
 
+    public void aendern(long id, long zeit, String art, int mengeMl) {
+        ContentValues v = new ContentValues();
+        v.put("zeit", zeit);
+        v.put("art", art);
+        v.put("menge", mengeMl);
+        getWritableDatabase().update("eintrag", v, "id = ?", new String[]{String.valueOf(id)});
+    }
+
     public void loeschen(long id) {
         getWritableDatabase().delete("eintrag", "id = ?", new String[]{String.valueOf(id)});
     }

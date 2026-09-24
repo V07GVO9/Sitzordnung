@@ -2,6 +2,8 @@ package de.wasserprotokoll;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
@@ -15,6 +17,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.DatePicker;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TimePicker;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -25,6 +31,7 @@ import android.widget.Toast;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -124,7 +131,7 @@ public class MainActivity extends Activity {
 
         // Tabelle
         TextView hinweis = new TextView(this);
-        hinweis.setText("Protokoll  ·  Eintrag lange drücken zum Löschen");
+        hinweis.setText("Protokoll  ·  Eintrag lange drücken zum Bearbeiten/Löschen");
         hinweis.setTextSize(13);
         hinweis.setTextColor(0xFF607D8B);
         hinweis.setPadding(dp(14), 0, dp(14), dp(4));
@@ -143,7 +150,7 @@ public class MainActivity extends Activity {
         liste.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int pos, long id) {
-                loeschenFragen(eintraege.get(pos));
+                eintragMenue(eintraege.get(pos));
                 return true;
             }
         });
@@ -225,12 +232,137 @@ public class MainActivity extends Activity {
         Toast.makeText(this, text + " (" + zeitFmt.format(new Date()) + " Uhr)", Toast.LENGTH_SHORT).show();
     }
 
-    private void loeschenFragen(final Eintrag e) {
-        String beschreibung = datumFmt.format(e.zeit) + ", " + zeitFmt.format(e.zeit) + " Uhr – " + e.art
+    private String beschreibung(Eintrag e) {
+        return datumFmt.format(e.zeit) + ", " + zeitFmt.format(e.zeit) + " Uhr – " + e.art
                 + (Eintrag.TRINKEN.equals(e.art) ? " (" + e.mengeMl + " ml)" : "");
+    }
+
+    private void eintragMenue(final Eintrag e) {
+        new AlertDialog.Builder(this)
+                .setTitle(beschreibung(e))
+                .setItems(new String[]{"✏️  Bearbeiten", "🗑  Löschen"}, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        if (which == 0) {
+                            bearbeiten(e);
+                        } else {
+                            loeschenFragen(e);
+                        }
+                    }
+                })
+                .setNegativeButton("Abbrechen", null)
+                .show();
+    }
+
+    /** Dialog zum Ändern von Datum, Uhrzeit, Aktion und Menge. */
+    private void bearbeiten(final Eintrag e) {
+        final Calendar zeit = Calendar.getInstance();
+        zeit.setTimeInMillis(e.zeit);
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(20), dp(8), dp(20), 0);
+
+        LinearLayout zeitZeile = new LinearLayout(this);
+        zeitZeile.setOrientation(LinearLayout.HORIZONTAL);
+        final Button datumKnopf = new Button(this);
+        final Button uhrKnopf = new Button(this);
+        datumKnopf.setAllCaps(false);
+        uhrKnopf.setAllCaps(false);
+        datumKnopf.setText("📅 " + datumFmt.format(zeit.getTime()));
+        uhrKnopf.setText("🕒 " + zeitFmt.format(zeit.getTime()));
+        datumKnopf.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new DatePickerDialog(MainActivity.this, new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker p, int jahr, int monat, int tag) {
+                        zeit.set(jahr, monat, tag);
+                        datumKnopf.setText("📅 " + datumFmt.format(zeit.getTime()));
+                    }
+                }, zeit.get(Calendar.YEAR), zeit.get(Calendar.MONTH), zeit.get(Calendar.DAY_OF_MONTH)).show();
+            }
+        });
+        uhrKnopf.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new TimePickerDialog(MainActivity.this, new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker p, int stunde, int minute) {
+                        zeit.set(Calendar.HOUR_OF_DAY, stunde);
+                        zeit.set(Calendar.MINUTE, minute);
+                        uhrKnopf.setText("🕒 " + zeitFmt.format(zeit.getTime()));
+                    }
+                }, zeit.get(Calendar.HOUR_OF_DAY), zeit.get(Calendar.MINUTE), true).show();
+            }
+        });
+        zeitZeile.addView(datumKnopf, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        zeitZeile.addView(uhrKnopf, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        form.addView(zeitZeile);
+
+        final RadioGroup artWahl = new RadioGroup(this);
+        artWahl.setOrientation(RadioGroup.HORIZONTAL);
+        final RadioButton rbTrinken = new RadioButton(this);
+        rbTrinken.setText("💧 Trinken");
+        rbTrinken.setId(View.generateViewId());
+        final RadioButton rbUrin = new RadioButton(this);
+        rbUrin.setText("🚽 Urinieren");
+        rbUrin.setId(View.generateViewId());
+        artWahl.addView(rbTrinken);
+        artWahl.addView(rbUrin);
+        form.addView(artWahl);
+
+        final EditText menge = new EditText(this);
+        menge.setInputType(InputType.TYPE_CLASS_NUMBER);
+        menge.setHint("Menge in ml");
+        if (e.mengeMl > 0) {
+            menge.setText(String.valueOf(e.mengeMl));
+        }
+        form.addView(menge);
+
+        artWahl.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup g, int id) {
+                menge.setVisibility(id == rbTrinken.getId() ? View.VISIBLE : View.GONE);
+            }
+        });
+        artWahl.check(Eintrag.TRINKEN.equals(e.art) ? rbTrinken.getId() : rbUrin.getId());
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Eintrag bearbeiten")
+                .setView(form)
+                .setPositiveButton("Speichern", null)
+                .setNegativeButton("Abbrechen", null)
+                .create();
+        dialog.show();
+        // Eigener Klick-Handler, damit der Dialog bei ungültiger Menge offen bleibt
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean trinken = rbTrinken.isChecked();
+                int ml = 0;
+                if (trinken) {
+                    try {
+                        ml = Integer.parseInt(menge.getText().toString().trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                    if (ml <= 0 || ml > 5000) {
+                        menge.setError("Bitte 1 bis 5000 ml eingeben");
+                        return;
+                    }
+                }
+                db.aendern(e.id, zeit.getTimeInMillis(), trinken ? Eintrag.TRINKEN : Eintrag.URIN, ml);
+                dialog.dismiss();
+                aktualisieren();
+                Toast.makeText(MainActivity.this, "Eintrag geändert", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void loeschenFragen(final Eintrag e) {
         new AlertDialog.Builder(this)
                 .setTitle("Eintrag löschen?")
-                .setMessage(beschreibung)
+                .setMessage(beschreibung(e))
                 .setPositiveButton("Löschen", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {

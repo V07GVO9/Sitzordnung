@@ -3,7 +3,7 @@
 Einfache App: **Trinken** (mit Menge) und **Urinieren** per Knopfdruck protokollieren,
 Zeitpunkt wird automatisch erfasst.
 
-- Tabellenansicht in der App (Datum | Uhrzeit | Aktion | Menge), Eintrag lange drücken = löschen
+- Tabellenansicht in der App (Datum | Uhrzeit | Aktion | Menge), Eintrag lange drücken = bearbeiten (Datum, Uhrzeit, Aktion, Menge) oder löschen
 - Tagesstand oben (ml getrunken, Anzahl Toilettengänge)
 - **Excel-Export** (.xlsx) mit zwei Blättern: *Protokoll* und *Tagesübersicht*
 - Daten bleiben lokal auf dem Handy (SQLite), keine Berechtigungen nötig
