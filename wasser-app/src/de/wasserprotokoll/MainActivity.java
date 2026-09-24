@@ -45,6 +45,8 @@ public class MainActivity extends Activity {
     private static final int BLAU = 0xFF1565C0;
     private static final int BLAU_HELL = 0xFFBBDEFB;
     private static final int GELB = 0xFFF9A825;
+    private static final int BRAUN = 0xFF6D4C41;
+    private static final int ROT = 0xFFD84315;
     private static final int GRAU_LINIE = 0xFFBDBDBD;
     private static final int ZEILE_GERADE = 0xFFFFFFFF;
     private static final int ZEILE_UNGERADE = 0xFFF1F6FC;
@@ -102,15 +104,26 @@ public class MainActivity extends Activity {
         heuteText.setPadding(dp(16), dp(14), dp(16), dp(6));
         root.addView(heuteText);
 
-        // Die zwei Knöpfe
-        LinearLayout knoepfe = new LinearLayout(this);
-        knoepfe.setOrientation(LinearLayout.HORIZONTAL);
-        knoepfe.setPadding(dp(12), dp(6), dp(12), dp(12));
-        Button trinken = grosserKnopf("💧\nTrinken", BLAU, Color.WHITE);
-        trinken.setOnClickListener(new View.OnClickListener() {
+        // Die vier Knöpfe (2 × 2)
+        Button wasser = grosserKnopf("💧\nWasser", BLAU, Color.WHITE);
+        wasser.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mengeWaehlen();
+            }
+        });
+        Button kaffee = grosserKnopf("☕\nKaffee", BRAUN, Color.WHITE);
+        kaffee.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getraenkSpeichern(Eintrag.KAFFEE, Eintrag.STANDARD_ML);
+            }
+        });
+        Button softdrink = grosserKnopf("🥤\nSoftdrink", ROT, Color.WHITE);
+        softdrink.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getraenkSpeichern(Eintrag.SOFTDRINK, Eintrag.STANDARD_ML);
             }
         });
         Button urin = grosserKnopf("🚽\nUrinieren", GELB, 0xFF212121);
@@ -121,12 +134,11 @@ public class MainActivity extends Activity {
                 bestaetigen("Urinieren erfasst");
             }
         });
-        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, dp(150), 1f);
-        lpL.setMargins(0, 0, dp(6), 0);
-        LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, dp(150), 1f);
-        lpR.setMargins(dp(6), 0, 0, 0);
-        knoepfe.addView(trinken, lpL);
-        knoepfe.addView(urin, lpR);
+        LinearLayout knoepfe = new LinearLayout(this);
+        knoepfe.setOrientation(LinearLayout.VERTICAL);
+        knoepfe.setPadding(dp(12), dp(6), dp(12), dp(12));
+        knoepfe.addView(knopfReihe(wasser, kaffee));
+        knoepfe.addView(knopfReihe(softdrink, urin));
         root.addView(knoepfe);
 
         // Tabelle
@@ -178,7 +190,7 @@ public class MainActivity extends Activity {
         }
         texte[MENGEN.length] = "Andere Menge …";
         new AlertDialog.Builder(this)
-                .setTitle("Wie viel getrunken?")
+                .setTitle("Wie viel Wasser?")
                 .setItems(texte, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {
@@ -223,8 +235,12 @@ public class MainActivity extends Activity {
     }
 
     private void trinkenSpeichern(int ml) {
-        db.hinzufuegen(Eintrag.TRINKEN, ml);
-        bestaetigen(ml + " ml Trinken erfasst");
+        getraenkSpeichern(Eintrag.TRINKEN, ml);
+    }
+
+    private void getraenkSpeichern(String art, int ml) {
+        db.hinzufuegen(art, ml);
+        bestaetigen(ml + " ml " + Eintrag.name(art) + " erfasst");
     }
 
     private void bestaetigen(String text) {
@@ -233,8 +249,8 @@ public class MainActivity extends Activity {
     }
 
     private String beschreibung(Eintrag e) {
-        return datumFmt.format(e.zeit) + ", " + zeitFmt.format(e.zeit) + " Uhr – " + e.art
-                + (Eintrag.TRINKEN.equals(e.art) ? " (" + e.mengeMl + " ml)" : "");
+        return datumFmt.format(e.zeit) + ", " + zeitFmt.format(e.zeit) + " Uhr – " + Eintrag.name(e.art)
+                + (Eintrag.istGetraenk(e.art) ? " (" + e.mengeMl + " ml)" : "");
     }
 
     private void eintragMenue(final Eintrag e) {
@@ -300,16 +316,16 @@ public class MainActivity extends Activity {
         zeitZeile.addView(uhrKnopf, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         form.addView(zeitZeile);
 
+        final String[] arten = {Eintrag.TRINKEN, Eintrag.KAFFEE, Eintrag.SOFTDRINK, Eintrag.URIN};
+        final RadioButton[] rb = new RadioButton[arten.length];
         final RadioGroup artWahl = new RadioGroup(this);
-        artWahl.setOrientation(RadioGroup.HORIZONTAL);
-        final RadioButton rbTrinken = new RadioButton(this);
-        rbTrinken.setText("💧 Trinken");
-        rbTrinken.setId(View.generateViewId());
-        final RadioButton rbUrin = new RadioButton(this);
-        rbUrin.setText("🚽 Urinieren");
-        rbUrin.setId(View.generateViewId());
-        artWahl.addView(rbTrinken);
-        artWahl.addView(rbUrin);
+        artWahl.setOrientation(RadioGroup.VERTICAL);
+        for (int i = 0; i < arten.length; i++) {
+            rb[i] = new RadioButton(this);
+            rb[i].setText(Eintrag.symbol(arten[i]) + " " + Eintrag.name(arten[i]));
+            rb[i].setId(View.generateViewId());
+            artWahl.addView(rb[i]);
+        }
         form.addView(artWahl);
 
         final EditText menge = new EditText(this);
@@ -323,10 +339,19 @@ public class MainActivity extends Activity {
         artWahl.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup g, int id) {
-                menge.setVisibility(id == rbTrinken.getId() ? View.VISIBLE : View.GONE);
+                boolean urin = id == rb[3].getId();
+                menge.setVisibility(urin ? View.GONE : View.VISIBLE);
+                boolean fest = id == rb[1].getId() || id == rb[2].getId();
+                if (fest && menge.getText().toString().trim().isEmpty()) {
+                    menge.setText(String.valueOf(Eintrag.STANDARD_ML));
+                }
             }
         });
-        artWahl.check(Eintrag.TRINKEN.equals(e.art) ? rbTrinken.getId() : rbUrin.getId());
+        for (int i = 0; i < arten.length; i++) {
+            if (arten[i].equals(e.art)) {
+                artWahl.check(rb[i].getId());
+            }
+        }
 
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Eintrag bearbeiten")
@@ -339,9 +364,14 @@ public class MainActivity extends Activity {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                boolean trinken = rbTrinken.isChecked();
+                String art = Eintrag.URIN;
+                for (int i = 0; i < arten.length; i++) {
+                    if (rb[i].isChecked()) {
+                        art = arten[i];
+                    }
+                }
                 int ml = 0;
-                if (trinken) {
+                if (Eintrag.istGetraenk(art)) {
                     try {
                         ml = Integer.parseInt(menge.getText().toString().trim());
                     } catch (NumberFormatException ignored) {
@@ -351,7 +381,7 @@ public class MainActivity extends Activity {
                         return;
                     }
                 }
-                db.aendern(e.id, zeit.getTimeInMillis(), trinken ? Eintrag.TRINKEN : Eintrag.URIN, ml);
+                db.aendern(e.id, zeit.getTimeInMillis(), art, ml);
                 dialog.dismiss();
                 aktualisieren();
                 Toast.makeText(MainActivity.this, "Eintrag geändert", Toast.LENGTH_SHORT).show();
@@ -416,7 +446,7 @@ public class MainActivity extends Activity {
             if (!heute.equals(datumFmt.format(e.zeit))) {
                 break; // Liste ist absteigend sortiert
             }
-            if (Eintrag.TRINKEN.equals(e.art)) {
+            if (Eintrag.istGetraenk(e.art)) {
                 ml += e.mengeMl;
                 trinken++;
             } else {
@@ -424,7 +454,7 @@ public class MainActivity extends Activity {
             }
         }
         heuteText.setText("Heute: " + String.format(Locale.GERMANY, "%,d", ml) + " ml getrunken ("
-                + trinken + "×)  ·  " + urin + "× uriniert");
+                + trinken + (trinken == 1 ? " Getränk" : " Getränke") + ")  ·  " + urin + "× uriniert");
         adapter.notifyDataSetChanged();
     }
 
@@ -450,8 +480,8 @@ public class MainActivity extends Activity {
             String[] werte = {
                     datumFmt.format(e.zeit),
                     zeitFmt.format(e.zeit),
-                    Eintrag.TRINKEN.equals(e.art) ? "💧 Trinken" : "🚽 Urinieren",
-                    Eintrag.TRINKEN.equals(e.art) ? String.valueOf(e.mengeMl) : ""
+                    Eintrag.symbol(e.art) + " " + Eintrag.name(e.art),
+                    Eintrag.istGetraenk(e.art) ? String.valueOf(e.mengeMl) : ""
             };
             int farbe = pos % 2 == 0 ? ZEILE_GERADE : ZEILE_UNGERADE;
             LinearLayout z = (LinearLayout) alt;
@@ -496,12 +526,25 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(text);
         b.setAllCaps(false);
-        b.setTextSize(24);
+        b.setTextSize(21);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setTextColor(schrift);
         b.setBackground(rund(hintergrund, 18));
         b.setElevation(dp(3));
         return b;
+    }
+
+    private LinearLayout knopfReihe(Button links, Button rechts) {
+        LinearLayout reihe = new LinearLayout(this);
+        reihe.setOrientation(LinearLayout.HORIZONTAL);
+        reihe.setPadding(0, dp(4), 0, dp(4));
+        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, dp(105), 1f);
+        lpL.setMargins(0, 0, dp(5), 0);
+        LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, dp(105), 1f);
+        lpR.setMargins(dp(5), 0, 0, 0);
+        reihe.addView(links, lpL);
+        reihe.addView(rechts, lpR);
+        return reihe;
     }
 
     private GradientDrawable rund(int farbe, int radiusDp) {

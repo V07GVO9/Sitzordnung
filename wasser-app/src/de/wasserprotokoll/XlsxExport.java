@@ -89,8 +89,8 @@ public final class XlsxExport {
             s1.append("<row r=\"").append(r).append("\">")
                     .append(zahl("A" + r, Math.floor(serial), S_DATUM))
                     .append(zahl("B" + r, serial - Math.floor(serial), S_UHRZEIT))
-                    .append(text("C" + r, e.art, 0));
-            if (Eintrag.TRINKEN.equals(e.art)) {
+                    .append(text("C" + r, Eintrag.name(e.art), 0));
+            if (Eintrag.istGetraenk(e.art)) {
                 s1.append(zahl("D" + r, e.mengeMl, 0));
             }
             s1.append("</row>");
@@ -104,33 +104,43 @@ public final class XlsxExport {
         datei(zip, "xl/worksheets/sheet1.xml", s1.toString());
 
         // Blatt 2: Tagesübersicht
-        Map<String, long[]> tage = new LinkedHashMap<>(); // Datum -> {Serial, ml, Anzahl Trinken, Anzahl Urin}
+        // Datum -> {Serial, Gesamt ml, Wasser ml, Kaffee ml, Softdrink ml, Anzahl Urinieren}
+        Map<String, long[]> tage = new LinkedHashMap<>();
         SimpleDateFormat tagFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY);
         for (Eintrag e : eintraege) {
             String tag = tagFmt.format(e.zeit);
             long[] w = tage.get(tag);
             if (w == null) {
-                w = new long[]{(long) Math.floor(excelSerial(e.zeit)), 0, 0, 0};
+                w = new long[]{(long) Math.floor(excelSerial(e.zeit)), 0, 0, 0, 0, 0};
                 tage.put(tag, w);
             }
-            if (Eintrag.TRINKEN.equals(e.art)) {
-                w[1] += e.mengeMl;
-                w[2]++;
+            if (Eintrag.URIN.equals(e.art)) {
+                w[5]++;
             } else {
-                w[3]++;
+                w[1] += e.mengeMl;
+                if (Eintrag.KAFFEE.equals(e.art)) {
+                    w[3] += e.mengeMl;
+                } else if (Eintrag.SOFTDRINK.equals(e.art)) {
+                    w[4] += e.mengeMl;
+                } else {
+                    w[2] += e.mengeMl;
+                }
             }
         }
-        StringBuilder s2 = kopfBlatt(new int[]{14, 16, 18, 20});
-        s2.append("<row r=\"1\">")
-                .append(text("A1", "Datum", S_KOPF)).append(text("B1", "Getrunken (ml)", S_KOPF))
-                .append(text("C1", "Anzahl Trinken", S_KOPF)).append(text("D1", "Anzahl Urinieren", S_KOPF))
-                .append("</row>");
+        String[] kopf = {"Datum", "Gesamt (ml)", "Wasser (ml)", "Kaffee (ml)", "Softdrink (ml)", "Anzahl Urinieren"};
+        StringBuilder s2 = kopfBlatt(new int[]{14, 14, 14, 14, 16, 18});
+        s2.append("<row r=\"1\">");
+        for (int i = 0; i < kopf.length; i++) {
+            s2.append(text((char) ('A' + i) + "1", kopf[i], S_KOPF));
+        }
+        s2.append("</row>");
         r = 2;
         for (long[] w : tage.values()) {
-            s2.append("<row r=\"").append(r).append("\">")
-                    .append(zahl("A" + r, w[0], S_DATUM)).append(zahl("B" + r, w[1], 0))
-                    .append(zahl("C" + r, w[2], 0)).append(zahl("D" + r, w[3], 0))
-                    .append("</row>");
+            s2.append("<row r=\"").append(r).append("\">");
+            for (int i = 0; i < w.length; i++) {
+                s2.append(zahl((char) ('A' + i) + "" + r, w[i], i == 0 ? S_DATUM : 0));
+            }
+            s2.append("</row>");
             r++;
         }
         s2.append("</sheetData></worksheet>");

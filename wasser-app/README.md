@@ -1,11 +1,11 @@
 # Wasserprotokoll (Android)
 
-Einfache App: **Trinken** (mit Menge) und **Urinieren** per Knopfdruck protokollieren,
-Zeitpunkt wird automatisch erfasst.
+Einfache App: **Wasser** (Menge wählbar), **Kaffee** und **Softdrink** (je automatisch 300 ml)
+sowie **Urinieren** per Knopfdruck protokollieren, Zeitpunkt wird automatisch erfasst.
 
 - Tabellenansicht in der App (Datum | Uhrzeit | Aktion | Menge), Eintrag lange drücken = bearbeiten (Datum, Uhrzeit, Aktion, Menge) oder löschen
 - Tagesstand oben (ml getrunken, Anzahl Toilettengänge)
-- **Excel-Export** (.xlsx) mit zwei Blättern: *Protokoll* und *Tagesübersicht*
+- **Excel-Export** (.xlsx) mit zwei Blättern: *Protokoll* und *Tagesübersicht* (Gesamt, Wasser, Kaffee, Softdrink, Urinieren je Tag)
 - Daten bleiben lokal auf dem Handy (SQLite), keine Berechtigungen nötig
 
 ## Installation
