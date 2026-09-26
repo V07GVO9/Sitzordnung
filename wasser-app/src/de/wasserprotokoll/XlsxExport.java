@@ -104,31 +104,34 @@ public final class XlsxExport {
         datei(zip, "xl/worksheets/sheet1.xml", s1.toString());
 
         // Blatt 2: Tagesübersicht
-        // Datum -> {Serial, Gesamt ml, Wasser ml, Kaffee ml, Softdrink ml, Anzahl Urinieren}
+        // Datum -> {Serial, Gesamt ml, Wasser ml, Kaffee ml, Softdrink ml, Energy ml, Anzahl Urinieren}
         Map<String, long[]> tage = new LinkedHashMap<>();
         SimpleDateFormat tagFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY);
         for (Eintrag e : eintraege) {
             String tag = tagFmt.format(e.zeit);
             long[] w = tage.get(tag);
             if (w == null) {
-                w = new long[]{(long) Math.floor(excelSerial(e.zeit)), 0, 0, 0, 0, 0};
+                w = new long[]{(long) Math.floor(excelSerial(e.zeit)), 0, 0, 0, 0, 0, 0};
                 tage.put(tag, w);
             }
             if (Eintrag.URIN.equals(e.art)) {
-                w[5]++;
+                w[6]++;
             } else {
                 w[1] += e.mengeMl;
                 if (Eintrag.KAFFEE.equals(e.art)) {
                     w[3] += e.mengeMl;
                 } else if (Eintrag.SOFTDRINK.equals(e.art)) {
                     w[4] += e.mengeMl;
+                } else if (Eintrag.ENERGY.equals(e.art)) {
+                    w[5] += e.mengeMl;
                 } else {
                     w[2] += e.mengeMl;
                 }
             }
         }
-        String[] kopf = {"Datum", "Gesamt (ml)", "Wasser (ml)", "Kaffee (ml)", "Softdrink (ml)", "Anzahl Urinieren"};
-        StringBuilder s2 = kopfBlatt(new int[]{14, 14, 14, 14, 16, 18});
+        String[] kopf = {"Datum", "Gesamt (ml)", "Wasser (ml)", "Kaffee (ml)", "Softdrink (ml)", "Energy Drink (ml)",
+                "Anzahl Urinieren"};
+        StringBuilder s2 = kopfBlatt(new int[]{14, 14, 14, 14, 16, 18, 18});
         s2.append("<row r=\"1\">");
         for (int i = 0; i < kopf.length; i++) {
             s2.append(text((char) ('A' + i) + "1", kopf[i], S_KOPF));

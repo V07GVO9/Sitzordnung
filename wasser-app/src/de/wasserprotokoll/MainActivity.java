@@ -24,7 +24,9 @@ import android.widget.TimePicker;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,6 +49,7 @@ public class MainActivity extends Activity {
     private static final int GELB = 0xFFF9A825;
     private static final int BRAUN = 0xFF6D4C41;
     private static final int ROT = 0xFFD84315;
+    private static final int LILA = 0xFF6A1B9A;
     private static final int GRAU_LINIE = 0xFFBDBDBD;
     private static final int ZEILE_GERADE = 0xFFFFFFFF;
     private static final int ZEILE_UNGERADE = 0xFFF1F6FC;
@@ -59,6 +62,11 @@ public class MainActivity extends Activity {
     private List<Eintrag> eintraege = new ArrayList<>();
     private TextView heuteText;
     private TabellenAdapter adapter;
+    private TextView leerText;
+    private Spinner datumAuswahl;
+    private final List<String> exportTage = new ArrayList<>(); // "dd.MM.yyyy", zuletzt ALLE_TAGE
+    private String exportTag; // gewähltes Datum beim Export, null = alle
+    private static final String ALLE_TAGE = "Alle Tage";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +77,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.WHITE);
 
-        // Kopfzeile mit Titel und Export
+        // Kopfzeile
         LinearLayout kopf = new LinearLayout(this);
         kopf.setOrientation(LinearLayout.HORIZONTAL);
         kopf.setGravity(Gravity.CENTER_VERTICAL);
@@ -81,19 +89,6 @@ public class MainActivity extends Activity {
         titel.setTextSize(20);
         titel.setTypeface(Typeface.DEFAULT_BOLD);
         kopf.addView(titel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        Button export = new Button(this);
-        export.setText("Excel-Export");
-        export.setAllCaps(false);
-        export.setTextColor(BLAU);
-        export.setBackground(rund(Color.WHITE, 20));
-        export.setPadding(dp(14), 0, dp(14), 0);
-        export.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                exportStarten();
-            }
-        });
-        kopf.addView(export, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40)));
         root.addView(kopf);
 
         // Tagesstand
@@ -104,7 +99,7 @@ public class MainActivity extends Activity {
         heuteText.setPadding(dp(16), dp(14), dp(16), dp(6));
         root.addView(heuteText);
 
-        // Die vier Knöpfe (2 × 2)
+        // Die Knöpfe: 2 + 2 + 1
         Button wasser = grosserKnopf("💧\nWasser", BLAU, Color.WHITE);
         wasser.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -126,6 +121,13 @@ public class MainActivity extends Activity {
                 getraenkSpeichern(Eintrag.SOFTDRINK, Eintrag.STANDARD_ML);
             }
         });
+        Button energy = grosserKnopf("⚡\nEnergy Drink", LILA, Color.WHITE);
+        energy.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getraenkSpeichern(Eintrag.ENERGY, Eintrag.ENERGY_ML);
+            }
+        });
         Button urin = grosserKnopf("🚽\nUrinieren", GELB, 0xFF212121);
         urin.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -138,12 +140,13 @@ public class MainActivity extends Activity {
         knoepfe.setOrientation(LinearLayout.VERTICAL);
         knoepfe.setPadding(dp(12), dp(6), dp(12), dp(12));
         knoepfe.addView(knopfReihe(wasser, kaffee));
-        knoepfe.addView(knopfReihe(softdrink, urin));
+        knoepfe.addView(knopfReihe(softdrink, energy));
+        knoepfe.addView(knopfReihe(urin, null));
         root.addView(knoepfe);
 
         // Tabelle
         TextView hinweis = new TextView(this);
-        hinweis.setText("Protokoll  ·  Eintrag lange drücken zum Bearbeiten/Löschen");
+        hinweis.setText("Heute  ·  Eintrag lange drücken zum Bearbeiten/Löschen");
         hinweis.setTextSize(13);
         hinweis.setTextColor(0xFF607D8B);
         hinweis.setPadding(dp(14), 0, dp(14), dp(4));
@@ -167,9 +170,40 @@ public class MainActivity extends Activity {
             }
         });
         tabelle.addView(liste, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        leerText = new TextView(this);
+        leerText.setText("Heute noch keine Einträge");
+        leerText.setTextColor(0xFF90A4AE);
+        leerText.setBackgroundColor(Color.WHITE);
+        leerText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lpLeer = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        lpLeer.setMargins(0, 0, 1, 1);
+        tabelle.addView(leerText, lpLeer);
         LinearLayout.LayoutParams lpT = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         lpT.setMargins(dp(8), 0, dp(8), dp(8));
         root.addView(tabelle, lpT);
+
+        // Export: Datum wählen + Knopf
+        LinearLayout exportZeile = new LinearLayout(this);
+        exportZeile.setOrientation(LinearLayout.HORIZONTAL);
+        exportZeile.setGravity(Gravity.CENTER_VERTICAL);
+        exportZeile.setBackgroundColor(0xFFE3F2FD);
+        exportZeile.setPadding(dp(12), dp(8), dp(12), dp(8));
+        datumAuswahl = new Spinner(this);
+        exportZeile.addView(datumAuswahl, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        Button export = new Button(this);
+        export.setText("Excel-Export");
+        export.setAllCaps(false);
+        export.setTextColor(Color.WHITE);
+        export.setBackground(rund(BLAU, 20));
+        export.setPadding(dp(16), 0, dp(16), 0);
+        export.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                exportStarten();
+            }
+        });
+        exportZeile.addView(export, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
+        root.addView(exportZeile);
 
         setContentView(root);
         aktualisieren();
@@ -316,7 +350,7 @@ public class MainActivity extends Activity {
         zeitZeile.addView(uhrKnopf, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         form.addView(zeitZeile);
 
-        final String[] arten = {Eintrag.TRINKEN, Eintrag.KAFFEE, Eintrag.SOFTDRINK, Eintrag.URIN};
+        final String[] arten = {Eintrag.TRINKEN, Eintrag.KAFFEE, Eintrag.SOFTDRINK, Eintrag.ENERGY, Eintrag.URIN};
         final RadioButton[] rb = new RadioButton[arten.length];
         final RadioGroup artWahl = new RadioGroup(this);
         artWahl.setOrientation(RadioGroup.VERTICAL);
@@ -339,11 +373,14 @@ public class MainActivity extends Activity {
         artWahl.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup g, int id) {
-                boolean urin = id == rb[3].getId();
+                boolean urin = id == rb[4].getId();
                 menge.setVisibility(urin ? View.GONE : View.VISIBLE);
-                boolean fest = id == rb[1].getId() || id == rb[2].getId();
-                if (fest && menge.getText().toString().trim().isEmpty()) {
-                    menge.setText(String.valueOf(Eintrag.STANDARD_ML));
+                if (menge.getText().toString().trim().isEmpty()) {
+                    if (id == rb[1].getId() || id == rb[2].getId()) {
+                        menge.setText(String.valueOf(Eintrag.STANDARD_ML));
+                    } else if (id == rb[3].getId()) {
+                        menge.setText(String.valueOf(Eintrag.ENERGY_ML));
+                    }
                 }
             }
         });
@@ -405,15 +442,40 @@ public class MainActivity extends Activity {
     }
 
     private void exportStarten() {
-        if (eintraege.isEmpty()) {
+        int pos = datumAuswahl.getSelectedItemPosition();
+        if (exportTage.size() <= 1 || pos < 0) {
             Toast.makeText(this, "Noch keine Einträge vorhanden", Toast.LENGTH_SHORT).show();
             return;
+        }
+        String wahl = exportTage.get(pos);
+        exportTag = ALLE_TAGE.equals(wahl) ? null : wahl;
+        String name;
+        if (exportTag == null) {
+            name = "Wasserprotokoll_gesamt_" + dateiFmt.format(new Date()) + ".xlsx";
+        } else {
+            try {
+                name = "Wasserprotokoll_" + dateiFmt.format(datumFmt.parse(exportTag)) + ".xlsx";
+            } catch (java.text.ParseException ex) {
+                name = "Wasserprotokoll.xlsx";
+            }
         }
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        i.putExtra(Intent.EXTRA_TITLE, "Wasserprotokoll_" + dateiFmt.format(new Date()) + ".xlsx");
+        i.putExtra(Intent.EXTRA_TITLE, name);
         startActivityForResult(i, REQ_EXPORT);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putString("exportTag", exportTag);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle in) {
+        super.onRestoreInstanceState(in);
+        exportTag = in.getString("exportTag");
     }
 
     @Override
@@ -422,15 +484,22 @@ public class MainActivity extends Activity {
         if (requestCode != REQ_EXPORT || resultCode != RESULT_OK || data == null || data.getData() == null) {
             return;
         }
+        List<Eintrag> auswahl = new ArrayList<>();
+        for (Eintrag e : db.alle()) {
+            if (exportTag == null || exportTag.equals(datumFmt.format(e.zeit))) {
+                auswahl.add(e);
+            }
+        }
         Uri ziel = data.getData();
         try {
             OutputStream out = getContentResolver().openOutputStream(ziel, "w");
             try {
-                XlsxExport.schreiben(db.alle(), out);
+                XlsxExport.schreiben(auswahl, out);
             } finally {
                 out.close();
             }
-            Toast.makeText(this, "Excel-Datei gespeichert", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Excel-Datei gespeichert (" + (exportTag == null ? ALLE_TAGE : exportTag) + ")",
+                    Toast.LENGTH_LONG).show();
         } catch (Exception ex) {
             Toast.makeText(this, "Export fehlgeschlagen: " + ex.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -439,13 +508,17 @@ public class MainActivity extends Activity {
     // ---------- Anzeige ----------
 
     private void aktualisieren() {
-        eintraege = db.alle();
+        List<Eintrag> alle = db.alle();
         String heute = datumFmt.format(new Date());
+
+        // Tabelle: nur heute
+        eintraege = new ArrayList<>();
         int ml = 0, trinken = 0, urin = 0;
-        for (Eintrag e : eintraege) {
+        for (Eintrag e : alle) {
             if (!heute.equals(datumFmt.format(e.zeit))) {
-                break; // Liste ist absteigend sortiert
+                continue;
             }
+            eintraege.add(e);
             if (Eintrag.istGetraenk(e.art)) {
                 ml += e.mengeMl;
                 trinken++;
@@ -455,7 +528,25 @@ public class MainActivity extends Activity {
         }
         heuteText.setText("Heute: " + String.format(Locale.GERMANY, "%,d", ml) + " ml getrunken ("
                 + trinken + (trinken == 1 ? " Getränk" : " Getränke") + ")  ·  " + urin + "× uriniert");
+        leerText.setVisibility(eintraege.isEmpty() ? View.VISIBLE : View.GONE);
         adapter.notifyDataSetChanged();
+
+        // Export-Auswahl: alle Tage mit Einträgen (neueste zuerst), Auswahl möglichst beibehalten
+        String bisher = datumAuswahl.getSelectedItem() == null ? null : datumAuswahl.getSelectedItem().toString();
+        exportTage.clear();
+        for (Eintrag e : alle) {
+            String tag = datumFmt.format(e.zeit);
+            if (!exportTage.contains(tag)) {
+                exportTage.add(tag);
+            }
+        }
+        exportTage.add(ALLE_TAGE);
+        ArrayAdapter<String> tageAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, exportTage);
+        tageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        datumAuswahl.setAdapter(tageAdapter);
+        int pos = bisher == null ? -1 : exportTage.indexOf(bisher);
+        datumAuswahl.setSelection(pos >= 0 ? pos : 0);
     }
 
     private class TabellenAdapter extends BaseAdapter {
@@ -526,7 +617,7 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(text);
         b.setAllCaps(false);
-        b.setTextSize(21);
+        b.setTextSize(19);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setTextColor(schrift);
         b.setBackground(rund(hintergrund, 18));
@@ -534,13 +625,19 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    /** Eine Knopfreihe; ist rechts null, nimmt der linke Knopf die ganze Breite ein. */
     private LinearLayout knopfReihe(Button links, Button rechts) {
         LinearLayout reihe = new LinearLayout(this);
         reihe.setOrientation(LinearLayout.HORIZONTAL);
         reihe.setPadding(0, dp(4), 0, dp(4));
-        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, dp(105), 1f);
+        if (rechts == null) {
+            links.setText(links.getText().toString().replace("\n", "  "));
+            reihe.addView(links, new LinearLayout.LayoutParams(0, dp(64), 1f));
+            return reihe;
+        }
+        LinearLayout.LayoutParams lpL = new LinearLayout.LayoutParams(0, dp(84), 1f);
         lpL.setMargins(0, 0, dp(5), 0);
-        LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, dp(105), 1f);
+        LinearLayout.LayoutParams lpR = new LinearLayout.LayoutParams(0, dp(84), 1f);
         lpR.setMargins(dp(5), 0, 0, 0);
         reihe.addView(links, lpL);
         reihe.addView(rechts, lpR);
