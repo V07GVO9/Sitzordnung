@@ -23,9 +23,9 @@ describe('vault-crypto', () => {
   it('lehnt ein falsches Passwort ab', async () => {
     const blob = await encryptDatabase(createEmptyDatabase(), 'richtig-und-lang');
 
-    await expectAsync(
-      decryptDatabase(await blob.text(), 'falsch-und-lang'),
-    ).toBeRejectedWithError(VaultPasswordError);
+    await expectAsync(decryptDatabase(await blob.text(), 'falsch-und-lang')).toBeRejectedWithError(
+      VaultPasswordError,
+    );
   });
 
   it('merkt, wenn an der Datei etwas verändert wurde', async () => {
@@ -63,8 +63,6 @@ describe('vault-crypto', () => {
   });
 
   it('weist unlesbaren Inhalt ab', async () => {
-    await expectAsync(decryptDatabase('kein json', 'egal')).toBeRejectedWithError(
-      VaultFormatError,
-    );
+    await expectAsync(decryptDatabase('kein json', 'egal')).toBeRejectedWithError(VaultFormatError);
   });
 });
