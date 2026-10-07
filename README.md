@@ -191,3 +191,22 @@ Eine **Klasse** hat **Schüler**. Ein **Fach** plus eine Klasse ergibt einen **K
 daran hängen Sitzordnungen, Stundenplaneinträge, Bewertungen und optional ein
 eigener Notenschlüssel. Eine Bewertung ist eine einzelne Veränderung (+2, +1, −1, −2);
 der Punktestand eines Schülers ist die Summe seiner Bewertungen, beginnend bei 0.
+
+## Android-App
+
+Die Web-App wird mit [Capacitor](https://capacitorjs.com/) als Android-App
+verpackt (Projekt unter `frontend/android`). Bei jedem Push baut der Workflow
+**Android-App** die APK und veröffentlicht sie als GitHub-Release:
+
+```
+https://github.com/V07GVO9/sitzordnung/releases/latest/download/Sitzordnung.apk
+```
+
+Unterschiede zur Browser-Version:
+
+- **Speichern** legt die Datei unter *Dokumente/Sitzordnung* auf dem Gerät ab.
+- **CSV-Export** speichert dort ebenfalls und öffnet danach das Teilen-Menü.
+- **Öffnen** nutzt die Dateiauswahl von Android.
+
+Lokal bauen (Android SDK nötig): `npm run android` im Ordner `frontend`, dann
+`./gradlew assembleDebug` in `frontend/android`.

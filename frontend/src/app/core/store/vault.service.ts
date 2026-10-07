@@ -162,7 +162,7 @@ export class VaultService {
       if (this.handle) {
         await writeFile(this.handle, blob);
       } else {
-        download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
+        await download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
       }
 
       this.store.markSaved();

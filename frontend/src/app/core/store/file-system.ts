@@ -5,7 +5,14 @@
  * sich die App die gewählte Datei und schreibt beim Speichern direkt dorthin
  * zurück. Sonst bleibt es beim klassischen Öffnen-Dialog und Download -
  * das funktioniert in jedem Browser.
+ *
+ * In der Android-App (Capacitor) gibt es keine Downloads: Dort landen Dateien
+ * im Ordner "Dokumente/Sitzordnung" des Geräts.
  */
+
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 /** Der Teil der File System Access API, den die App benutzt. */
 export interface FileHandle {
@@ -73,7 +80,10 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = VAULT_EXTENSION + ',application/json';
+    // Android kennt die Dateiendung nicht und würde die Datei sonst ausgrauen.
+    if (!isNativeApp()) {
+      input.accept = VAULT_EXTENSION + ',application/json';
+    }
 
     input.onchange = async () => {
       const file = input.files?.[0];
@@ -115,8 +125,29 @@ export async function writeFile(handle: FileHandle, blob: Blob): Promise<void> {
   await writable.close();
 }
 
-/** Bietet den Inhalt als Download an - der Weg ohne File System Access API. */
-export function download(blob: Blob, fileName: string): void {
+/** Läuft die App als Android-App statt im Browser? */
+export function isNativeApp(): boolean {
+  return Capacitor.isNativePlatform();
+}
+
+/** Der Ordner unter "Dokumente", in den die Android-App schreibt. */
+const NATIVE_FOLDER = 'Sitzordnung';
+
+/**
+ * Bietet den Inhalt als Download an - der Weg ohne File System Access API.
+ * In der Android-App wird die Datei stattdessen gespeichert; mit `share`
+ * öffnet sich danach das Teilen-Menü (z. B. für Mail oder Cloud).
+ */
+export async function download(
+  blob: Blob,
+  fileName: string,
+  options: { share?: boolean } = {},
+): Promise<void> {
+  if (isNativeApp()) {
+    await saveOnDevice(blob, fileName, options.share ?? false);
+    return;
+  }
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -124,4 +155,37 @@ export function download(blob: Blob, fileName: string): void {
   link.click();
   // Erst freigeben, wenn der Browser den Download übernommen hat.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+async function saveOnDevice(blob: Blob, fileName: string, share: boolean): Promise<void> {
+  const data = await toBase64(blob);
+  let uri: string;
+
+  try {
+    ({ uri } = await Filesystem.writeFile({
+      path: `${NATIVE_FOLDER}/${fileName}`,
+      data,
+      directory: Directory.Documents,
+      recursive: true,
+    }));
+  } catch {
+    // Gehört die vorhandene Datei einer früheren Installation, verweigert
+    // Android das Überschreiben. Damit nichts verloren geht, wird die Datei
+    // dann über das Teilen-Menü weitergegeben.
+    ({ uri } = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Cache }));
+    share = true;
+  }
+
+  if (share) {
+    await Share.share({ title: fileName, files: [uri] });
+  }
+}
+
+function toBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }

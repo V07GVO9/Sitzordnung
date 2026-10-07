@@ -1,0 +1,77 @@
+name: Android-App
+
+# Baut die Android-App (APK) und stellt sie als GitHub-Release zum Download bereit.
+on:
+  push:
+    branches: [master, test, "ccr-*", "claude/**"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Web-App bauen und in das Android-Projekt kopieren
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      # Optional: Secret ANDROID_KEYSTORE_BASE64 (+ ANDROID_KEYSTORE_PASSWORD,
+      # ANDROID_KEY_ALIAS) für einen festen Signaturschlüssel.
+      - name: Signaturschlüssel bereitstellen
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        if: env.KEYSTORE != ''
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/app.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/app.keystore" >> "$GITHUB_ENV"
+
+      - name: APK bauen
+        working-directory: frontend/android
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/Sitzordnung.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sitzordnung-apk
+          path: Sitzordnung.apk
+
+      - name: Als Release veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Android-App ${{ github.run_number }} (${{ github.ref_name }})
+          target_commitish: ${{ github.sha }}
+          make_latest: "true"
+          files: Sitzordnung.apk
+          body: |
+            Android-App „Sitzordnung“: APK auf dem Handy herunterladen und installieren
+            (dafür „Installation aus unbekannten Quellen“ erlauben).

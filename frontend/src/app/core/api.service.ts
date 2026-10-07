@@ -276,13 +276,13 @@ export class ApiService {
     courseId?: number | null,
     range?: DateRange,
   ): Observable<void> {
-    return this.run(() => {
+    return this.fromPromise(() => {
       const result =
         kind === 'ratings'
           ? this.store.exportRatings(courseId ?? null, range)
           : this.store.exportSummary(courseId ?? null, range);
 
-      download(result.blob, result.fileName);
+      return download(result.blob, result.fileName, { share: true });
     });
   }
 
