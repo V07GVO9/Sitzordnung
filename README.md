@@ -26,6 +26,32 @@ vollständig im Browser.
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
+| Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
+
+## Noten
+
+Jeder Kurs hat unter **Kurs → Noten** eine eigene Notenverwaltung. In KDM wird
+jedes Lernfeld als eigenes Fach angelegt (z. B. „LF3 …", Kürzel LF3) – so bekommt
+jedes Lernfeld eine eigene Note und ein eigenes Bewertungsschema.
+
+| Reiter | Inhalt |
+| --- | --- |
+| Übersicht | Alle Schüler mit Einzelnoten, Mitarbeit, schriftlich, mündlich und Gesamtnote (Noten mit Komma) |
+| Leistungsnachweise | Klassenarbeit, Test, Referat … mit Datum anlegen, Punkte oder Noten eintragen, Notenspiegel. Zählt erst nach **Freigabe** |
+| Mitarbeit | Je Doppelstunde eine Note aus `++ + − −−` (1,0 · 2,0 · 4,0 · 5,0; ohne Bewertung 3,0). Einzeln überschreibbar oder „fehlte" |
+| Bewertungsschema | Gewichtung schriftlich/mündlich, Arten mit Gewicht, Punkteschlüssel (Vorlage IHK), Mitarbeitsnoten; auf andere Lernfelder übertragbar |
+| Notenbögen | Je Schüler ein Bogen mit seinem Stand – drucken/PDF oder als HTML-Datei; jede Ausgabe wird vermerkt |
+| Protokoll | Jede Änderung an freigegebenen Noten und jede von Hand gesetzte Mitarbeitsnote, mit Begründung |
+
+**Rechenweg:** Eine Doppelstunde zählt, sobald im Kurs an dem Tag jemand
+bewertet wurde. Die Mitarbeit ist der Durchschnitt dieser Stundennoten und geht
+mit ihrem Gewicht als eine Einzelnote in den mündlichen Bereich ein. Ein Bereich
+ist der gewichtete Durchschnitt seiner Einzelnoten; die Gesamtnote verrechnet
+beide Bereiche nach dem Anteil im Schema. Fehlt ein Bereich noch, ist die
+Gesamtnote vorläufig (*). Zeiträume wie „1. Halbjahr" grenzen alles ein.
+
+Die Vorgaben im Schema sind nur ein Vorschlag – verbindlich sind Schulgesetz,
+Verordnungen und Konferenzbeschlüsse.
 
 ## Die Datei mit den Daten
 
@@ -171,7 +197,9 @@ frontend/
         database.ts      Der Datenbestand als Ganzes
         local-store.ts   Die Fachlogik der früheren Controller
         lesson.logic.ts  Stundenplanprüfung
-        grading.logic.ts Notenschlüssel
+        grading.logic.ts Notenschlüssel (Mitarbeitspunkte)
+        assessment.logic.ts  Notenberechnung: Leistungsnachweise, Mitarbeit, Gesamtnote
+        report.ts        Notenbogen als HTML
         csv.ts           CSV-Erzeugung
         vault-crypto.ts  Ver- und Entschlüsselung der Datei
         vault.service.ts Datei, Passwort und Zwischenspeicher
@@ -179,7 +207,7 @@ frontend/
         photo.ts         Fotos einlesen und verkleinern
         browser-storage.ts  Zwischenspeicher in IndexedDB
     vault/               Der Startbildschirm zum Öffnen des Bestands
-    pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Verwaltung,
+    pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Noten, Verwaltung,
                          Stundenplan, Auswertung
 backend/
   Sitzordnung.Host/      Liefert die gebauten Dateien aus - sonst nichts

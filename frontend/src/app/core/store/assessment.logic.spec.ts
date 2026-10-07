@@ -166,6 +166,7 @@ describe('Noten mit Komma', () => {
 
   it('gibt Noten mit Komma aus', () => {
     expect(formatGrade(2.345)).toBe('2,35');
+    expect(formatGrade(2.275)).toBe('2,28');
     expect(formatGrade(3, 1)).toBe('3,0');
     expect(formatGrade(null)).toBe('–');
   });

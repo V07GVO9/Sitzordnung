@@ -174,8 +174,9 @@ export function combineGrades(items: WeightedGrade[], writtenPercent: number): C
 
 /** Rundet auf die gewünschte Zahl an Nachkommastellen. */
 export function roundGrade(value: number, digits = 2): number {
-  const factor = 10 ** digits;
-  return Math.round(value * factor + Number.EPSILON) / factor;
+  // Über die Exponentenschreibweise, damit 2,275 auch wirklich zu 2,28 wird -
+  // als Gleitkommazahl wäre es 2,27499999...
+  return Number(`${Math.round(Number(`${value}e${digits}`))}e-${digits}`);
 }
 
 /** `2.345` wird zu `2,35` - null wird zum Gedankenstrich. */

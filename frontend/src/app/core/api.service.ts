@@ -2,11 +2,22 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, defer, of, throwError } from 'rxjs';
 import {
   AppSettings,
+  Assessment,
+  AssessmentDetail,
+  AssessmentInput,
+  AssessmentResultInput,
   Course,
   CourseScoreboard,
   CurrentLesson,
+  GradeBook,
+  GradeChange,
+  GradeReport,
   GradeScale,
   GradeScaleInput,
+  GradingPeriod,
+  GradingPeriodInput,
+  GradingScheme,
+  GradingSchemeInput,
   Rating,
   RatingValue,
   RatingWindow,
@@ -14,6 +25,7 @@ import {
   SeatLayoutInput,
   SeatingPlan,
   Student,
+  StudentReport,
   Subject,
   TimetableEntry,
   TimetableEntryInput,
@@ -21,6 +33,7 @@ import {
 import { DateRange, LocalStore } from './store/local-store';
 import { readPhoto } from './store/photo';
 import { download } from './store/file-system';
+import { AppError } from './store/app-error';
 
 export type { DateRange } from './store/local-store';
 
@@ -253,6 +266,108 @@ export class ApiService {
 
   deleteCourseGradeScale(courseId: number): Observable<void> {
     return this.run(() => this.store.deleteCourseGradeScale(courseId));
+  }
+
+  // --- Noten ---
+
+  getPeriods(): Observable<GradingPeriod[]> {
+    return this.run(() => this.store.getPeriods());
+  }
+
+  savePeriod(id: number | null, input: GradingPeriodInput): Observable<GradingPeriod> {
+    return this.run(() => this.store.savePeriod(id, input));
+  }
+
+  deletePeriod(id: number): Observable<void> {
+    return this.run(() => this.store.deletePeriod(id));
+  }
+
+  getScheme(courseId: number): Observable<GradingScheme> {
+    return this.run(() => this.store.getScheme(courseId));
+  }
+
+  saveScheme(courseId: number, input: GradingSchemeInput): Observable<GradingScheme> {
+    return this.run(() => this.store.saveScheme(courseId, input));
+  }
+
+  copyScheme(fromCourseId: number, toCourseIds: number[]): Observable<void> {
+    return this.run(() => this.store.copyScheme(fromCourseId, toCourseIds));
+  }
+
+  getGradeBook(courseId: number, range?: DateRange): Observable<GradeBook> {
+    return this.run(() => this.store.getGradeBook(courseId, range));
+  }
+
+  createAssessment(courseId: number, input: AssessmentInput): Observable<Assessment> {
+    return this.run(() => this.store.createAssessment(courseId, input));
+  }
+
+  updateAssessment(id: number, input: AssessmentInput): Observable<Assessment> {
+    return this.run(() => this.store.updateAssessment(id, input));
+  }
+
+  deleteAssessment(id: number): Observable<void> {
+    return this.run(() => this.store.deleteAssessment(id));
+  }
+
+  getAssessmentDetail(id: number): Observable<AssessmentDetail> {
+    return this.run(() => this.store.getAssessmentDetail(id));
+  }
+
+  saveResults(
+    id: number,
+    results: AssessmentResultInput[],
+    reason?: string | null,
+  ): Observable<AssessmentDetail> {
+    return this.run(() => this.store.saveResults(id, results, reason));
+  }
+
+  setAssessmentReleased(id: number, released: boolean): Observable<Assessment> {
+    return this.run(() => this.store.setAssessmentReleased(id, released));
+  }
+
+  setParticipationOverride(
+    courseId: number,
+    studentId: number,
+    lessonDate: string,
+    grade: number | null | 'auto',
+    reason?: string | null,
+  ): Observable<void> {
+    return this.run(() =>
+      this.store.setParticipationOverride(courseId, studentId, lessonDate, grade, reason),
+    );
+  }
+
+  getGradeChanges(courseId: number): Observable<GradeChange[]> {
+    return this.run(() => this.store.getGradeChanges(courseId));
+  }
+
+  getGradeReports(courseId: number): Observable<GradeReport[]> {
+    return this.run(() => this.store.getGradeReports(courseId));
+  }
+
+  /** Stellt die Notenbögen zusammen und vermerkt ihre Ausgabe. */
+  issueReports(
+    courseId: number,
+    studentIds: number[],
+    periodId: number | null,
+  ): Observable<StudentReport[]> {
+    return this.run(() => {
+      const reports = this.store.getStudentReports(courseId, studentIds, periodId);
+      if (reports.length === 0) {
+        throw new AppError('Es ist kein Schüler ausgewählt.');
+      }
+
+      this.store.recordReports(courseId, reports, periodId);
+      return reports;
+    });
+  }
+
+  exportGradeBook(courseId: number, range?: DateRange): Observable<void> {
+    return this.run(() => {
+      const result = this.store.exportGradeBook(courseId, range);
+      download(result.blob, result.fileName);
+    });
   }
 
   // --- Einstellungen ---

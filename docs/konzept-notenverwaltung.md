@@ -1,6 +1,13 @@
 # Konzept: Notenverwaltung (mündlich + schriftlich)
 
-Stand: 05.10.2026 · Status: Entwurf zur Abstimmung
+Stand: 07.10.2026 · Status: umgesetzt (Bedienung siehe README, Abschnitt „Noten")
+
+> **Entscheidungen der Lehrkraft (07.10.2026):**
+> - Jedes Lernfeld ist ein eigener Kurs (in der App als „Fach" angelegt) mit eigenem, frei einstellbarem Schema und eigener Note.
+> - Noten mit Komma (Einzelnoten eine, berechnete Noten zwei Nachkommastellen).
+> - Mündlich: je Doppelstunde (90-Minuten-Block) eine Note aus den Schnellbewertungen
+>   (++ 1,0 · + 2,0 · − 4,0 · −− 5,0); ohne Bewertung 3,0; „fehlte" zählt nicht.
+> - Alle Ausbaustufen 1–4 umgesetzt. Die verschlüsselte Selbstauskunft (Abschnitt 5.2, optional) ist nicht umgesetzt.
 
 ## 1. Ziel
 
