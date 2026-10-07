@@ -1,0 +1,154 @@
+<div class="stack">
+  <section class="card">
+    <div class="row">
+      <h1>Stundenplan importieren</h1>
+      <span class="spacer"></span>
+      <a class="btn" routerLink="/">Zurück zum Stundenplan</a>
+    </div>
+
+    <p class="muted">
+      WebUntis und die meisten anderen Schulsysteme können den Stundenplan als Kalenderdatei
+      (ICS) exportieren. Diese Datei wird hier gelesen - sie verlässt deinen Rechner nicht.
+    </p>
+
+    <label class="datei">
+      <input type="file" accept=".ics,text/calendar" (change)="dateiGewaehlt($event)" />
+    </label>
+
+    @if (dateiName(); as name) {
+      <p class="muted small">Gelesen: {{ name }}</p>
+    }
+  </section>
+
+  @if (laeuft()) {
+    <section class="card">
+      <p>Einen Moment …</p>
+    </section>
+  }
+
+  @if (warnungen().length > 0) {
+    <section class="card hinweise">
+      <h2>Hinweise</h2>
+      <ul>
+        @for (warnung of warnungen(); track warnung) {
+          <li>{{ warnung }}</li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (ergebnis(); as e) {
+    <section class="card">
+      <h2>Übernommen</h2>
+      <ul class="bilanz">
+        <li><strong>{{ e.createdLessons }}</strong> Stunden im Stundenplan</li>
+        <li><strong>{{ e.createdCourses }}</strong> Kurse angelegt</li>
+        <li><strong>{{ e.createdClasses }}</strong> Klassen angelegt</li>
+        <li><strong>{{ e.createdSubjects }}</strong> Fächer angelegt</li>
+      </ul>
+
+      @if (e.skipped.length > 0) {
+        <h3>Übersprungen</h3>
+        <ul class="uebersprungen">
+          @for (grund of e.skipped; track grund) {
+            <li>{{ grund }}</li>
+          }
+        </ul>
+      }
+
+      <div class="row">
+        <button class="btn primary" type="button" (click)="zumStundenplan()">
+          Zum Stundenplan
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (hatVorschau()) {
+    <section class="card">
+      <div class="row">
+        <h2>Vorschau</h2>
+        <span class="spacer"></span>
+        <button class="btn small" type="button" (click)="alleUmschalten(true)">Alle</button>
+        <button class="btn small" type="button" (click)="alleUmschalten(false)">Keine</button>
+      </div>
+
+      <p class="muted small">
+        Einträge, die nur einmal vorkommen, sind vermutlich Vertretungen und nicht
+        vorausgewählt. Klasse und Fach lassen sich vor dem Übernehmen noch ändern.
+      </p>
+
+      <div class="tabelle">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Tag</th>
+              <th>Zeit</th>
+              <th>Klasse</th>
+              <th>Fach</th>
+              <th>Raum</th>
+              <th class="zahl">Wochen</th>
+              <th>Aus dem Export</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (zeile of zeilen(); track $index; let i = $index) {
+              <tr [class.abgewaehlt]="!zeile.ausgewaehlt">
+                <td>
+                  <input
+                    type="checkbox"
+                    [checked]="zeile.ausgewaehlt"
+                    (change)="umschalten(i, $any($event.target).checked)"
+                    [attr.aria-label]="'Zeile ' + (i + 1) + ' übernehmen'"
+                  />
+                </td>
+                <td>{{ tagName(zeile.dayOfWeek) }}</td>
+                <td class="zeit">{{ zeile.startTime }}–{{ zeile.endTime }}</td>
+                <td>
+                  <input
+                    type="text"
+                    [value]="zeile.schoolClassName"
+                    (input)="klasseSetzen(i, $any($event.target).value)"
+                    [class.fehlt]="zeile.schoolClassName.trim() === ''"
+                    placeholder="Klasse"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    [value]="zeile.subjectName"
+                    (input)="fachSetzen(i, $any($event.target).value)"
+                    [class.fehlt]="zeile.subjectName.trim() === ''"
+                    placeholder="Fach"
+                  />
+                </td>
+                <td>{{ zeile.room ?? '—' }}</td>
+                <td class="zahl">{{ zeile.occurrences }}</td>
+                <td class="quelle" [title]="zeile.sourceTitle">{{ zeile.sourceTitle }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row abschluss">
+        <span class="muted">
+          {{ anzahlAusgewaehlt() }} von {{ zeilen().length }} ausgewählt
+          @if (unvollstaendig() > 0) {
+            · <strong>{{ unvollstaendig() }}</strong> ohne Klasse oder Fach
+          }
+        </span>
+        <span class="spacer"></span>
+        <button
+          class="btn primary"
+          type="button"
+          [disabled]="laeuft() || anzahlAusgewaehlt() === 0"
+          (click)="uebernehmen()"
+        >
+          {{ anzahlAusgewaehlt() }} Stunden übernehmen
+        </button>
+      </div>
+    </section>
+  }
+</div>
