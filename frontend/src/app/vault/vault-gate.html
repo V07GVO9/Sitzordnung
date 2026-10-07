@@ -1,22 +1,32 @@
 <div class="gate">
   <div class="gate-card">
     <div class="gate-head">
-      <span class="brand-mark">SO</span>
+      <span class="brand-mark"><app-icon name="school" /></span>
       <div>
         <h1>Sitzordnung &amp; Mitarbeitsnoten</h1>
         <p class="muted">
-          Alle Daten liegen in einer verschlüsselten Datei auf diesem Rechner. Nichts wird an
-          einen Server übertragen.
+          Alle Daten liegen in einer verschlüsselten Datei auf diesem Rechner. Nichts wird an einen
+          Server übertragen.
         </p>
       </div>
     </div>
 
-    <div class="tabs">
-      <button type="button" [class.active]="mode() === 'open'" (click)="setMode('open')">
-        Datei öffnen
+    <div class="tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="mode() === 'open'"
+        (click)="setMode('open')"
+      >
+        <app-icon name="folder-open" /> Datei öffnen
       </button>
-      <button type="button" [class.active]="mode() === 'create'" (click)="setMode('create')">
-        Neu anlegen
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="mode() === 'create'"
+        (click)="setMode('create')"
+      >
+        <app-icon name="file-plus" /> Neu anlegen
       </button>
     </div>
 
@@ -50,8 +60,9 @@
         }
 
         <p class="hint warn">
-          Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der
-          Datenbestand verloren.
+          <app-icon name="triangle-alert" />
+          Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der Datenbestand
+          verloren.
         </p>
       }
 
@@ -59,21 +70,23 @@
         @if (busy()) {
           Einen Moment …
         } @else if (mode() === 'create') {
-          Neuen Datenbestand anlegen
+          <app-icon name="file-plus" /> Neuen Datenbestand anlegen
         } @else {
-          Datei auswählen und öffnen
+          <app-icon name="folder-open" /> Datei auswählen und öffnen
         }
       </button>
     </form>
 
     @if (autosave(); as entry) {
       <div class="autosave">
-        <strong>Zwischenstand gefunden</strong>
+        <strong><app-icon name="info" /> Zwischenstand gefunden</strong>
         <p class="muted small">
-          Zuletzt gesichert am {{ savedAtText(entry) }}@if (entry.fileName) {
+          Zuletzt gesichert am {{ savedAtText(entry) }}
+          @if (entry.fileName) {
             , zur Datei „{{ entry.fileName }}"
-          }. Der Zwischenstand liegt verschlüsselt im Browser und lässt sich mit demselben
-          Passwort öffnen.
+          }
+          . Der Zwischenstand liegt verschlüsselt im Browser und lässt sich mit demselben Passwort
+          öffnen.
         </p>
         <div class="row">
           <button
@@ -91,7 +104,8 @@
       </div>
     }
 
-    <p class="hint small muted">
+    <p class="hint foot muted">
+      <app-icon name="lock" />
       @if (canWriteInPlace) {
         Dieser Browser kann direkt in die gewählte Datei zurückschreiben.
       } @else {

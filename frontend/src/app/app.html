@@ -1,0 +1,193 @@
+@if (!isOpen()) {
+  <app-vault-gate />
+} @else {
+  <div class="shell">
+    <!-- Ab Desktop: Seitenleiste mit Navigation, laufender Stunde und Datei -->
+    <aside class="sidebar">
+      <a class="brand" routerLink="/">
+        <span class="brand-mark"><app-icon name="school" /></span>
+        <span class="brand-text">
+          <strong>Sitzordnung</strong>
+          <span>Mitarbeit im Unterricht</span>
+        </span>
+      </a>
+
+      <nav class="side-nav" aria-label="Hauptnavigation">
+        @for (item of nav; track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.exact }"
+          >
+            <app-icon [name]="item.icon" />
+            <span>{{ item.label }}</span>
+          </a>
+        }
+      </nav>
+
+      @if (lesson(); as l) {
+        @if (l.hasLesson) {
+          <a class="live-card" [routerLink]="['/kurs', l.courseId]">
+            <span class="live-head"><span class="dot"></span> Läuft gerade</span>
+            <strong>{{ l.subjectName }}</strong>
+            <span>{{ l.schoolClassName }} · bis {{ l.endTime }}</span>
+            <span class="live-cta">Bewerten <app-icon name="arrow-right" /></span>
+          </a>
+        } @else {
+          <div class="live-card idle">
+            <span class="live-head"><app-icon name="clock" /> Gerade kein Unterricht</span>
+          </div>
+        }
+      }
+
+      <div class="spacer"></div>
+
+      <div class="file-box" [attr.data-state]="saveState()">
+        <div class="file-line">
+          <app-icon name="lock" />
+          <span class="file" [title]="fileName() ?? 'Noch keine Datei gewählt'">
+            {{ fileName() ?? 'Ohne Datei' }}
+          </span>
+        </div>
+        @if (autoSaveActive()) {
+          <div class="file-line auto"><app-icon name="refresh-cw" /> Speichert automatisch</div>
+        }
+        <div class="file-line status">
+          <span class="state-dot"></span>
+          {{ saveStateText() }}
+        </div>
+        <button
+          class="btn primary block"
+          type="button"
+          [disabled]="isSaving()"
+          (click)="save()"
+          title="Speichern (Strg+S)"
+        >
+          <app-icon name="save" /> Speichern
+        </button>
+      </div>
+
+      @if (canInstall()) {
+        <button class="btn small install" type="button" (click)="install()">
+          <app-icon name="monitor-down" /> Als App installieren
+        </button>
+      }
+
+      <div class="side-foot">
+        <button
+          class="btn ghost small"
+          type="button"
+          (click)="cycleTheme()"
+          [title]="'Darstellung: ' + themeLabel()"
+        >
+          <app-icon [name]="themeIcon()" /> {{ themeLabel() }}
+        </button>
+        <button
+          class="btn ghost small"
+          type="button"
+          (click)="closeVault()"
+          title="Datenbestand schließen"
+        >
+          <app-icon name="log-out" /> Schließen
+        </button>
+      </div>
+    </aside>
+
+    <!-- Handy und Tablet: schmale Kopfzeile -->
+    <header class="topbar">
+      <a class="brand" routerLink="/">
+        <span class="brand-mark"><app-icon name="school" /></span>
+        <strong class="brand-name">Sitzordnung</strong>
+      </a>
+
+      <span class="spacer"></span>
+
+      @if (lesson()?.hasLesson) {
+        <a class="live-pill" [routerLink]="['/kurs', lesson()!.courseId]">
+          <span class="dot"></span>
+          <span class="live-pill-text"
+            >{{ lesson()!.subjectName }} · {{ lesson()!.schoolClassName }}</span
+          >
+        </a>
+      }
+
+      <button
+        class="save-btn"
+        type="button"
+        [attr.data-state]="saveState()"
+        [disabled]="isSaving()"
+        (click)="save()"
+        [attr.aria-label]="saveStateText() + ' – jetzt speichern'"
+        [title]="saveStateText() + ' – jetzt speichern'"
+      >
+        @if (saveState() === 'saving') {
+          <app-icon name="loader-circle" class="spin" />
+        } @else if (saveState() === 'dirty') {
+          <app-icon name="save" />
+        } @else {
+          <app-icon name="circle-check" />
+        }
+      </button>
+
+      <div class="menu-wrap" #menu>
+        <button
+          class="btn ghost icon"
+          type="button"
+          aria-label="Menü"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="toggleMenu($event)"
+        >
+          <app-icon [name]="menuOpen() ? 'x' : 'menu'" />
+        </button>
+
+        @if (menuOpen()) {
+          <div class="menu" role="menu">
+            <div class="menu-info">
+              <app-icon name="lock" />
+              <span>
+                <strong>{{ fileName() ?? 'Ohne Datei' }}</strong>
+                <span class="muted small">{{ saveStateText() }}</span>
+              </span>
+            </div>
+            <button type="button" role="menuitem" (click)="save(); menuOpen.set(false)">
+              <app-icon name="save" /> Speichern
+            </button>
+            @if (canInstall()) {
+              <button type="button" role="menuitem" (click)="install()">
+                <app-icon name="monitor-down" /> Als App installieren
+              </button>
+            }
+            <button type="button" role="menuitem" (click)="cycleTheme()">
+              <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
+            </button>
+            <button type="button" role="menuitem" class="danger" (click)="closeVault()">
+              <app-icon name="log-out" /> Datenbestand schließen
+            </button>
+          </div>
+        }
+      </div>
+    </header>
+
+    <main>
+      <router-outlet />
+    </main>
+
+    <!-- Handy und Tablet: Navigation unten, mit dem Daumen erreichbar -->
+    <nav class="bottom-nav" aria-label="Hauptnavigation">
+      @for (item of nav; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.exact }"
+        >
+          <app-icon [name]="item.icon" />
+          <span>{{ item.short }}</span>
+        </a>
+      }
+    </nav>
+  </div>
+}
+
+<app-toast-host />
+<app-confirm-host />

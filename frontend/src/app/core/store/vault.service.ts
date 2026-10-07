@@ -13,6 +13,7 @@ import { createEmptyDatabase } from './database';
 import {
   FileHandle,
   VAULT_EXTENSION,
+  canWriteSilently,
   chooseSaveFile,
   download,
   openFile,
@@ -25,6 +26,12 @@ import { decryptDatabase, encryptDatabase } from './vault-crypto';
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
 const AUTOSAVE_DELAY_MS = 2_000;
 
+/** So lange nach der letzten Änderung wird automatisch in die Datei geschrieben. */
+const FILE_AUTOSAVE_DELAY_MS = 3_000;
+
+/** Die Wahl „automatisch speichern“ gilt je Gerät und liegt deshalb im Browser. */
+const AUTOSAVE_PREF_KEY = 'sitzordnung.autoSaveToFile';
+
 const DEFAULT_FILE_NAME = 'sitzordnung' + VAULT_EXTENSION;
 
 @Injectable({ providedIn: 'root' })
@@ -34,6 +41,7 @@ export class VaultService {
   private password: string | null = null;
   private handle: FileHandle | null = null;
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private fileAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Name der geöffneten Datei, zur Anzeige in der Kopfzeile. */
   readonly fileName = signal<string | null>(null);
@@ -45,6 +53,15 @@ export class VaultService {
   readonly isSaving = signal(false);
 
   readonly canWriteInPlace = supportsFileHandles();
+
+  /** Ist eine Datei gewählt, in die direkt zurückgeschrieben werden kann? */
+  readonly hasFileHandle = signal(false);
+
+  /** Nach jeder Änderung von selbst in die Datei schreiben (nur Chrome und Edge). */
+  readonly autoSaveToFile = signal(readAutoSavePref());
+
+  /** Der letzte Fehler beim automatischen Speichern - die Kopfzeile meldet ihn. */
+  readonly autoSaveError = signal<unknown>(null);
 
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
@@ -67,7 +84,52 @@ export class VaultService {
         clearTimeout(this.autosaveTimer);
       }
       this.autosaveTimer = setTimeout(() => void this.writeAutosaveEntry(), AUTOSAVE_DELAY_MS);
+
+      if (this.fileAutosaveTimer) {
+        clearTimeout(this.fileAutosaveTimer);
+      }
+      if (this.autoSaveToFile()) {
+        this.fileAutosaveTimer = setTimeout(() => void this.autoSave(), FILE_AUTOSAVE_DELAY_MS);
+      }
     });
+  }
+
+  setAutoSaveToFile(enabled: boolean): void {
+    this.autoSaveToFile.set(enabled);
+    try {
+      localStorage.setItem(AUTOSAVE_PREF_KEY, enabled ? '1' : '0');
+    } catch {
+      // Ohne Speicher gilt die Wahl nur bis zum Neuladen.
+    }
+  }
+
+  /**
+   * Schreibt still in die Datei, sofern der Browser das ohne Rückfrage
+   * erlaubt. Sonst bleibt der Bestand als „nicht gespeichert“ markiert.
+   */
+  private async autoSave(): Promise<void> {
+    const handle = this.handle;
+    if (
+      !handle ||
+      this.isSaving() ||
+      !this.store.isOpen() ||
+      !this.store.hasUnsavedChanges() ||
+      !(await canWriteSilently(handle))
+    ) {
+      return;
+    }
+
+    try {
+      await this.save();
+      this.autoSaveError.set(null);
+    } catch (error) {
+      this.autoSaveError.set(error);
+    }
+  }
+
+  private setHandle(handle: FileHandle | null): void {
+    this.handle = handle;
+    this.hasFileHandle.set(handle !== null);
   }
 
   private async writeAutosaveEntry(): Promise<void> {
@@ -99,14 +161,14 @@ export class VaultService {
 
     if (this.canWriteInPlace) {
       try {
-        this.handle = await chooseSaveFile(DEFAULT_FILE_NAME);
+        this.setHandle(await chooseSaveFile(DEFAULT_FILE_NAME));
         this.fileName.set(this.handle?.name ?? DEFAULT_FILE_NAME);
         await this.save();
         return;
       } catch {
         // Der Bestand steht bereits - wählt die Lehrkraft jetzt keine Datei,
         // geht es ohne weiter und das Speichern läuft über einen Download.
-        this.handle = null;
+        this.setHandle(null);
       }
     }
 
@@ -141,7 +203,7 @@ export class VaultService {
     const database = await decryptDatabase(content, password);
 
     this.password = password;
-    this.handle = handle;
+    this.setHandle(handle);
     this.fileName.set(name);
     this.store.load(database);
     this.lastSavedAt.set(null);
@@ -178,7 +240,7 @@ export class VaultService {
     if (this.canWriteInPlace) {
       const handle = await chooseSaveFile(this.fileName() ?? DEFAULT_FILE_NAME);
       if (handle) {
-        this.handle = handle;
+        this.setHandle(handle);
         this.fileName.set(handle.name);
       }
     }
@@ -204,7 +266,7 @@ export class VaultService {
   /** Schließt den Bestand und räumt den Zwischenspeicher ab. */
   async closeVault(): Promise<void> {
     this.password = null;
-    this.handle = null;
+    this.setHandle(null);
     this.fileName.set(null);
     this.lastSavedAt.set(null);
     this.store.close();
@@ -215,5 +277,14 @@ export class VaultService {
     if (password.length < 8) {
       throw new AppError('Das Passwort muss mindestens 8 Zeichen lang sein.');
     }
+  }
+}
+
+function readAutoSavePref(): boolean {
+  try {
+    // Ohne ausdrückliche Wahl ist es eingeschaltet - wie in anderen Programmen auch.
+    return localStorage.getItem(AUTOSAVE_PREF_KEY) !== '0';
+  } catch {
+    return false;
   }
 }

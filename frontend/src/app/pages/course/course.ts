@@ -13,6 +13,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -28,8 +29,11 @@ import {
   StudentScore,
   fullName,
   initials,
+  ratingSymbol,
 } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
 
 /** Woher ein gezogener Schüler kommt bzw. wohin er fällt. */
 type DropTarget = { kind: 'pool' } | { kind: 'seat'; row: number; column: number };
@@ -46,7 +50,16 @@ export interface SeatCell {
 @Component({
   selector: 'app-course',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CdkDrag, CdkDragPreview, CdkDropList, CdkDropListGroup],
+  imports: [
+    FormsModule,
+    NgTemplateOutlet,
+    RouterLink,
+    CdkDrag,
+    CdkDragPreview,
+    CdkDropList,
+    CdkDropListGroup,
+    Icon,
+  ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
 })
@@ -54,6 +67,7 @@ export class CoursePage implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly courseId = signal(0);
   readonly loading = signal(true);
@@ -89,6 +103,20 @@ export class CoursePage implements OnDestroy {
   readonly maxPlans = 2;
   readonly fullName = fullName;
   readonly initials = initials;
+
+  readonly ratingOptions: { value: RatingValue; symbol: string; title: string }[] = [
+    { value: 2, symbol: '++', title: 'Sehr gute Mitarbeit (++)' },
+    { value: 1, symbol: '+', title: 'Gute Mitarbeit (+)' },
+    { value: -1, symbol: '−', title: 'Schwache Mitarbeit (−)' },
+    { value: -2, symbol: '−−', title: 'Keine Mitarbeit / Störung (−−)' },
+  ];
+
+  /** Die zuletzt bewertete Kachel leuchtet kurz auf. */
+  readonly flash = signal<{ studentId: number; value: number } | null>(null);
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Die Meldung mit „Rückgängig“ zur letzten Bewertung. */
+  private undoToastId: number | null = null;
 
   readonly activePlan = computed(
     () => this.plans().find((p) => p.id === this.activePlanId()) ?? null,
@@ -135,6 +163,11 @@ export class CoursePage implements OnDestroy {
 
   readonly poolTarget: DropTarget = { kind: 'pool' };
 
+  /** Die Liste „Ohne Platz“ wird beim Bewerten nur gebraucht, wenn jemand darin steht. */
+  readonly showPool = computed(
+    () => this.editMode() || this.unseated().length > 0 || this.students().length === 0,
+  );
+
   /** Bewertet werden darf immer - begrenzt ist nur eine Bewertung je Stunde. */
   readonly canRate = computed(() => this.students().length > 0);
 
@@ -161,6 +194,9 @@ export class CoursePage implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.timer);
+    if (this.flashTimer) {
+      clearTimeout(this.flashTimer);
+    }
   }
 
   private load(courseId: number): void {
@@ -210,7 +246,12 @@ export class CoursePage implements OnDestroy {
     const to = event.container.data;
     const studentId = event.item.data as number;
 
-    if (from.kind === 'seat' && to.kind === 'seat' && from.row === to.row && from.column === to.column) {
+    if (
+      from.kind === 'seat' &&
+      to.kind === 'seat' &&
+      from.row === to.row &&
+      from.column === to.column
+    ) {
       return;
     }
 
@@ -267,8 +308,73 @@ export class CoursePage implements OnDestroy {
     this.persistLayout();
   }
 
-  clearSeats(): void {
+  async clearSeats(): Promise<void> {
+    if (this.placement().size === 0) {
+      return;
+    }
+
+    const confirmed = await this.confirm.ask({
+      title: 'Alle Plätze leeren?',
+      message: 'Alle Schüler wandern zurück in die Liste „Ohne Platz“.',
+      confirmLabel: 'Plätze leeren',
+      danger: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+
     this.placement.set(new Map());
+    this.persistLayout();
+  }
+
+  /**
+   * Setzt alle Schüler neu - alphabetisch nach Nachnamen oder zufällig - und
+   * füllt das Raster Reihe für Reihe von vorn.
+   */
+  async arrange(order: 'alpha' | 'random'): Promise<void> {
+    if (this.placement().size > 0) {
+      const confirmed = await this.confirm.ask({
+        title: order === 'alpha' ? 'Alphabetisch neu setzen?' : 'Zufällig neu mischen?',
+        message: 'Die bisherige Sitzordnung wird dabei ersetzt.',
+        confirmLabel: order === 'alpha' ? 'Alphabetisch setzen' : 'Mischen',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const students = [...this.students()];
+    if (order === 'alpha') {
+      students.sort(
+        (a, b) =>
+          a.lastName.localeCompare(b.lastName, 'de') ||
+          a.firstName.localeCompare(b.firstName, 'de'),
+      );
+    } else {
+      // Fisher-Yates: jede Reihenfolge ist gleich wahrscheinlich.
+      for (let i = students.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [students[i], students[j]] = [students[j], students[i]];
+      }
+    }
+
+    const next = new Map<string, number>();
+    let index = 0;
+    for (let row = 0; row < this.rows() && index < students.length; row++) {
+      for (let column = 0; column < this.columns() && index < students.length; column++) {
+        next.set(`${row}:${column}`, students[index++].id);
+      }
+    }
+
+    const left = students.length - index;
+    if (left > 0) {
+      this.toasts.show(
+        `${left} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
+        'error',
+      );
+    }
+
+    this.placement.set(next);
     this.persistLayout();
   }
 
@@ -357,9 +463,17 @@ export class CoursePage implements OnDestroy {
     });
   }
 
-  deletePlan(): void {
+  async deletePlan(): Promise<void> {
     const plan = this.activePlan();
-    if (!plan || !confirm(`Sitzordnung „${plan.name}" wirklich löschen?`)) {
+    if (
+      !plan ||
+      !(await this.confirm.ask({
+        title: `Sitzordnung „${plan.name}" löschen?`,
+        message: 'Die Plätze dieser Sitzordnung gehen verloren. Bewertungen bleiben erhalten.',
+        confirmLabel: 'Löschen',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -376,24 +490,60 @@ export class CoursePage implements OnDestroy {
 
   // --- Bewerten ---
 
-  rate(studentId: number, value: RatingValue): void {
+  rate(student: Student, value: RatingValue): void {
     const courseId = this.courseId();
 
     // Wird gerade eine frühere Stunde angesehen, zählt die Bewertung auf sie.
-    this.api.rate(courseId, studentId, value).subscribe({
-      next: () => this.refreshScores(),
+    this.api.rate(courseId, student.id, value).subscribe({
+      next: (rating) => {
+        this.refreshScores();
+        this.flashTile(student.id, value);
+
+        // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
+        // im Unterricht nichts stapelt.
+        if (this.undoToastId !== null) {
+          this.toasts.dismiss(this.undoToastId);
+        }
+        this.undoToastId = this.toasts.show(
+          `${fullName(student)}: ${ratingSymbol(value)}`,
+          'success',
+          6000,
+          { label: 'Rückgängig', run: () => this.undoRating(rating.id) },
+        );
+      },
       error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
-  undo(studentId: number): void {
-    this.api.undoLastRating(this.courseId(), studentId).subscribe({
+  /** Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. */
+  private undoRating(ratingId: number): void {
+    this.undoToastId = null;
+    this.api.deleteRating(ratingId).subscribe({
       next: () => {
-        this.toasts.show('Die Bewertung dieser Stunde wurde zurückgenommen.');
+        this.toasts.show('Die Bewertung wurde zurückgenommen.');
         this.refreshScores();
       },
       error: (err) => this.toasts.error(err, 'Es gab nichts zurückzunehmen.'),
     });
+  }
+
+  private flashTile(studentId: number, value: number): void {
+    if (this.flashTimer) {
+      clearTimeout(this.flashTimer);
+    }
+
+    // Erst abschalten, dann im nächsten Bild wieder an - so startet die
+    // Animation auch beim zweiten Tippen auf dieselbe Kachel neu.
+    this.flash.set(null);
+    requestAnimationFrame(() => {
+      this.flash.set({ studentId, value });
+      this.flashTimer = setTimeout(() => this.flash.set(null), 700);
+    });
+  }
+
+  /** Punkte mit Vorzeichen: +3, 0, −2. */
+  signed(points: number): string {
+    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
   }
 
   /**

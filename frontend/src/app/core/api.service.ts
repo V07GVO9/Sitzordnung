@@ -221,6 +221,11 @@ export class ApiService {
     return this.run(() => this.store.rate(courseId, studentId, value, comment));
   }
 
+  /** Nimmt genau diese Bewertung zurück - etwa nach einem Vertipper. */
+  deleteRating(id: number): Observable<void> {
+    return this.run(() => this.store.deleteRating(id));
+  }
+
   undoLastRating(courseId: number, studentId: number): Observable<void> {
     return this.run(() => this.store.undoLastRating(courseId, studentId));
   }
