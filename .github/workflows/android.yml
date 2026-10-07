@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: android-actions/setup-android@v3
+      # Das Android-SDK ist auf ubuntu-latest bereits installiert (ANDROID_HOME).
 
       - name: Web-App bauen und in das Android-Projekt kopieren
         working-directory: frontend
