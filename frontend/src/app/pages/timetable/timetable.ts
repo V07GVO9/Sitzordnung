@@ -7,6 +7,7 @@ import { ApiService } from '../../core/api.service';
 import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
 
 @Component({
   selector: 'app-timetable',
@@ -18,6 +19,7 @@ import { Icon } from '../../core/ui/icon';
 export class TimetablePage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly entries = signal<TimetableEntry[]>([]);
   readonly courses = signal<Course[]>([]);
@@ -145,12 +147,14 @@ export class TimetablePage {
       });
   }
 
-  remove(entry: TimetableEntry): void {
-    if (
-      !confirm(
-        `${entry.subjectName} (${entry.schoolClassName}) am ${WEEKDAY_NAMES[entry.dayOfWeek]} um ${entry.startTime} aus dem Stundenplan nehmen?`,
-      )
-    ) {
+  async remove(entry: TimetableEntry): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Stunde aus dem Plan nehmen?',
+      message: `${entry.subjectName} (${entry.schoolClassName}) am ${WEEKDAY_NAMES[entry.dayOfWeek]} um ${entry.startTime} Uhr. Bereits vergebene Bewertungen bleiben erhalten.`,
+      confirmLabel: 'Entfernen',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 

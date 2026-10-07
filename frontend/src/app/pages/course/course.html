@@ -194,6 +194,22 @@
             >
               <app-icon name="wand-sparkles" /> Auffüllen
             </button>
+            <button
+              class="btn small"
+              type="button"
+              (click)="arrange('alpha')"
+              title="Alle nach Nachnamen von vorn nach hinten setzen"
+            >
+              <app-icon name="arrow-down-a-z" /> Alphabetisch
+            </button>
+            <button
+              class="btn small"
+              type="button"
+              (click)="arrange('random')"
+              title="Alle zufällig neu setzen"
+            >
+              <app-icon name="shuffle" /> Zufällig
+            </button>
             <button class="btn small" type="button" (click)="clearSeats()">
               <app-icon name="eraser" /> Leeren
             </button>

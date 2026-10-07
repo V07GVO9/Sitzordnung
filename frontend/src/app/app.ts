@@ -19,10 +19,13 @@ import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/store/vault.service';
 import { ToastHost } from './core/toast-host';
 import { ToastService } from './core/toast.service';
+import { ConfirmHost } from './core/ui/confirm-host';
 import { Icon } from './core/ui/icon';
+import { PwaService } from './core/ui/pwa.service';
 import { IconName } from './core/ui/icons';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
 import { VaultGate } from './vault/vault-gate';
+import { ConfirmService } from './core/ui/confirm.service';
 
 interface NavItem {
   path: string;
@@ -47,12 +50,13 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost, VaultGate, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost, ConfirmHost, VaultGate, Icon],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
     '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'menuOpen.set(false)',
+    '(document:keydown)': 'onKeydown($event)',
   },
 })
 export class App implements OnDestroy {
@@ -62,6 +66,10 @@ export class App implements OnDestroy {
   private readonly vault = inject(VaultService);
   private readonly toasts = inject(ToastService);
   private readonly theme = inject(ThemeService);
+  private readonly pwa = inject(PwaService);
+
+  readonly canInstall = this.pwa.canInstall;
+  private readonly confirm = inject(ConfirmService);
 
   readonly lesson = signal<CurrentLesson | null>(null);
 
@@ -111,6 +119,11 @@ export class App implements OnDestroy {
       ],
   );
 
+  /** Schreibt die App gerade von selbst in die Datei? */
+  readonly autoSaveActive = computed(
+    () => this.vault.autoSaveToFile() && this.vault.hasFileHandle(),
+  );
+
   readonly themeLabel = computed(() => THEME_LABELS[this.theme.choice()]);
   readonly themeIcon = computed(() => THEME_ICONS[this.theme.choice()]);
 
@@ -127,6 +140,19 @@ export class App implements OnDestroy {
       untracked(() => this.refresh());
     });
 
+    // Schlägt das automatische Speichern fehl, soll das niemand übersehen.
+    effect(() => {
+      const error = this.vault.autoSaveError();
+      if (error) {
+        untracked(() =>
+          this.toasts.error(
+            error,
+            'Automatisches Speichern fehlgeschlagen. Bitte von Hand speichern.',
+          ),
+        );
+      }
+    });
+
     // Nach dem Bearbeiten des Stundenplans soll die Anzeige sofort stimmen,
     // nicht erst beim nächsten Takt.
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
@@ -139,6 +165,11 @@ export class App implements OnDestroy {
     clearInterval(this.timer);
   }
 
+  install(): void {
+    this.menuOpen.set(false);
+    void this.pwa.install();
+  }
+
   cycleTheme(): void {
     this.theme.cycle();
   }
@@ -146,6 +177,16 @@ export class App implements OnDestroy {
   toggleMenu(event: Event): void {
     event.stopPropagation();
     this.menuOpen.update((open) => !open);
+  }
+
+  /** Strg+S (bzw. Cmd+S) speichert - statt die Seite als HTML zu sichern. */
+  onKeydown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      if (this.isOpen() && !this.isSaving()) {
+        void this.save();
+      }
+    }
   }
 
   /** Ein Klick neben das Menü schließt es. */
@@ -173,9 +214,13 @@ export class App implements OnDestroy {
     this.menuOpen.set(false);
 
     if (this.hasUnsavedChanges()) {
-      const confirmed = confirm(
-        'Es gibt ungespeicherte Änderungen. Wirklich schließen? Sie gehen dabei verloren.',
-      );
+      const confirmed = await this.confirm.ask({
+        title: 'Ungespeicherte Änderungen verwerfen?',
+        message:
+          'Seit dem letzten Speichern wurde etwas geändert. Beim Schließen gehen diese Änderungen verloren.',
+        confirmLabel: 'Ohne Speichern schließen',
+        danger: true,
+      });
       if (!confirmed) {
         return;
       }

@@ -6,6 +6,7 @@ import { ApiService } from '../../core/api.service';
 import { Course, SchoolClass, Student, Subject, fullName, initials } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
 
 export type DataTab = 'klassen' | 'schueler' | 'faecher';
 const TABS: DataTab[] = ['klassen', 'schueler', 'faecher'];
@@ -20,6 +21,7 @@ const TABS: DataTab[] = ['klassen', 'schueler', 'faecher'];
 export class DataPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
 
   /** Der Reiter steht in der Adresse (?tab=schueler), damit Links direkt dorthin führen. */
@@ -135,10 +137,13 @@ export class DataPage {
     });
   }
 
-  deleteClass(schoolClass: SchoolClass): void {
-    const confirmed = confirm(
-      `Klasse „${schoolClass.name}" mit allen Schülern, Sitzordnungen und Bewertungen löschen?`,
-    );
+  async deleteClass(schoolClass: SchoolClass): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: `Klasse „${schoolClass.name}" löschen?`,
+      message: 'Alle Schüler, Sitzordnungen und Bewertungen dieser Klasse gehen verloren.',
+      confirmLabel: 'Klasse löschen',
+      danger: true,
+    });
     if (!confirmed) {
       return;
     }
@@ -176,8 +181,14 @@ export class DataPage {
     });
   }
 
-  deleteSubject(subject: Subject): void {
-    if (!confirm(`Fach „${subject.name}" mit allen zugehörigen Kursen löschen?`)) {
+  async deleteSubject(subject: Subject): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: `Fach „${subject.name}" löschen?`,
+      message: 'Alle Kurse dieses Fachs werden mit Sitzordnungen und Bewertungen gelöscht.',
+      confirmLabel: 'Fach löschen',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -211,10 +222,13 @@ export class DataPage {
     });
   }
 
-  deleteCourse(course: Course): void {
-    const confirmed = confirm(
-      `${course.subjectName} in ${course.schoolClassName} löschen? Sitzordnungen und Bewertungen dieses Kurses gehen verloren.`,
-    );
+  async deleteCourse(course: Course): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: `${course.subjectName} in ${course.schoolClassName} löschen?`,
+      message: 'Sitzordnungen und Bewertungen dieses Kurses gehen verloren.',
+      confirmLabel: 'Kurs löschen',
+      danger: true,
+    });
     if (!confirmed) {
       return;
     }
@@ -303,8 +317,14 @@ export class DataPage {
     });
   }
 
-  deleteStudent(student: Student): void {
-    if (!confirm(`${fullName(student)} wirklich löschen?`)) {
+  async deleteStudent(student: Student): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: `${fullName(student)} löschen?`,
+      message: 'Auch alle Bewertungen dieses Schülers gehen verloren.',
+      confirmLabel: 'Löschen',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 

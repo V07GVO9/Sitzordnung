@@ -277,6 +277,19 @@ export const ICONS = {
     { t: 'path', d: 'M18 9v6' },
     { t: 'path', d: 'M21 12h-6' },
   ],
+  'refresh-cw': [
+    { t: 'path', d: 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8' },
+    { t: 'path', d: 'M21 3v5h-5' },
+    { t: 'path', d: 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16' },
+    { t: 'path', d: 'M8 16H3v5' },
+  ],
+  'monitor-down': [
+    { t: 'path', d: 'M12 13V7' },
+    { t: 'path', d: 'm15 10-3 3-3-3' },
+    { t: 'rect', width: '20', height: '14', x: '2', y: '3', rx: '2' },
+    { t: 'path', d: 'M12 17v4' },
+    { t: 'path', d: 'M8 21h8' },
+  ],
 } satisfies Record<string, IconShape[]>;
 
 export type IconName = keyof typeof ICONS;

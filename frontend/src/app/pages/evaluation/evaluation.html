@@ -320,6 +320,27 @@
           <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
         </p>
 
+        @if (canWriteInPlace) {
+          <label class="inline toggle">
+            <input
+              type="checkbox"
+              [checked]="autoSaveToFile()"
+              (change)="setAutoSave($any($event.target).checked)"
+            />
+            Nach jeder Änderung automatisch in die Datei speichern
+          </label>
+          <p class="muted small">
+            Wirkt, sobald einmal von Hand gespeichert wurde – der Browser fragt dabei einmal nach
+            der Erlaubnis, in die Datei zu schreiben. Die Einstellung gilt für dieses Gerät.
+          </p>
+        } @else {
+          <p class="muted small">
+            Dieser Browser kann nicht direkt in die Datei schreiben. Gespeichert wird als Download
+            über <strong>Speichern</strong> oder <kbd>Strg</kbd>+<kbd>S</kbd>. In Chrome oder Edge
+            geht es automatisch.
+          </p>
+        }
+
         <div class="row">
           <button class="btn" type="button" (click)="saveAs()">
             <app-icon name="save" /> Speichern unter …

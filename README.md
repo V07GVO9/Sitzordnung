@@ -27,6 +27,23 @@ vollständig im Browser.
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
 
+## Bedienung
+
+- **Navigation:** am PC links in der Seitenleiste, auf Handy und Tablet unten.
+  Die laufende Stunde steht immer sichtbar daneben bzw. oben und führt mit einem
+  Klick zum Bewerten.
+- **Bewerten:** Auf jeder Kachel stehen der Punktestand und die vier Knöpfe.
+  Wer heute schon bewertet wurde, ist grün bzw. rot hinterlegt. Nach jeder
+  Bewertung erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
+- **Sitzplan bearbeiten:** Neben Drag and Drop setzen *Auffüllen*,
+  *Alphabetisch* und *Zufällig* die Schüler auf einen Schlag.
+- **Darstellung:** hell, dunkel oder wie im Betriebssystem eingestellt –
+  umschaltbar unten in der Seitenleiste bzw. im Menü. Die Wahl gilt je Gerät.
+- **Als App installieren:** In Chrome und Edge erscheint *Als App
+  installieren*. Die App bekommt dann ein eigenes Symbol und startet auch ohne
+  Internet. Zwischengespeichert werden dabei nur die Programmdateien, nie die
+  Daten. Liegt eine neue Version bereit, meldet die App das.
+
 ## Die Datei mit den Daten
 
 Beim Öffnen der Anwendung fragt sie nach einer Datei und dem zugehörigen
@@ -36,13 +53,17 @@ Passwort. Ohne beides zeigt sie keine Daten an.
   Speicherort.
 - **Datei öffnen** liest einen vorhandenen Bestand ein.
 
-Gespeichert wird über die Schaltfläche **Speichern** in der Kopfzeile. Die
-Kopfzeile zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim
-Schließen des Fensters warnt der Browser davor.
+Gespeichert wird über **Speichern** (am PC in der Seitenleiste, auf Handy und
+Tablet über das Symbol oben rechts) oder mit <kbd>Strg</kbd>+<kbd>S</kbd>. Die
+App zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim Schließen des
+Fensters warnt der Browser davor.
 
 In Chrome und Edge merkt sich die Anwendung die gewählte Datei und schreibt beim
-Speichern direkt dorthin zurück. Firefox und Safari unterstützen das nicht – dort
-landet beim Speichern jedes Mal eine neue Datei im Download-Ordner.
+Speichern direkt dorthin zurück. Dort speichert sie auch **automatisch** wenige
+Sekunden nach jeder Änderung – sobald einmal von Hand gespeichert und dem
+Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
+*Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
+beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 ### Was in der Datei steht
 
@@ -178,6 +199,8 @@ frontend/
         file-system.ts   Zugriff auf Dateien im Browser
         photo.ts         Fotos einlesen und verkleinern
         browser-storage.ts  Zwischenspeicher in IndexedDB
+      ui/                Gemeinsame Bausteine: Symbole, Dunkelmodus,
+                         Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
     pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Verwaltung,
                          Stundenplan, Auswertung

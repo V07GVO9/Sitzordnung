@@ -449,6 +449,15 @@ main {
     background: var(--positive-solid);
   }
 
+  .install {
+    width: 100%;
+    margin-top: -0.5rem;
+  }
+
+  .file-line.auto {
+    font-size: 0.78rem;
+  }
+
   .side-foot {
     display: flex;
     flex-wrap: wrap;

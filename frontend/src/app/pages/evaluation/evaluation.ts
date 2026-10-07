@@ -15,6 +15,7 @@ import { FilePickerCancelled } from '../../core/store/file-system';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
 
 export type EvaluationTab = 'punkte' | 'noten' | 'einstellungen' | 'datei';
 const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
@@ -29,6 +30,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 export class EvaluationPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly vault = inject(VaultService);
   private readonly router = inject(Router);
 
@@ -40,6 +42,8 @@ export class EvaluationPage {
   });
 
   readonly fileName = this.vault.fileName;
+  readonly canWriteInPlace = this.vault.canWriteInPlace;
+  readonly autoSaveToFile = this.vault.autoSaveToFile;
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
 
@@ -184,9 +188,17 @@ export class EvaluationPage {
     });
   }
 
-  deleteCourseScale(): void {
+  async deleteCourseScale(): Promise<void> {
     const courseId = this.selectedCourseId();
-    if (!courseId || !confirm('Eigenen Notenschlüssel dieses Kurses entfernen?')) {
+    if (
+      !courseId ||
+      !(await this.confirm.ask({
+        title: 'Eigenen Notenschlüssel entfernen?',
+        message: 'Für diesen Kurs gilt danach wieder der allgemeine Notenschlüssel.',
+        confirmLabel: 'Entfernen',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -216,6 +228,13 @@ export class EvaluationPage {
   // --- Export ---
 
   // --- Datenbestand ---
+
+  setAutoSave(enabled: boolean): void {
+    this.vault.setAutoSaveToFile(enabled);
+    this.toasts.success(
+      enabled ? 'Automatisches Speichern ist eingeschaltet.' : 'Automatisches Speichern ist aus.',
+    );
+  }
 
   /** Fragt nach einer neuen Datei und speichert dorthin. */
   async saveAs(): Promise<void> {

@@ -49,6 +49,9 @@
             {{ fileName() ?? 'Ohne Datei' }}
           </span>
         </div>
+        @if (autoSaveActive()) {
+          <div class="file-line auto"><app-icon name="refresh-cw" /> Speichert automatisch</div>
+        }
         <div class="file-line status">
           <span class="state-dot"></span>
           {{ saveStateText() }}
@@ -63,6 +66,12 @@
           <app-icon name="save" /> Speichern
         </button>
       </div>
+
+      @if (canInstall()) {
+        <button class="btn small install" type="button" (click)="install()">
+          <app-icon name="monitor-down" /> Als App installieren
+        </button>
+      }
 
       <div class="side-foot">
         <button
@@ -144,6 +153,11 @@
             <button type="button" role="menuitem" (click)="save(); menuOpen.set(false)">
               <app-icon name="save" /> Speichern
             </button>
+            @if (canInstall()) {
+              <button type="button" role="menuitem" (click)="install()">
+                <app-icon name="monitor-down" /> Als App installieren
+              </button>
+            }
             <button type="button" role="menuitem" (click)="cycleTheme()">
               <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
             </button>
@@ -176,3 +190,4 @@
 }
 
 <app-toast-host />
+<app-confirm-host />
