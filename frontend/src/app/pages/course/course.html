@@ -16,6 +16,8 @@
 
       <div class="spacer"></div>
 
+      <a class="btn" [routerLink]="['/kurs', courseId(), 'noten']">Noten</a>
+
       @if (plans().length > 1) {
         <div class="plan-switch" role="group" aria-label="Sitzordnung wählen">
           @for (plan of plans(); track plan.id) {

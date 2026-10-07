@@ -1,0 +1,912 @@
+@if (book(); as b) {
+  <div class="stack">
+    <!-- Kopf: Kurs, Zeitraum, Reiter -->
+    <section class="card head">
+      <div class="title">
+        <div>
+          <div class="eyebrow">{{ b.schoolClassName }} · Noten</div>
+          <h1>{{ b.subjectName }}</h1>
+        </div>
+        <span class="spacer"></span>
+        <a class="btn" [routerLink]="['/kurs', courseId()]">Zur Sitzordnung</a>
+      </div>
+
+      <div class="filter">
+        <label>
+          Zeitraum
+          <select [ngModel]="periodId()" (ngModelChange)="selectPeriod($event)" name="period">
+            <option [ngValue]="null">Gesamter Zeitraum</option>
+            @for (p of periods(); track p.id) {
+              <option [ngValue]="p.id">
+                {{ p.name }} ({{ formatDate(p.start) }} – {{ formatDate(p.end) }})
+              </option>
+            }
+          </select>
+        </label>
+        <button class="btn small" type="button" (click)="editingPeriods.set(!editingPeriods())">
+          Zeiträume verwalten
+        </button>
+        <span class="spacer"></span>
+        <button class="btn small" type="button" (click)="exportCsv()">
+          Notenübersicht als CSV
+        </button>
+      </div>
+
+      @if (editingPeriods()) {
+        <div class="periods">
+          @for (p of periods(); track p.id) {
+            <div class="period-row">
+              <span>{{ p.name }}</span>
+              <span class="muted small">{{ formatDate(p.start) }} – {{ formatDate(p.end) }}</span>
+              <button class="btn small danger" type="button" (click)="deletePeriod(p)">
+                Löschen
+              </button>
+            </div>
+          } @empty {
+            <p class="muted small">Noch keine Zeiträume - etwa „1. Halbjahr 2026/27".</p>
+          }
+          <div class="filter">
+            <label>
+              Name
+              <input
+                type="text"
+                placeholder="1. Halbjahr 2026/27"
+                [ngModel]="periodForm().name"
+                (ngModelChange)="updatePeriodForm({ name: $event })"
+                name="periodName"
+              />
+            </label>
+            <label>
+              Von
+              <input
+                type="date"
+                [ngModel]="periodForm().start"
+                (ngModelChange)="updatePeriodForm({ start: $event })"
+                name="periodStart"
+              />
+            </label>
+            <label>
+              Bis
+              <input
+                type="date"
+                [ngModel]="periodForm().end"
+                (ngModelChange)="updatePeriodForm({ end: $event })"
+                name="periodEnd"
+              />
+            </label>
+            <button class="btn primary small" type="button" (click)="savePeriod()">
+              Zeitraum anlegen
+            </button>
+          </div>
+        </div>
+      }
+
+      <nav class="tabs" role="tablist">
+        <button type="button" [class.active]="tab() === 'overview'" (click)="selectTab('overview')">
+          Übersicht
+        </button>
+        <button
+          type="button"
+          [class.active]="tab() === 'assessments'"
+          (click)="selectTab('assessments')"
+        >
+          Leistungsnachweise
+        </button>
+        <button
+          type="button"
+          [class.active]="tab() === 'participation'"
+          (click)="selectTab('participation')"
+        >
+          Mitarbeit
+        </button>
+        <button type="button" [class.active]="tab() === 'scheme'" (click)="selectTab('scheme')">
+          Bewertungsschema
+        </button>
+        <button type="button" [class.active]="tab() === 'reports'" (click)="selectTab('reports')">
+          Notenbögen
+        </button>
+        <button type="button" [class.active]="tab() === 'log'" (click)="selectTab('log')">
+          Protokoll
+        </button>
+      </nav>
+    </section>
+
+    <!-- Übersicht -->
+    @if (tab() === 'overview') {
+      <section class="card">
+        <p class="muted small">
+          Schriftlich {{ b.scheme.writtenPercent }} % · mündlich/sonstig
+          {{ 100 - b.scheme.writtenPercent }} % · Mitarbeit aus {{ b.lessonDates.length }}
+          Doppelstunden. Nur freigegebene Leistungsnachweise zählen.
+          @if (b.scheme.isDefault) {
+            <strong>Es gilt noch der Vorschlag - bitte das Bewertungsschema prüfen.</strong>
+          }
+        </p>
+        <div class="table-wrap">
+          <table class="grades">
+            <thead>
+              <tr>
+                <th>Name</th>
+                @for (a of releasedAssessments(); track a.id) {
+                  <th class="num" [title]="a.typeLabel + ', Gewicht ' + a.weight">
+                    {{ a.title }}<br />
+                    <span class="muted small">{{ formatDate(a.date) }}</span>
+                  </th>
+                }
+                <th class="num">Mitarbeit</th>
+                <th class="num">Schriftl.</th>
+                <th class="num">Mündl.</th>
+                <th class="num">Gesamt</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of b.students; track s.studentId) {
+                <tr>
+                  <td>{{ s.lastName }}, {{ s.firstName }}</td>
+                  @for (a of releasedAssessments(); track a.id) {
+                    <td class="num">{{ formatGrade(gradeOf(s, a), 1) }}</td>
+                  }
+                  <td class="num">{{ formatGrade(s.participation) }}</td>
+                  <td class="num">{{ formatGrade(s.written) }}</td>
+                  <td class="num">{{ formatGrade(s.oral) }}</td>
+                  <td class="num">
+                    <strong>{{ formatGrade(s.overall) }}</strong>
+                    @if (s.partial && s.overall !== null) {
+                      <span class="muted" title="Ein Bereich hat noch keine Noten">*</span>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="releasedAssessments().length + 5" class="muted">
+                    In dieser Klasse sind keine Schüler angelegt.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small">* vorläufig - ein Bereich hat noch keine Noten.</p>
+      </section>
+    }
+
+    <!-- Leistungsnachweise -->
+    @if (tab() === 'assessments') {
+      @if (detail(); as d) {
+        <section class="card">
+          <div class="title">
+            <h2>{{ d.assessment.title }}</h2>
+            @if (d.assessment.released) {
+              <span class="badge ok">freigegeben</span>
+            } @else {
+              <span class="badge">Entwurf</span>
+            }
+            <span class="spacer"></span>
+            <button class="btn small" type="button" (click)="closeAssessment()">
+              Zurück zur Liste
+            </button>
+          </div>
+
+          <div class="filter">
+            <label>
+              Art
+              <select
+                [ngModel]="detailForm().typeKey"
+                (ngModelChange)="updateDetailForm({ typeKey: $event })"
+                [disabled]="d.assessment.released"
+                name="detailType"
+              >
+                @for (t of b.scheme.types; track t.key) {
+                  <option [value]="t.key">{{ t.label }} ({{ areaLabels[t.area] }})</option>
+                }
+              </select>
+            </label>
+            <label>
+              Titel
+              <input
+                type="text"
+                [ngModel]="detailForm().title"
+                (ngModelChange)="updateDetailForm({ title: $event })"
+                name="detailTitle"
+              />
+            </label>
+            <label>
+              Datum
+              <input
+                type="date"
+                [ngModel]="detailForm().date"
+                (ngModelChange)="updateDetailForm({ date: $event })"
+                name="detailDate"
+              />
+            </label>
+            <label>
+              Max. Punkte
+              <input
+                type="text"
+                inputmode="decimal"
+                placeholder="ohne"
+                [ngModel]="detailForm().maxPoints"
+                (ngModelChange)="updateDetailForm({ maxPoints: $event })"
+                [disabled]="d.assessment.released"
+                name="detailMax"
+              />
+            </label>
+          </div>
+
+          <p class="muted small">
+            @if (d.assessment.maxPoints) {
+              Punkte eintragen - die Note ergibt sich aus dem Punkteschlüssel. Eine eingetragene
+              Note hat Vorrang.
+            } @else {
+              Noten mit Komma eintragen, z. B. 2,3.
+            }
+          </p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  @if (d.assessment.maxPoints) {
+                    <th class="num">Punkte</th>
+                  }
+                  <th class="num">Note</th>
+                  <th class="num">zählt mit</th>
+                  <th>Bemerkung</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of resultRows(); track row.studentId; let i = $index) {
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td>
+                      <select
+                        [ngModel]="row.status"
+                        (ngModelChange)="updateRow(row.studentId, { status: $event })"
+                        [name]="'status' + row.studentId"
+                      >
+                        @for (st of statuses; track st) {
+                          <option [value]="st">{{ statusLabels[st] }}</option>
+                        }
+                      </select>
+                    </td>
+                    @if (d.assessment.maxPoints) {
+                      <td class="num">
+                        <input
+                          class="short"
+                          type="text"
+                          inputmode="decimal"
+                          [disabled]="row.status !== 'graded'"
+                          [ngModel]="row.points"
+                          (ngModelChange)="updateRow(row.studentId, { points: $event })"
+                          [name]="'points' + row.studentId"
+                        />
+                      </td>
+                    }
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="–"
+                        [disabled]="row.status !== 'graded'"
+                        [ngModel]="row.grade"
+                        (ngModelChange)="updateRow(row.studentId, { grade: $event })"
+                        [name]="'grade' + row.studentId"
+                      />
+                    </td>
+                    <td class="num">{{ formatGrade(d.results[i]?.effectiveGrade ?? null, 1) }}</td>
+                    <td>
+                      <input
+                        type="text"
+                        [ngModel]="row.comment"
+                        (ngModelChange)="updateRow(row.studentId, { comment: $event })"
+                        [name]="'comment' + row.studentId"
+                      />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mirror">
+            <strong>Notenspiegel</strong>
+            @for (count of distribution(); track $index) {
+              <span>{{ $index + 1 }}: {{ count }}</span>
+            }
+            <span class="muted">Ø {{ formatGrade(d.assessment.average) }}</span>
+          </div>
+
+          @if (d.assessment.released) {
+            <label class="full">
+              Begründung für Änderungen (Pflicht, landet im Protokoll)
+              <input
+                type="text"
+                [ngModel]="changeReason()"
+                (ngModelChange)="changeReason.set($event)"
+                name="reason"
+              />
+            </label>
+          }
+
+          <div class="actions">
+            <button class="btn primary" type="button" (click)="saveAssessment()">Speichern</button>
+            @if (d.assessment.released) {
+              <button class="btn" type="button" (click)="setReleased(false)">
+                Freigabe zurücknehmen
+              </button>
+            } @else {
+              <button class="btn" type="button" (click)="setReleased(true)">
+                Freigeben (zählt ab dann)
+              </button>
+            }
+            <span class="spacer"></span>
+            <button class="btn danger" type="button" (click)="deleteAssessment()">Löschen</button>
+          </div>
+          <p class="muted small">
+            Erst speichern, dann freigeben - die Freigabe übernimmt den gespeicherten Stand.
+          </p>
+        </section>
+      } @else {
+        <section class="card">
+          <h2>Neuer Leistungsnachweis</h2>
+          <div class="filter">
+            <label>
+              Art
+              <select
+                [ngModel]="newForm().typeKey"
+                (ngModelChange)="updateNewForm({ typeKey: $event })"
+                name="newType"
+              >
+                @for (t of b.scheme.types; track t.key) {
+                  <option [value]="t.key">{{ t.label }} ({{ areaLabels[t.area] }})</option>
+                }
+              </select>
+            </label>
+            <label>
+              Titel
+              <input
+                type="text"
+                placeholder="Klassenarbeit 1"
+                [ngModel]="newForm().title"
+                (ngModelChange)="updateNewForm({ title: $event })"
+                name="newTitle"
+              />
+            </label>
+            <label>
+              Datum
+              <input
+                type="date"
+                [ngModel]="newForm().date"
+                (ngModelChange)="updateNewForm({ date: $event })"
+                name="newDate"
+              />
+            </label>
+            <label>
+              Max. Punkte
+              <input
+                type="text"
+                inputmode="decimal"
+                placeholder="ohne"
+                [ngModel]="newForm().maxPoints"
+                (ngModelChange)="updateNewForm({ maxPoints: $event })"
+                name="newMax"
+              />
+            </label>
+            <button class="btn primary" type="button" (click)="createAssessment()">Anlegen</button>
+          </div>
+          <p class="muted small">
+            Mit Punktzahl rechnet die App über den Punkteschlüssel um. Ohne Punktzahl werden Noten
+            direkt eingetragen.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Leistungsnachweise im Zeitraum</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Titel</th>
+                  <th>Art</th>
+                  <th class="num">Gewicht</th>
+                  <th class="num">Ø</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of b.assessments; track a.id) {
+                  <tr>
+                    <td>{{ formatDate(a.date) }}</td>
+                    <td>{{ a.title }}</td>
+                    <td>
+                      {{ a.typeLabel }} <span class="muted small">({{ areaLabels[a.area] }})</span>
+                    </td>
+                    <td class="num">{{ a.weight }}</td>
+                    <td class="num">{{ formatGrade(a.average) }}</td>
+                    <td>
+                      @if (a.released) {
+                        <span class="badge ok">freigegeben</span>
+                      } @else {
+                        <span class="badge">Entwurf</span>
+                      }
+                    </td>
+                    <td>
+                      <button class="btn small" type="button" (click)="openAssessment(a.id)">
+                        Noten eintragen
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="muted">
+                      Noch keine Leistungsnachweise in diesem Zeitraum.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+
+    <!-- Mitarbeit je Doppelstunde -->
+    @if (tab() === 'participation') {
+      <section class="card">
+        <h2>Mitarbeit je Doppelstunde</h2>
+        <p class="muted small">
+          Jede Doppelstunde mit mindestens einer Bewertung zählt. ++ =
+          {{ formatGrade(b.scheme.participationGrades.plusPlus, 1) }} · + =
+          {{ formatGrade(b.scheme.participationGrades.plus, 1) }} · − =
+          {{ formatGrade(b.scheme.participationGrades.minus, 1) }} · −− =
+          {{ formatGrade(b.scheme.participationGrades.minusMinus, 1) }} · ohne Bewertung =
+          {{ formatGrade(b.scheme.participationGrades.unrated, 1) }}. Fehlt ein Schüler, „fehlte"
+          wählen - die Stunde zählt dann nicht.
+        </p>
+        @if (b.lessonDates.length === 0) {
+          <p class="muted">In diesem Zeitraum wurde in diesem Kurs noch nicht bewertet.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="lessons">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  @for (date of b.lessonDates; track date) {
+                    <th class="num">{{ formatDate(date).slice(0, 6) }}</th>
+                  }
+                  <th class="num">Ø</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of b.students; track s.studentId) {
+                  <tr>
+                    <td>{{ s.lastName }}, {{ s.firstName }}</td>
+                    @for (lesson of s.lessons; track lesson.date) {
+                      <td
+                        class="num cell"
+                        [class.override]="!!lesson.override"
+                        [class.absent]="lesson.grade === null"
+                        [title]="lesson.override?.reason ?? ''"
+                      >
+                        <select
+                          [value]="lessonChoice(lesson)"
+                          (change)="setLesson(s, lesson, $any($event.target))"
+                          [attr.aria-label]="s.lastName + ', ' + formatDate(lesson.date)"
+                        >
+                          <option value="auto" [selected]="lessonChoice(lesson) === 'auto'">
+                            {{ lesson.value === null ? '·' : ratingSymbol(lesson.value) }}
+                            {{ formatGrade(lesson.autoGrade, 1) }}
+                          </option>
+                          @for (g of overrideGrades; track g) {
+                            <option [value]="'' + g" [selected]="lessonChoice(lesson) === '' + g">
+                              {{ formatGrade(g, 1) }} (von Hand)
+                            </option>
+                          }
+                          <option value="absent" [selected]="lessonChoice(lesson) === 'absent'">
+                            fehlte
+                          </option>
+                        </select>
+                      </td>
+                    }
+                    <td class="num">
+                      <strong>{{ formatGrade(s.participation) }}</strong>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Bewertungsschema -->
+    @if (tab() === 'scheme') {
+      @if (schemeDraft(); as draft) {
+        <section class="card">
+          <h2>Bewertungsschema · {{ b.subjectName }}</h2>
+          @if (b.scheme.isDefault) {
+            <div class="banner warn small">
+              Für diesen Kurs ist noch kein Schema gespeichert - angezeigt wird der Vorschlag.
+              Gewichtung und Schlüssel bitte mit den Beschlüssen der Bildungsgangkonferenz
+              abgleichen.
+            </div>
+          }
+
+          <h3>Gewichtung der Bereiche</h3>
+          <div class="filter">
+            <label>
+              Schriftlich (%)
+              <input
+                class="short"
+                type="number"
+                min="0"
+                max="100"
+                [ngModel]="draft.writtenPercent"
+                (ngModelChange)="patchScheme({ writtenPercent: toNumber($event) })"
+                name="writtenPercent"
+              />
+            </label>
+            <span class="muted">Mündlich/sonstig: {{ 100 - draft.writtenPercent }} %</span>
+          </div>
+
+          <h3>Arten von Leistungsnachweisen</h3>
+          <p class="muted small">
+            Jede Einzelnote zählt mit dem Gewicht ihrer Art. Beispiel: Klassenarbeit 2, Test 1 -
+            eine Klassenarbeit zählt doppelt so viel wie ein Test.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bezeichnung</th>
+                  <th>Bereich</th>
+                  <th class="num">Gewicht</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of draft.types; track t.key; let i = $index) {
+                  <tr>
+                    <td>
+                      <input
+                        type="text"
+                        [ngModel]="t.label"
+                        (ngModelChange)="patchType(i, { label: $event })"
+                        [name]="'typeLabel' + i"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        [ngModel]="t.area"
+                        (ngModelChange)="patchType(i, { area: $event })"
+                        [name]="'typeArea' + i"
+                      >
+                        @for (area of areas; track area) {
+                          <option [value]="area">{{ areaLabels[area] }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        [ngModel]="t.weight"
+                        (ngModelChange)="patchType(i, { weight: toNumber($event) })"
+                        [name]="'typeWeight' + i"
+                      />
+                    </td>
+                    <td>
+                      <button class="btn small danger" type="button" (click)="removeType(i)">
+                        Entfernen
+                      </button>
+                    </td>
+                  </tr>
+                }
+                <tr>
+                  <td>Mitarbeit (Ø der Doppelstunden)</td>
+                  <td>{{ areaLabels.oral }}</td>
+                  <td class="num">
+                    <input
+                      class="short"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      [ngModel]="draft.participationWeight"
+                      (ngModelChange)="patchScheme({ participationWeight: toNumber($event) })"
+                      name="participationWeight"
+                    />
+                  </td>
+                  <td class="muted small">fest</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="btn small" type="button" (click)="addType()">Art hinzufügen</button>
+
+          <div class="cols">
+            <div>
+              <h3>Punkteschlüssel</h3>
+              <p class="muted small">
+                Ab wie viel Prozent der Punkte gilt welche Note? (Vorlage: IHK)
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="num">ab %</th>
+                    <th class="num">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (e of draft.percentScale; track $index; let i = $index) {
+                    <tr>
+                      <td class="num">
+                        <input
+                          class="short"
+                          type="number"
+                          min="0"
+                          max="100"
+                          [ngModel]="e.minPercent"
+                          (ngModelChange)="patchScale(i, { minPercent: toNumber($event) })"
+                          [name]="'scaleMin' + i"
+                        />
+                      </td>
+                      <td class="num">{{ e.grade }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3>Mitarbeit je Doppelstunde</h3>
+              <p class="muted small">
+                Mehrere Bewertungen einer Stunde werden addiert (höchstens ++, mindestens −−).
+              </p>
+              <table>
+                <tbody>
+                  <tr>
+                    <td>++</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.plusPlus, 1)"
+                        (change)="patchParticipation('plusPlus', $any($event.target).value)"
+                        name="pPlusPlus"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>+</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.plus, 1)"
+                        (change)="patchParticipation('plus', $any($event.target).value)"
+                        name="pPlus"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>+ und − ausgeglichen</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.neutral, 1)"
+                        (change)="patchParticipation('neutral', $any($event.target).value)"
+                        name="pNeutral"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>−</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.minus, 1)"
+                        (change)="patchParticipation('minus', $any($event.target).value)"
+                        name="pMinus"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>−−</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.minusMinus, 1)"
+                        (change)="patchParticipation('minusMinus', $any($event.target).value)"
+                        name="pMinusMinus"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>ohne Bewertung</td>
+                    <td class="num">
+                      <input
+                        class="short"
+                        type="text"
+                        inputmode="decimal"
+                        [ngModel]="formatGrade(draft.participationGrades.unrated, 1)"
+                        (change)="patchParticipation('unrated', $any($event.target).value)"
+                        name="pUnrated"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" type="button" (click)="saveScheme()">
+              Schema speichern
+            </button>
+            <button class="btn" type="button" (click)="resetSchemeDraft()">Verwerfen</button>
+          </div>
+        </section>
+
+        @if (otherCourses().length) {
+          <section class="card">
+            <h2>Schema auf andere Kurse übertragen</h2>
+            <p class="muted small">
+              Überträgt das <strong>gespeicherte</strong> Schema. Vorausgewählt sind die übrigen
+              Lernfelder dieser Klasse.
+            </p>
+            <div class="checks">
+              @for (c of otherCourses(); track c.id) {
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    [checked]="copyTargets().has(c.id)"
+                    (change)="toggleCopyTarget(c.id, $any($event.target).checked)"
+                  />
+                  {{ c.schoolClassName }} · {{ c.subjectName }}
+                </label>
+              }
+            </div>
+            <button class="btn" type="button" (click)="copyScheme()">Übertragen</button>
+          </section>
+        }
+      }
+    }
+
+    <!-- Notenbögen -->
+    @if (tab() === 'reports') {
+      <section class="card">
+        <h2>Notenbögen für Schüler</h2>
+        <p class="muted small">
+          Jeder Schüler bekommt einen eigenen Bogen mit seinen Noten, dem aktuellen Stand und dem
+          Datum. Nur freigegebene Leistungsnachweise erscheinen. Bitte einzeln aushändigen oder
+          einzeln über Moodle/Teams verschicken - nie als Klassenliste.
+        </p>
+        <div class="actions">
+          <button class="btn small" type="button" (click)="selectAllForReport(true)">Alle</button>
+          <button class="btn small" type="button" (click)="selectAllForReport(false)">
+            Keinen
+          </button>
+        </div>
+        <div class="checks">
+          @for (s of b.students; track s.studentId) {
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="reportSelection().has(s.studentId)"
+                (change)="toggleReportStudent(s.studentId, $any($event.target).checked)"
+              />
+              {{ s.lastName }}, {{ s.firstName }}
+              <span class="muted small">{{ formatGrade(s.overall) }}</span>
+            </label>
+          }
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="button" (click)="printReports()">
+            Drucken / als PDF speichern
+          </button>
+          <button class="btn" type="button" (click)="downloadReports()">
+            Je Schüler als HTML-Datei
+          </button>
+        </div>
+        <p class="muted small">
+          Jede Ausgabe wird mit dem damaligen Stand vermerkt. Zeitraum:
+          {{ period()?.name ?? 'Gesamter Zeitraum' }}.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Ausgegebene Notenbögen</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ausgegeben</th>
+                <th>Schüler</th>
+                <th>Zeitraum</th>
+                <th class="num">Schriftl.</th>
+                <th class="num">Mündl.</th>
+                <th class="num">Gesamt</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of reports(); track r.id) {
+                <tr>
+                  <td>{{ formatDateTime(r.issuedAt) }}</td>
+                  <td>{{ r.studentName }}</td>
+                  <td>{{ r.periodName ?? 'Gesamter Zeitraum' }}</td>
+                  <td class="num">{{ formatGrade(r.written) }}</td>
+                  <td class="num">{{ formatGrade(r.oral) }}</td>
+                  <td class="num">
+                    <strong>{{ formatGrade(r.overall) }}</strong>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="muted">Noch keine Notenbögen ausgegeben.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <!-- Änderungsprotokoll -->
+    @if (tab() === 'log') {
+      <section class="card">
+        <h2>Änderungsprotokoll</h2>
+        <p class="muted small">
+          Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Zeitpunkt</th>
+                <th>Schüler</th>
+                <th>Was</th>
+                <th>Vorher</th>
+                <th>Nachher</th>
+                <th>Begründung</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of changes(); track c.id) {
+                <tr>
+                  <td>{{ formatDateTime(c.changedAt) }}</td>
+                  <td>{{ c.studentName }}</td>
+                  <td>{{ c.what }}</td>
+                  <td>{{ c.oldValue }}</td>
+                  <td>{{ c.newValue }}</td>
+                  <td>{{ c.reason ?? '–' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="muted">Noch keine Änderungen.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  </div>
+} @else {
+  <p class="muted">Noten werden geladen …</p>
+}

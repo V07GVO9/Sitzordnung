@@ -21,9 +21,20 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/course/course').then((m) => m.CoursePage),
   },
   {
+    path: 'kurs/:courseId/noten',
+    title: 'Noten',
+    loadComponent: () => import('./pages/grades/grades').then((m) => m.GradesPage),
+  },
+  {
     path: 'verwaltung',
     title: 'Klassen & Schüler',
     loadComponent: () => import('./pages/data/data').then((m) => m.DataPage),
+  },
+  {
+    path: 'stundenplan/import',
+    title: 'Stundenplan importieren',
+    loadComponent: () =>
+      import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
   },
   { path: 'stundenplan', redirectTo: '', pathMatch: 'full' },
   {
