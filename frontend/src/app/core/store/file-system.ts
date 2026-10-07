@@ -44,7 +44,7 @@ function picker(): FilePickerWindow {
 
 /** Kann der Browser direkt in eine gewählte Datei zurückschreiben? */
 export function supportsFileHandles(): boolean {
-  return typeof picker().showSaveFilePicker === 'function';
+  return isNativeApp() || typeof picker().showSaveFilePicker === 'function';
 }
 
 /** Wird geworfen, wenn der Benutzer den Dateidialog abbricht. */
@@ -56,6 +56,13 @@ function isAbort(error: unknown): boolean {
 
 /** Öffnet den Dateidialog und gibt Inhalt und - falls möglich - die Datei zurück. */
 export async function openFile(): Promise<{ content: string; handle: FileHandle | null; name: string }> {
+  if (isNativeApp()) {
+    // Android verrät nicht, wo die gewählte Datei liegt. Weitergeschrieben
+    // wird deshalb in die gleichnamige Datei unter "Dokumente/Sitzordnung".
+    const file = await openViaInput();
+    return { ...file, handle: nativeHandle(file.name) };
+  }
+
   const show = picker().showOpenFilePicker;
 
   if (show) {
@@ -103,6 +110,10 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
 
 /** Fragt nach einem Speicherort für eine neue Datei. */
 export async function chooseSaveFile(suggestedName: string): Promise<FileHandle | null> {
+  if (isNativeApp()) {
+    return nativeHandle(suggestedName);
+  }
+
   const show = picker().showSaveFilePicker;
   if (!show) {
     return null;
@@ -162,12 +173,7 @@ async function saveOnDevice(blob: Blob, fileName: string, share: boolean): Promi
   let uri: string;
 
   try {
-    ({ uri } = await Filesystem.writeFile({
-      path: `${NATIVE_FOLDER}/${fileName}`,
-      data,
-      directory: Directory.Documents,
-      recursive: true,
-    }));
+    ({ uri } = await writeNative(fileName, data));
   } catch {
     // Gehört die vorhandene Datei einer früheren Installation, verweigert
     // Android das Überschreiben. Damit nichts verloren geht, wird die Datei
@@ -179,6 +185,66 @@ async function saveOnDevice(blob: Blob, fileName: string, share: boolean): Promi
   if (share) {
     await Share.share({ title: fileName, files: [uri] });
   }
+}
+
+/**
+ * Eine Datei unter "Dokumente/Sitzordnung", die sich wie ein Datei-Handle der
+ * File System Access API verhält. So speichert die Android-App von allein.
+ */
+function nativeHandle(fileName: string): FileHandle {
+  let name = fileName;
+
+  return {
+    get name() {
+      return name;
+    },
+    async getFile() {
+      const { data } = await Filesystem.readFile({
+        path: `${NATIVE_FOLDER}/${name}`,
+        directory: Directory.Documents,
+      });
+      return new File([typeof data === 'string' ? fromBase64(data) : data], name);
+    },
+    async createWritable() {
+      let content: Blob = new Blob();
+      return {
+        async write(data: Blob) {
+          content = data;
+        },
+        async close() {
+          const data = await toBase64(content);
+          try {
+            await writeNative(name, data);
+          } catch {
+            // Stammt die Datei von einer früheren Installation, darf die App
+            // sie nicht überschreiben. Dann geht es in einer neuen Datei weiter.
+            name = renamed(name);
+            await writeNative(name, data);
+          }
+        },
+      };
+    },
+  };
+}
+
+function writeNative(name: string, data: string) {
+  return Filesystem.writeFile({
+    path: `${NATIVE_FOLDER}/${name}`,
+    data,
+    directory: Directory.Documents,
+    recursive: true,
+  });
+}
+
+/** "daten.sitzordnung" -> "daten-2026-10-07-1015.sitzordnung" */
+function renamed(name: string): string {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? `${name.slice(0, dot)}-${stamp}${name.slice(dot)}` : `${name}-${stamp}`;
+}
+
+function fromBase64(data: string): Blob {
+  return new Blob([Uint8Array.from(atob(data), (char) => char.charCodeAt(0))]);
 }
 
 function toBase64(blob: Blob): Promise<string> {

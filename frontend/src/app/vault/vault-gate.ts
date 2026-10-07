@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AutosaveEntry } from '../core/store/browser-storage';
-import { FilePickerCancelled } from '../core/store/file-system';
+import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
 import { LocalStore } from '../core/store/local-store';
 import { VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
@@ -33,6 +33,7 @@ export class VaultGate {
   readonly autosave = signal<AutosaveEntry | null>(null);
 
   readonly canWriteInPlace = this.vault.canWriteInPlace;
+  readonly isNativeApp = isNativeApp();
 
   readonly passwordsMatch = computed(
     () => this.mode() === 'open' || this.password() === this.passwordRepeat(),

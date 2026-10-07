@@ -375,9 +375,9 @@ export class ApiService {
   }
 
   exportGradeBook(courseId: number, range?: DateRange): Observable<void> {
-    return this.run(() => {
+    return this.fromPromise(() => {
       const result = this.store.exportGradeBook(courseId, range);
-      download(result.blob, result.fileName);
+      return download(result.blob, result.fileName, { share: true });
     });
   }
 

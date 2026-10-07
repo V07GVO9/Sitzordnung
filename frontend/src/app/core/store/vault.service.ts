@@ -117,6 +117,7 @@ export class VaultService {
     try {
       const blob = await encryptDatabase(this.store.snapshot(), this.password);
       await writeFile(this.handle, blob);
+      this.fileName.set(this.handle.name);
 
       this.store.markSaved();
       this.lastSavedAt.set(new Date());
@@ -242,6 +243,7 @@ export class VaultService {
 
       if (this.handle) {
         await writeFile(this.handle, blob);
+        this.fileName.set(this.handle.name);
       } else {
         await download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
       }

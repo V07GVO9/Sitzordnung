@@ -92,7 +92,9 @@
     }
 
     <p class="hint small muted">
-      @if (canWriteInPlace) {
+      @if (isNativeApp) {
+        Die App speichert von allein in den Ordner „Dokumente/Sitzordnung“ auf diesem Gerät.
+      } @else if (canWriteInPlace) {
         Dieser Browser kann direkt in die gewählte Datei zurückschreiben.
       } @else {
         Dieser Browser kann nicht in eine Datei zurückschreiben. Gespeichert wird deshalb als
