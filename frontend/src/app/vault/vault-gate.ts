@@ -5,6 +5,7 @@ import { FilePickerCancelled } from '../core/store/file-system';
 import { LocalStore } from '../core/store/local-store';
 import { VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
+import { Icon } from '../core/ui/icon';
 
 /**
  * Der Startbildschirm. Solange kein Datenbestand geöffnet ist, zeigt die App
@@ -13,7 +14,7 @@ import { ToastService } from '../core/toast.service';
 @Component({
   selector: 'app-vault-gate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   templateUrl: './vault-gate.html',
   styleUrl: './vault-gate.scss',
 })

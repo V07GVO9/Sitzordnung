@@ -3,13 +3,31 @@
 } @else if (!course()) {
   <div class="empty">
     <p>Dieser Kurs wurde nicht gefunden.</p>
-    <a class="btn" routerLink="/">Zurück zur Übersicht</a>
+    <a class="btn" routerLink="/unterricht">Zurück zur Übersicht</a>
   </div>
 } @else {
+  <!-- Die vier Bewertungsknöpfe - auf dem Platz und in der Liste dieselben. -->
+  <ng-template #rateButtons let-student let-score="score">
+    @for (option of ratingOptions; track option.value) {
+      <button
+        type="button"
+        class="rate"
+        [class.pos]="option.value > 0"
+        [class.neg]="option.value < 0"
+        [class.aktiv]="score?.currentLessonValue === option.value"
+        (click)="rate(student, option.value)"
+        [title]="option.title"
+        [attr.aria-label]="fullName(student) + ': ' + option.title"
+      >
+        {{ option.symbol }}
+      </button>
+    }
+  </ng-template>
+
   <div class="stack">
     <!-- Kopfzeile: Kurs, Modusumschalter, Sitzordnungswahl -->
-    <section class="head card">
-      <div>
+    <section class="head">
+      <div class="title">
         <div class="eyebrow">{{ course()!.schoolClassName }}</div>
         <h1>{{ course()!.subjectName }}</h1>
       </div>
@@ -17,11 +35,12 @@
       <div class="spacer"></div>
 
       @if (plans().length > 1) {
-        <div class="plan-switch" role="group" aria-label="Sitzordnung wählen">
+        <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
           @for (plan of plans(); track plan.id) {
             <button
               type="button"
-              [class.active]="plan.id === activePlanId()"
+              role="tab"
+              [attr.aria-selected]="plan.id === activePlanId()"
               (click)="selectPlan(plan.id)"
             >
               {{ plan.name }}
@@ -30,12 +49,22 @@
         </div>
       }
 
-      <div class="mode-switch" role="group" aria-label="Modus wählen">
-        <button type="button" [class.active]="!editMode()" (click)="toggleMode(false)">
-          Bewerten
+      <div class="tabs mode-switch" role="tablist" aria-label="Modus wählen">
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="!editMode()"
+          (click)="toggleMode(false)"
+        >
+          <app-icon name="presentation" /> Bewerten
         </button>
-        <button type="button" [class.active]="editMode()" (click)="toggleMode(true)">
-          Sitzplan bearbeiten
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="editMode()"
+          (click)="toggleMode(true)"
+        >
+          <app-icon name="pencil" /> Sitzplan bearbeiten
         </button>
       </div>
     </section>
@@ -58,7 +87,7 @@
             aria-label="Vorherige Unterrichtsstunde"
             title="Vorherige Unterrichtsstunde"
           >
-            ‹
+            <app-icon name="chevron-left" />
           </button>
 
           <div class="stunde-text">
@@ -70,8 +99,8 @@
               @if (slot.isCurrent) {
                 Je Stunde eine Bewertung – eine weitere ersetzt sie.
               } @else {
-                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und
-                werden sofort gespeichert.
+                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und werden sofort
+                gespeichert.
               }
             </span>
           </div>
@@ -85,7 +114,7 @@
             aria-label="Nächste Unterrichtsstunde"
             title="Nächste Unterrichtsstunde"
           >
-            ›
+            <app-icon name="chevron-right" />
           </button>
 
           <div class="stunde-extra">
@@ -102,13 +131,14 @@
       }
     } @else {
       <div class="banner warn">
-        <strong>Sitzplan bearbeiten</strong>
+        <app-icon name="pencil" />
         <span>
-          Schüler per Drag and Drop auf die Plätze ziehen. Änderungen werden sofort gespeichert.
+          <strong>Sitzplan bearbeiten:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
+          Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
         @if (saving()) {
-          <span class="small">Wird gespeichert …</span>
+          <span class="small">Wird übernommen …</span>
         }
       </div>
     }
@@ -116,53 +146,70 @@
     @if (plans().length === 0) {
       <div class="empty">
         <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
-        <button class="btn primary" type="button" (click)="addPlan()">Sitzordnung anlegen</button>
+        <button class="btn primary" type="button" (click)="addPlan()">
+          <app-icon name="plus" /> Sitzordnung anlegen
+        </button>
       </div>
     } @else {
       <!-- Werkzeugleiste nur im Einstellungsmodus -->
       @if (editMode()) {
         <section class="card toolbar">
-          <label>
-            Name
-            <input
-              type="text"
-              [value]="activePlan()?.name ?? ''"
-              (change)="renamePlan($any($event.target).value)"
-            />
-          </label>
-          <label>
-            Reihen
-            <input
-              type="number"
-              min="1"
-              max="20"
-              [value]="rows()"
-              (change)="changeGrid(+$any($event.target).value, columns())"
-            />
-          </label>
-          <label>
-            Spalten
-            <input
-              type="number"
-              min="1"
-              max="20"
-              [value]="columns()"
-              (change)="changeGrid(rows(), +$any($event.target).value)"
-            />
-          </label>
+          <div class="fields">
+            <label class="name-field">
+              Name
+              <input
+                type="text"
+                [value]="activePlan()?.name ?? ''"
+                (change)="renamePlan($any($event.target).value)"
+              />
+            </label>
+            <label>
+              Reihen
+              <input
+                type="number"
+                min="1"
+                max="20"
+                [value]="rows()"
+                (change)="changeGrid(+$any($event.target).value, columns())"
+              />
+            </label>
+            <label>
+              Spalten
+              <input
+                type="number"
+                min="1"
+                max="20"
+                [value]="columns()"
+                (change)="changeGrid(rows(), +$any($event.target).value)"
+              />
+            </label>
+          </div>
 
-          <span class="spacer"></span>
-
-          <button class="btn" type="button" (click)="autoFill()">Automatisch verteilen</button>
-          <button class="btn" type="button" (click)="clearSeats()">Plätze leeren</button>
-          @if (plans().length < maxPlans) {
-            <button class="btn" type="button" (click)="addPlan()">Zweite Sitzordnung</button>
-          }
-          <button class="btn danger" type="button" (click)="deletePlan()">Löschen</button>
+          <div class="tools">
+            <button
+              class="btn small"
+              type="button"
+              (click)="autoFill()"
+              title="Freie Plätze der Reihe nach füllen"
+            >
+              <app-icon name="wand-sparkles" /> Auffüllen
+            </button>
+            <button class="btn small" type="button" (click)="clearSeats()">
+              <app-icon name="eraser" /> Leeren
+            </button>
+            @if (plans().length < maxPlans) {
+              <button class="btn small" type="button" (click)="addPlan()">
+                <app-icon name="plus" /> Zweite Sitzordnung
+              </button>
+            }
+            <button class="btn small danger" type="button" (click)="deletePlan()">
+              <app-icon name="trash-2" /> Löschen
+            </button>
+          </div>
         </section>
       }
 
-      <div class="layout" cdkDropListGroup>
+      <div class="layout" [class.solo]="!showPool()" cdkDropListGroup>
         <!-- Der Raum -->
         <section class="room card">
           <div class="board">Tafel</div>
@@ -186,10 +233,30 @@
                       cdkDrag
                       [cdkDragData]="student.id"
                       [cdkDragDisabled]="!editMode()"
+                      [class.today-pos]="!editMode() && (cell.score?.pointsToday ?? 0) > 0"
+                      [class.today-neg]="!editMode() && (cell.score?.pointsToday ?? 0) < 0"
+                      [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
+                      [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
                     >
                       <div class="drag-preview" *cdkDragPreview>
                         {{ fullName(student) }}
                       </div>
+
+                      @if (!editMode()) {
+                        <span
+                          class="score"
+                          [class.pos]="(cell.score?.points ?? 0) > 0"
+                          [class.neg]="(cell.score?.points ?? 0) < 0"
+                          [title]="
+                            'Punktestand ' +
+                            (cell.score?.points ?? 0) +
+                            ', heute ' +
+                            (cell.score?.pointsToday ?? 0)
+                          "
+                        >
+                          {{ signed(cell.score?.points ?? 0) }}
+                        </span>
+                      }
 
                       <div class="avatar">
                         @if (student.photoUrl) {
@@ -206,42 +273,12 @@
 
                       @if (!editMode()) {
                         <div class="actions">
-                          <button
-                            type="button"
-                            class="rate plus2"
-                            [class.aktiv]="cell.score?.currentLessonValue === 2"
-                            (click)="rate(student.id, 2)"
-                            title="Sehr gute Mitarbeit (++)"
-                          >
-                            ++
-                          </button>
-                          <button
-                            type="button"
-                            class="rate plus1"
-                            [class.aktiv]="cell.score?.currentLessonValue === 1"
-                            (click)="rate(student.id, 1)"
-                            title="Gute Mitarbeit (+)"
-                          >
-                            +
-                          </button>
-                          <button
-                            type="button"
-                            class="rate minus1"
-                            [class.aktiv]="cell.score?.currentLessonValue === -1"
-                            (click)="rate(student.id, -1)"
-                            title="Schwache Mitarbeit (−)"
-                          >
-                            −
-                          </button>
-                          <button
-                            type="button"
-                            class="rate minus2"
-                            [class.aktiv]="cell.score?.currentLessonValue === -2"
-                            (click)="rate(student.id, -2)"
-                            title="Keine Mitarbeit / Störung (−−)"
-                          >
-                            −−
-                          </button>
+                          <ng-container
+                            *ngTemplateOutlet="
+                              rateButtons;
+                              context: { $implicit: student, score: cell.score }
+                            "
+                          />
                         </div>
                       }
                     </div>
@@ -254,96 +291,84 @@
           </div>
         </section>
 
-        <!-- Schüler ohne Platz -->
-        <aside class="pool card">
-          <h2>Ohne Platz</h2>
-          <p class="muted small">
-            @if (editMode()) {
-              Von hier auf einen Platz ziehen – oder einen Schüler hierher zurückziehen.
-            } @else {
-              Diese Schüler sitzen auf keinem Platz, können aber bewertet werden.
-            }
-          </p>
+        <!-- Schüler ohne Platz. Sitzen beim Bewerten alle, bekommt der Raum die volle Breite. -->
+        @if (showPool()) {
+          <aside class="pool card">
+            <h2>
+              Ohne Platz <span class="badge">{{ unseated().length }}</span>
+            </h2>
+            <p class="muted small">
+              @if (editMode()) {
+                Von hier auf einen Platz ziehen – oder einen Schüler hierher zurückziehen.
+              } @else {
+                Diese Schüler sitzen auf keinem Platz, können aber bewertet werden.
+              }
+            </p>
 
-          <div
-            class="pool-list"
-            cdkDropList
-            [cdkDropListData]="poolTarget"
-            [cdkDropListSortingDisabled]="true"
-            [cdkDropListDisabled]="!editMode()"
-            (cdkDropListDropped)="drop($event)"
-          >
-            @for (student of unseated(); track student.id) {
-              <div
-                class="pool-item"
-                cdkDrag
-                [cdkDragData]="student.id"
-                [cdkDragDisabled]="!editMode()"
-              >
-                <div class="drag-preview" *cdkDragPreview>{{ fullName(student) }}</div>
+            <div
+              class="pool-list"
+              cdkDropList
+              [cdkDropListData]="poolTarget"
+              [cdkDropListSortingDisabled]="true"
+              [cdkDropListDisabled]="!editMode()"
+              (cdkDropListDropped)="drop($event)"
+            >
+              @for (student of unseated(); track student.id) {
+                <div
+                  class="pool-item"
+                  cdkDrag
+                  [cdkDragData]="student.id"
+                  [cdkDragDisabled]="!editMode()"
+                  [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
+                  [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
+                >
+                  <div class="drag-preview" *cdkDragPreview>{{ fullName(student) }}</div>
 
-                <div class="avatar small">
-                  @if (student.photoUrl) {
-                    <img [src]="student.photoUrl" [alt]="fullName(student)" />
-                  } @else {
-                    <span>{{ initials(student) }}</span>
+                  <div class="avatar small">
+                    @if (student.photoUrl) {
+                      <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                    } @else {
+                      <span>{{ initials(student) }}</span>
+                    }
+                  </div>
+
+                  <span class="pool-name">{{ fullName(student) }}</span>
+
+                  @if (!editMode()) {
+                    <span
+                      class="points"
+                      [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
+                      [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
+                    >
+                      {{ signed(scoreFor(student.id)?.points ?? 0) }}
+                    </span>
+                    <span class="mini-actions">
+                      <ng-container
+                        *ngTemplateOutlet="
+                          rateButtons;
+                          context: { $implicit: student, score: scoreFor(student.id) }
+                        "
+                      />
+                    </span>
                   }
                 </div>
-
-                <span class="pool-name">{{ fullName(student) }}</span>
-
-                @if (!editMode()) {
-                  <span
-                    class="points"
-                    [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
-                    [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
-                  >
-                    {{ scoreFor(student.id)?.points ?? 0 }}
-                  </span>
-                  <span class="mini-actions">
-                    <button
-                      type="button"
-                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === 2"
-                      (click)="rate(student.id, 2)"
-                    >
-                      ++
-                    </button>
-                    <button
-                      type="button"
-                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === 1"
-                      (click)="rate(student.id, 1)"
-                    >
-                      +
-                    </button>
-                    <button
-                      type="button"
-                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === -1"
-                      (click)="rate(student.id, -1)"
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      [class.aktiv]="scoreFor(student.id)?.currentLessonValue === -2"
-                      (click)="rate(student.id, -2)"
-                    >
-                      −−
-                    </button>
-                  </span>
-                }
-              </div>
-            } @empty {
-              <p class="muted small">Alle Schüler sitzen auf einem Platz.</p>
-            }
-          </div>
-
-          @if (students().length === 0) {
-            <div class="empty small">
-              <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-              <a class="btn small" routerLink="/verwaltung">Schüler anlegen</a>
+              } @empty {
+                <p class="muted small all-seated">
+                  <app-icon name="circle-check" /> Alle Schüler sitzen auf einem Platz.
+                </p>
+              }
             </div>
-          }
-        </aside>
+
+            @if (students().length === 0) {
+              <div class="empty small">
+                <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
+                <a class="btn small" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+                  <app-icon name="plus" /> Schüler anlegen
+                </a>
+              </div>
+            }
+          </aside>
+        }
       </div>
     }
   </div>

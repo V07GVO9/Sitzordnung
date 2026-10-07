@@ -4,11 +4,13 @@ import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+import { subjectHue } from '../../core/ui/subject-hue';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, Icon],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -54,6 +56,8 @@ export class DashboardPage {
       },
     });
   }
+
+  readonly hue = subjectHue;
 
   /** Läuft dieser Stundenplaneintrag gerade? */
   isRunning(entry: TimetableEntry): boolean {

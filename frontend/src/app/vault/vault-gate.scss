@@ -2,102 +2,97 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: 1.25rem;
+  background:
+    radial-gradient(60rem 30rem at 15% -10%, var(--accent-soft), transparent 70%),
+    radial-gradient(40rem 25rem at 110% 110%, var(--accent-soft), transparent 70%), var(--bg);
 }
 
 .gate-card {
-  width: min(30rem, 100%);
+  width: min(29rem, 100%);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 0.35rem);
   box-shadow: var(--shadow-lg);
-  padding: 1.75rem;
+  padding: 1.5rem;
+}
+
+@media (min-width: 30rem) {
+  .gate-card {
+    padding: 2rem;
+  }
 }
 
 .gate-head {
   display: flex;
+  flex-direction: column;
   gap: 0.9rem;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
 }
 
 .gate-head h1 {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .gate-head p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 0.55rem;
-  background: var(--accent);
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
   color: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgb(79 70 229 / 35%);
 }
 
 .tabs {
   display: flex;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  background: var(--surface-muted);
-  border-radius: 0.55rem;
-  margin-bottom: 1.25rem;
-}
+  margin-bottom: 1.35rem;
 
-.tabs button {
-  flex: 1;
-  padding: 0.45rem;
-  border: 0;
-  border-radius: 0.4rem;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.tabs button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
+  button {
+    flex: 1 1 0;
+  }
 }
 
 label {
-  display: block;
-  margin-bottom: 0.9rem;
+  display: flex;
+  margin-bottom: 1rem;
 }
 
 label span {
-  display: block;
   font-size: 0.85rem;
-  font-weight: 500;
-  margin-bottom: 0.25rem;
+  font-weight: 550;
+  color: var(--text);
 }
 
 label input {
   width: 100%;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 0.45rem;
-  font: inherit;
 }
 
 .block {
   width: 100%;
-  justify-content: center;
+  min-height: 2.9rem;
+  margin-top: 0.25rem;
 }
 
 .hint {
-  font-size: 0.8rem;
-  margin: 0 0 0.9rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
+
+  app-icon {
+    margin-top: 0.1rem;
+  }
 }
 
 .hint.error {
@@ -105,20 +100,33 @@ label input {
 }
 
 .hint.warn {
-  padding: 0.5rem 0.65rem;
-  border-radius: 0.45rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
   background: var(--warning-soft);
-  color: var(--warning);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+}
+
+.hint.foot {
+  margin: 1.35rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
 }
 
 .autosave {
-  margin-top: 1.25rem;
-  padding: 0.85rem;
+  margin-top: 1.35rem;
+  padding: 0.95rem;
   border: 1px solid var(--border);
-  border-radius: 0.55rem;
+  border-radius: var(--radius);
   background: var(--surface-muted);
-}
 
-.autosave p {
-  margin: 0.25rem 0 0.65rem;
+  strong {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  p {
+    margin: 0.3rem 0 0.75rem;
+  }
 }

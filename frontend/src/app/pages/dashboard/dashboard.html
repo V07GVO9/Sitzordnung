@@ -2,8 +2,8 @@
   @if (lesson(); as l) {
     <section class="lesson-hero" [class.live]="l.hasLesson">
       @if (l.hasLesson) {
-        <div>
-          <div class="eyebrow">Läuft gerade</div>
+        <div class="hero-text">
+          <div class="eyebrow"><span class="dot"></span> Läuft gerade</div>
           <h1>{{ l.subjectName }} · {{ l.schoolClassName }}</h1>
           <p class="muted">
             {{ l.startTime }}–{{ l.endTime }} Uhr
@@ -12,80 +12,99 @@
             }
           </p>
         </div>
-        <a class="btn primary" [routerLink]="['/kurs', l.courseId]">Bewerten öffnen</a>
+        <a class="btn primary hero-btn" [routerLink]="['/kurs', l.courseId]">
+          <app-icon name="presentation" /> Jetzt bewerten
+        </a>
       } @else {
-        <div>
-          <div class="eyebrow">Kein Unterricht</div>
-          <h1>Bewertungen sind gerade gesperrt</h1>
+        <div class="hero-text">
+          <div class="eyebrow"><app-icon name="clock" /> Kein Unterricht</div>
+          <h1>Gerade läuft keine Stunde</h1>
           <p class="muted">{{ l.message }}</p>
         </div>
-        <a class="btn" routerLink="/">Stundenplan prüfen</a>
+        <a class="btn hero-btn" routerLink="/"> <app-icon name="calendar-days" /> Stundenplan </a>
       }
     </section>
   }
 
-  <section class="card">
-    <h2>{{ weekdayName() }} im Überblick</h2>
-    @if (today().length === 0) {
-      <p class="muted">Für heute steht kein Unterricht im Stundenplan.</p>
-    } @else {
-      <ol class="daylist">
-        @for (entry of today(); track entry.id) {
-          <li [class.running]="isRunning(entry)" [class.past]="isOver(entry)">
-            <span class="time">{{ entry.startTime }}–{{ entry.endTime }}</span>
-            <span class="what">
-              <strong>{{ entry.subjectName }}</strong>
-              <span class="muted">{{ entry.schoolClassName }}</span>
-            </span>
-            @if (entry.room) {
-              <span class="badge">{{ entry.room }}</span>
-            }
-            <span class="spacer"></span>
-            @if (isRunning(entry)) {
-              <a class="btn primary small" [routerLink]="['/kurs', entry.courseId]">Bewerten</a>
-            } @else {
-              <a class="btn small" [routerLink]="['/kurs', entry.courseId]">Öffnen</a>
-            }
-          </li>
-        }
-      </ol>
-    }
-  </section>
+  <div class="cols">
+    <section class="card">
+      <h2>{{ weekdayName() }}</h2>
+      @if (today().length === 0) {
+        <p class="muted">Für heute steht kein Unterricht im Stundenplan.</p>
+      } @else {
+        <ol class="daylist">
+          @for (entry of today(); track entry.id) {
+            <li [class.running]="isRunning(entry)" [class.past]="isOver(entry)">
+              <span class="time">
+                <span>{{ entry.startTime }}</span>
+                <span class="muted">{{ entry.endTime }}</span>
+              </span>
+              <span class="what">
+                <strong>{{ entry.subjectName }}</strong>
+                <span class="muted small">
+                  {{ entry.schoolClassName }}
+                  @if (entry.room) {
+                    · {{ entry.room }}
+                  }
+                </span>
+              </span>
+              @if (isRunning(entry)) {
+                <a class="btn primary small" [routerLink]="['/kurs', entry.courseId]">Bewerten</a>
+              } @else {
+                <a
+                  class="btn ghost small icon"
+                  [routerLink]="['/kurs', entry.courseId]"
+                  [attr.aria-label]="entry.subjectName + ' öffnen'"
+                >
+                  <app-icon name="chevron-right" />
+                </a>
+              }
+            </li>
+          }
+        </ol>
+      }
+    </section>
 
-  <section class="card">
-    <div class="row">
-      <h2>Meine Kurse</h2>
-      <span class="spacer"></span>
-      <a class="btn small" routerLink="/verwaltung">Kurse verwalten</a>
-    </div>
+    <section class="card">
+      <div class="row card-head">
+        <h2>Meine Kurse</h2>
+        <span class="spacer"></span>
+        <a class="btn ghost small" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+          <app-icon name="settings" /> Verwalten
+        </a>
+      </div>
 
-    @if (loading()) {
-      <p class="muted">Wird geladen …</p>
-    } @else if (courses().length === 0) {
-      <div class="empty">
-        <p>Noch keine Kurse angelegt.</p>
-        <p class="small">
-          Legen Sie zuerst Klassen, Fächer und Schüler an – danach können Sie Sitzordnungen
-          erstellen.
-        </p>
-        <a class="btn primary" routerLink="/verwaltung">Jetzt einrichten</a>
-      </div>
-    } @else {
-      <div class="course-grid">
-        @for (course of courses(); track course.id) {
-          <a class="course" [routerLink]="['/kurs', course.id]">
-            <span class="subject-mark">{{ course.subjectShortName || course.subjectName.slice(0, 2) }}</span>
-            <span class="course-text">
-              <strong>{{ course.subjectName }}</strong>
-              <span class="muted small">{{ course.schoolClassName }}</span>
-            </span>
-            <span class="badge">
-              {{ course.seatingPlanCount }}
-              {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }}
-            </span>
-          </a>
-        }
-      </div>
-    }
-  </section>
+      @if (loading()) {
+        <p class="muted">Wird geladen …</p>
+      } @else if (courses().length === 0) {
+        <div class="empty">
+          <p>Noch keine Kurse angelegt.</p>
+          <p class="small">
+            Legen Sie zuerst Klassen, Fächer und Schüler an – danach können Sie Sitzordnungen
+            erstellen.
+          </p>
+          <a class="btn primary" routerLink="/verwaltung">Jetzt einrichten</a>
+        </div>
+      } @else {
+        <div class="course-grid">
+          @for (course of courses(); track course.id) {
+            <a class="course" [routerLink]="['/kurs', course.id]">
+              <span class="subject-mark" [style.--hue]="hue(course.subjectName)">
+                {{ course.subjectShortName || course.subjectName.slice(0, 2) }}
+              </span>
+              <span class="course-text">
+                <strong>{{ course.subjectName }}</strong>
+                <span class="muted small">
+                  {{ course.schoolClassName }} ·
+                  {{ course.seatingPlanCount }}
+                  {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }}
+                </span>
+              </span>
+              <app-icon class="go" name="chevron-right" />
+            </a>
+          }
+        </div>
+      }
+    </section>
+  </div>
 </div>

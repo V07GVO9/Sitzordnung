@@ -1,21 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import {
-  Course,
-  DayOfWeek,
-  SCHOOL_DAYS,
-  TimetableEntry,
-  WEEKDAY_NAMES,
-} from '../../core/models';
+import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
 
 @Component({
   selector: 'app-timetable',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, Icon],
   templateUrl: './timetable.html',
   styleUrl: './timetable.scss',
 })
@@ -150,8 +146,19 @@ export class TimetablePage {
   }
 
   remove(entry: TimetableEntry): void {
+    if (
+      !confirm(
+        `${entry.subjectName} (${entry.schoolClassName}) am ${WEEKDAY_NAMES[entry.dayOfWeek]} um ${entry.startTime} aus dem Stundenplan nehmen?`,
+      )
+    ) {
+      return;
+    }
+
     this.api.deleteTimetableEntry(entry.id).subscribe({
-      next: () => this.entries.update((list) => list.filter((e) => e.id !== entry.id)),
+      next: () => {
+        this.entries.update((list) => list.filter((e) => e.id !== entry.id));
+        this.toasts.show('Die Stunde wurde aus dem Plan genommen.');
+      },
       error: (err) => this.toasts.error(err, 'Die Stunde konnte nicht gelöscht werden.'),
     });
   }

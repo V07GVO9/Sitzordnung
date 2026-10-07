@@ -1,23 +1,50 @@
+<ng-template #removeButton let-entry>
+  <button
+    class="remove"
+    type="button"
+    (click)="remove(entry)"
+    title="Stunde aus dem Plan nehmen"
+    [attr.aria-label]="
+      entry.subjectName +
+      ' am ' +
+      weekdayNames[entry.dayOfWeek] +
+      ' um ' +
+      entry.startTime +
+      ' löschen'
+    "
+  >
+    <app-icon name="trash-2" />
+  </button>
+</ng-template>
+
 <div class="stack">
-  <section class="card">
-    <div class="row">
+  <div class="page-head">
+    <div>
       <h1>Stundenplan</h1>
-      <span class="spacer"></span>
+      <p class="muted small">
+        Bewertet wird in der Stunde, die gerade läuft. Ein Klick auf eine Stunde öffnet den Kurs.
+      </p>
     </div>
-  </section>
+  </div>
 
   @if (courses().length === 0) {
     <div class="empty">
       <p>Für den Stundenplan werden zuerst Kurse benötigt.</p>
-      <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
+      <a class="btn primary" routerLink="/verwaltung">
+        <app-icon name="plus" /> Klassen und Fächer anlegen
+      </a>
     </div>
   } @else {
     <section class="card">
-      <h2>Stunde eintragen</h2>
+      <h2><app-icon name="plus" /> Stunde eintragen</h2>
       <form class="form-row" (ngSubmit)="add()">
         <label class="weit">
           Kurs
-          <select [ngModel]="formCourseId()" (ngModelChange)="formCourseId.set($event)" name="course">
+          <select
+            [ngModel]="formCourseId()"
+            (ngModelChange)="formCourseId.set($event)"
+            name="course"
+          >
             @for (course of courses(); track course.id) {
               <option [ngValue]="course.id">
                 {{ course.subjectName }} · {{ course.schoolClassName }}
@@ -68,7 +95,7 @@
           />
         </label>
 
-        <button class="btn primary weit" type="submit">Eintragen</button>
+        <button class="btn primary weit" type="submit"><app-icon name="plus" /> Eintragen</button>
       </form>
     </section>
 
@@ -76,7 +103,7 @@
       @if (zeitschienen().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
-          <p class="muted">Trage die Stunden oben über das Formular ein.</p>
+          <p class="muted">Tragen Sie die Stunden oben über das Formular ein.</p>
         </div>
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->
@@ -86,7 +113,7 @@
               <h3>
                 {{ tag.name }}
                 @if (tag.day === today) {
-                  <span class="badge">heute</span>
+                  <span class="badge today">heute</span>
                 }
               </h3>
 
@@ -102,8 +129,14 @@
                     [title]="entry.subjectName + ' · ' + entry.schoolClassName"
                   >
                     <strong>{{ entry.subjectName }}</strong>
-                    <span>{{ entry.schoolClassName }}</span>
+                    <span>
+                      {{ entry.schoolClassName }}
+                      @if (entry.room) {
+                        · {{ entry.room }}
+                      }
+                    </span>
                   </a>
+                  <ng-container *ngTemplateOutlet="removeButton; context: { $implicit: entry }" />
                 </div>
               }
             </section>
@@ -139,8 +172,16 @@
                             [title]="entry.subjectName + ' · ' + entry.schoolClassName"
                           >
                             <strong>{{ entry.subjectName }}</strong>
-                            <span>{{ entry.schoolClassName }}</span>
+                            <span>
+                              {{ entry.schoolClassName }}
+                              @if (entry.room) {
+                                · {{ entry.room }}
+                              }
+                            </span>
                           </a>
+                          <ng-container
+                            *ngTemplateOutlet="removeButton; context: { $implicit: entry }"
+                          />
                         </div>
                       }
                     </td>

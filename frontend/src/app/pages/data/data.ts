@@ -1,21 +1,33 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, SchoolClass, Student, Subject, fullName, initials } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+
+export type DataTab = 'klassen' | 'schueler' | 'faecher';
+const TABS: DataTab[] = ['klassen', 'schueler', 'faecher'];
 
 @Component({
   selector: 'app-data',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './data.html',
   styleUrl: './data.scss',
 })
 export class DataPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly router = inject(Router);
+
+  /** Der Reiter steht in der Adresse (?tab=schueler), damit Links direkt dorthin führen. */
+  readonly tab = input<string>();
+  readonly activeTab = computed<DataTab>(() => {
+    const tab = this.tab() as DataTab;
+    return TABS.includes(tab) ? tab : 'klassen';
+  });
 
   readonly classes = signal<SchoolClass[]>([]);
   readonly subjects = signal<Subject[]>([]);
@@ -70,6 +82,10 @@ export class DataPage {
     });
   }
 
+  setTab(tab: DataTab): void {
+    void this.router.navigate([], { queryParams: { tab }, replaceUrl: true });
+  }
+
   selectClass(id: number | null): void {
     this.selectedClassId.set(id);
     this.students.set([]);
@@ -109,7 +125,9 @@ export class DataPage {
     this.api.createClass(name).subscribe({
       next: (created) => {
         this.newClassName.set('');
-        this.classes.update((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name)));
+        this.classes.update((list) =>
+          [...list, created].sort((a, b) => a.name.localeCompare(b.name)),
+        );
         this.selectClass(created.id);
         this.toasts.success(`Klasse „${created.name}" angelegt.`);
       },
@@ -149,7 +167,9 @@ export class DataPage {
       next: (created) => {
         this.newSubjectName.set('');
         this.newSubjectShort.set('');
-        this.subjects.update((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name)));
+        this.subjects.update((list) =>
+          [...list, created].sort((a, b) => a.name.localeCompare(b.name)),
+        );
         this.toasts.success(`Fach „${created.name}" angelegt.`);
       },
       error: (err) => this.toasts.error(err, 'Das Fach konnte nicht angelegt werden.'),

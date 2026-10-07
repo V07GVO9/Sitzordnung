@@ -1,0 +1,461 @@
+/* Der Rahmen der App: Seitenleiste ab Desktop, sonst Kopfzeile oben und
+   Navigation unten. Umgeschaltet wird bei 64rem (ca. 1024 Pixel). */
+
+.shell {
+  min-height: 100vh;
+}
+
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--pad-seite);
+  padding-bottom: calc(var(--bottom-nav) + var(--pad-seite) + env(safe-area-inset-bottom));
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  color: #fff;
+  font-size: 1.15rem;
+  box-shadow: 0 2px 6px rgb(79 70 229 / 35%);
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--positive-solid);
+  box-shadow: 0 0 0 0 var(--positive-solid);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(22 163 74 / 55%);
+  }
+
+  70% {
+    box-shadow: 0 0 0 0.45rem rgb(22 163 74 / 0%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(22 163 74 / 0%);
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Handy und Tablet --- */
+
+.sidebar {
+  display: none;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem var(--pad-seite);
+  padding-top: calc(0.55rem + env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-name {
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+}
+
+.live-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 13rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--positive-soft);
+  border: 1px solid var(--positive-border);
+  color: var(--positive-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.live-pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Auf ganz schmalen Geräten bleibt vom Pill nur der Punkt. */
+@media (max-width: 26rem) {
+  .brand-name {
+    display: none;
+  }
+}
+
+.save-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--positive);
+  font-size: 1.1rem;
+  transition: background 0.15s ease;
+
+  &[data-state='dirty'] {
+    color: var(--warning-text);
+    background: var(--warning-soft);
+    border-color: var(--warning-border);
+  }
+
+  &[data-state='saving'] {
+    color: var(--text-muted);
+  }
+}
+
+.menu-wrap {
+  position: relative;
+
+  .btn.icon {
+    font-size: 1.2rem;
+  }
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  width: min(17rem, calc(100vw - 2rem));
+  padding: 0.4rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop 0.14s ease-out;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.7rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    text-align: left;
+    font-size: 0.95rem;
+
+    &:hover {
+      background: var(--surface-hover);
+    }
+
+    &.danger {
+      color: var(--negative);
+    }
+  }
+}
+
+.menu-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem 0.7rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  strong {
+    color: var(--text);
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.3rem) scale(0.98);
+  }
+}
+
+.bottom-nav {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--bottom-nav) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: saturate(1.6) blur(12px);
+  border-top: 1px solid var(--border);
+
+  a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+
+    app-icon {
+      width: 2.6rem;
+      height: 1.75rem;
+      padding: 0.2rem 0;
+      border-radius: 999px;
+      transition: background 0.15s ease;
+    }
+
+    &.active {
+      color: var(--accent-text);
+
+      app-icon {
+        background: var(--accent-soft);
+      }
+    }
+  }
+}
+
+/* --- Ab Desktop: Seitenleiste --- */
+
+@media (min-width: 64rem) {
+  .shell {
+    display: grid;
+    grid-template-columns: 16.5rem minmax(0, 1fr);
+  }
+
+  .topbar,
+  .bottom-nav {
+    display: none;
+  }
+
+  main {
+    width: 100%;
+    padding-top: calc(var(--pad-seite) + 0.25rem);
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem 0.9rem 1rem;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  .brand {
+    padding: 0 0.4rem;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+
+    strong {
+      font-size: 1.02rem;
+    }
+
+    span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  }
+
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    a {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 550;
+      font-size: 0.95rem;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease;
+
+      app-icon {
+        font-size: 1.1rem;
+      }
+
+      &:hover {
+        background: var(--surface-hover);
+        color: var(--text);
+      }
+
+      &.active {
+        background: var(--accent-soft);
+        color: var(--accent-text);
+      }
+    }
+  }
+
+  .live-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.85rem 0.9rem;
+    border-radius: var(--radius);
+    background: var(--positive-soft);
+    border: 1px solid var(--positive-border);
+    color: var(--positive-text);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: transform 0.12s ease;
+
+    &:not(.idle):hover {
+      transform: translateY(-1px);
+    }
+
+    strong {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    &.idle {
+      background: var(--surface-muted);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+  }
+
+  .live-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.2rem;
+  }
+
+  .live-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.45rem;
+    font-weight: 650;
+  }
+
+  .file-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.8rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    font-size: 0.85rem;
+
+    .block {
+      width: 100%;
+      margin-top: 0.35rem;
+    }
+
+    &[data-state='dirty'] {
+      background: var(--warning-soft);
+      border-color: var(--warning-border);
+
+      .status {
+        color: var(--warning-text);
+        font-weight: 600;
+      }
+
+      .state-dot {
+        background: var(--warning);
+      }
+    }
+  }
+
+  .file-line {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    color: var(--text-muted);
+  }
+
+  .file {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .state-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0 0.3rem;
+    border-radius: 50%;
+    background: var(--positive-solid);
+  }
+
+  .side-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+
+    .btn {
+      color: var(--text-muted);
+    }
+  }
+}
