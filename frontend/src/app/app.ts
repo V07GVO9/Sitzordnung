@@ -12,7 +12,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
 import { Course, CurrentLesson, SchoolClass, TimetableEntry, WEEKDAY_NAMES } from './core/models';
-import { FilePickerCancelled } from './core/store/file-system';
+import { FilePickerCancelled, SaveConflictError } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/store/vault.service';
 import { ToastHost } from './core/toast-host';
@@ -83,6 +83,7 @@ export class App implements OnDestroy {
   readonly isOpen = this.store.isOpen;
   readonly hasUnsavedChanges = this.store.hasUnsavedChanges;
   readonly fileName = this.vault.fileName;
+  readonly isInOneDrive = this.vault.isInOneDrive;
   readonly isSaving = this.vault.isSaving;
 
   readonly lesson = signal<CurrentLesson | null>(null);
@@ -213,6 +214,13 @@ export class App implements OnDestroy {
       }
     });
 
+    // Hat ein anderes Gerät inzwischen gespeichert, entscheidet die Lehrkraft.
+    effect(() => {
+      if (this.vault.saveConflict()) {
+        untracked(() => void this.resolveConflict());
+      }
+    });
+
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
       this.menuOpen.set(false);
       // Auf schmalen Geräten verschwindet die Seitenleiste nach der Auswahl.
@@ -294,8 +302,36 @@ export class App implements OnDestroy {
       await this.vault.save();
       this.toasts.success('Gespeichert.');
     } catch (error) {
-      if (!(error instanceof FilePickerCancelled)) {
+      if (!(error instanceof FilePickerCancelled || error instanceof SaveConflictError)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  /** Fragt, welcher Stand gilt, wenn zwei Geräte dieselbe Datei geändert haben. */
+  private async resolveConflict(): Promise<void> {
+    const keepMine = await this.confirm.ask({
+      title: 'Auf einem anderen Gerät wurde gespeichert',
+      message:
+        'Die Datei in OneDrive wurde geändert, seit sie hier geöffnet wurde. ' +
+        '„Meinen Stand behalten“ überschreibt die Änderungen des anderen Geräts. ' +
+        '„Anderen Stand laden“ verwirft die Änderungen auf diesem Gerät.',
+      confirmLabel: 'Meinen Stand behalten',
+      cancelLabel: 'Anderen Stand laden',
+      danger: true,
+    });
+
+    try {
+      if (keepMine) {
+        await this.vault.keepMineAfterConflict();
+        this.toasts.success('Gespeichert. Der Stand dieses Geräts gilt.');
+      } else {
+        await this.vault.takeTheirsAfterConflict();
+        this.toasts.success('Der Stand des anderen Geräts ist geladen.');
+      }
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Konflikt konnte nicht aufgelöst werden.');
       }
     }
   }

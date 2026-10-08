@@ -5,8 +5,13 @@
       <div>
         <h1>Sitzordnung &amp; Mitarbeitsnoten</h1>
         <p class="muted">
-          Alle Daten liegen in einer verschlüsselten Datei auf diesem Rechner. Nichts wird an einen
-          Server übertragen.
+          @if (showOneDrive) {
+            Alle Daten liegen in einer verschlüsselten Datei – auf diesem Rechner oder in OneDrive.
+            Entschlüsselt wird nur hier im Browser.
+          } @else {
+            Alle Daten liegen in einer verschlüsselten Datei auf diesem Rechner. Nichts wird an
+            einen Server übertragen.
+          }
         </p>
       </div>
     </div>
@@ -28,54 +33,157 @@
       >
         <app-icon name="file-plus" /> Neu anlegen
       </button>
+      @if (showOneDrive) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="mode() === 'onedrive'"
+          (click)="setMode('onedrive')"
+        >
+          <app-icon name="cloud" /> OneDrive
+        </button>
+      }
     </div>
 
-    <form (ngSubmit)="submit()">
-      <label>
-        <span>Passwort</span>
-        <input
-          type="password"
-          autocomplete="current-password"
-          [ngModel]="password()"
-          (ngModelChange)="password.set($event)"
-          name="password"
-          placeholder="mindestens 8 Zeichen"
-        />
-      </label>
+    @if (mode() === 'onedrive') {
+      <p class="hint muted">
+        Die Datei liegt in OneDrive im Ordner „Sitzordnung“ – so hat jedes Gerät denselben Stand.
+        Sie bleibt verschlüsselt: Microsoft sieht weder das Passwort noch Namen oder Noten.
+      </p>
 
-      @if (mode() === 'create') {
+      @if (!account()) {
+        <button class="btn primary block" type="button" [disabled]="busy()" (click)="signIn()">
+          <app-icon name="cloud" /> Bei Microsoft anmelden
+        </button>
+      } @else {
+        <div class="drive-account">
+          <span class="muted small"
+            >Angemeldet als <strong>{{ account()?.username }}</strong></span
+          >
+          <button class="btn small" type="button" (click)="signOut()">Abmelden</button>
+        </div>
+
+        @if (driveFiles(); as files) {
+          @if (files.length > 0) {
+            <div class="tabs sub" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="!driveCreate()"
+                (click)="setDriveCreate(false)"
+              >
+                Vorhandene Datei
+              </button>
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="driveCreate()"
+                (click)="setDriveCreate(true)"
+              >
+                Neue Datei
+              </button>
+            </div>
+          }
+
+          @if (!driveCreate()) {
+            <ul class="drive-files">
+              @for (file of files; track file.id) {
+                <li [class.selected]="selectedFile()?.id === file.id">
+                  <label class="drive-file">
+                    <input
+                      type="radio"
+                      name="driveFile"
+                      [checked]="selectedFile()?.id === file.id"
+                      (change)="selectedFile.set(file)"
+                    />
+                    <span>
+                      <strong>{{ file.name }}</strong>
+                      <span class="muted small">geändert {{ modifiedText(file) }}</span>
+                    </span>
+                  </label>
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    [attr.aria-label]="file.name + ' löschen'"
+                    title="Löschen"
+                    (click)="deleteDriveFile(file)"
+                  >
+                    <app-icon name="trash-2" />
+                  </button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <label>
+              <span>Dateiname</span>
+              <input
+                type="text"
+                [ngModel]="newFileName()"
+                (ngModelChange)="newFileName.set($event)"
+                name="newFileName"
+              />
+            </label>
+          }
+        } @else {
+          <button class="btn block" type="button" (click)="loadDriveFiles()">
+            <app-icon name="refresh-cw" /> Dateien aus OneDrive laden
+          </button>
+        }
+      }
+    }
+
+    @if (mode() !== 'onedrive' || driveFiles() !== null) {
+      <form (ngSubmit)="submit()">
         <label>
-          <span>Passwort wiederholen</span>
+          <span>Passwort</span>
           <input
             type="password"
-            autocomplete="new-password"
-            [ngModel]="passwordRepeat()"
-            (ngModelChange)="passwordRepeat.set($event)"
-            name="passwordRepeat"
+            autocomplete="current-password"
+            [ngModel]="password()"
+            (ngModelChange)="password.set($event)"
+            name="password"
+            placeholder="mindestens 8 Zeichen"
           />
         </label>
 
-        @if (!passwordsMatch()) {
-          <p class="hint error">Die beiden Passwörter stimmen nicht überein.</p>
+        @if (isCreating()) {
+          <label>
+            <span>Passwort wiederholen</span>
+            <input
+              type="password"
+              autocomplete="new-password"
+              [ngModel]="passwordRepeat()"
+              (ngModelChange)="passwordRepeat.set($event)"
+              name="passwordRepeat"
+            />
+          </label>
+
+          @if (!passwordsMatch()) {
+            <p class="hint error">Die beiden Passwörter stimmen nicht überein.</p>
+          }
+
+          <p class="hint warn">
+            <app-icon name="triangle-alert" />
+            Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der Datenbestand
+            verloren.
+          </p>
         }
 
-        <p class="hint warn">
-          <app-icon name="triangle-alert" />
-          Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der Datenbestand
-          verloren.
-        </p>
-      }
-
-      <button class="btn primary block" type="submit" [disabled]="!canSubmit()">
-        @if (busy()) {
-          Einen Moment …
-        } @else if (mode() === 'create') {
-          <app-icon name="file-plus" /> Neuen Datenbestand anlegen
-        } @else {
-          <app-icon name="folder-open" /> Datei auswählen und öffnen
-        }
-      </button>
-    </form>
+        <button class="btn primary block" type="submit" [disabled]="!canSubmit()">
+          @if (busy()) {
+            Einen Moment …
+          } @else if (mode() === 'onedrive' && driveCreate()) {
+            <app-icon name="cloud" /> In OneDrive anlegen
+          } @else if (mode() === 'onedrive') {
+            <app-icon name="cloud" /> Aus OneDrive öffnen
+          } @else if (mode() === 'create') {
+            <app-icon name="file-plus" /> Neuen Datenbestand anlegen
+          } @else {
+            <app-icon name="folder-open" /> Datei auswählen und öffnen
+          }
+        </button>
+      </form>
+    }
 
     @if (autosave(); as entry) {
       <div class="autosave">
@@ -106,7 +214,9 @@
 
     <p class="hint foot muted">
       <app-icon name="lock" />
-      @if (isNativeApp) {
+      @if (mode() === 'onedrive') {
+        Gespeichert wird von allein in OneDrive – auf jedem Gerät derselbe Stand.
+      } @else if (isNativeApp) {
         Die App speichert von allein in den Ordner „Dokumente/Sitzordnung“ auf diesem Gerät.
       } @else if (canWriteInPlace) {
         Dieser Browser kann direkt in die gewählte Datei zurückschreiben.

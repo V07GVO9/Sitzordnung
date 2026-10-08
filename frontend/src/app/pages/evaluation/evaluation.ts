@@ -11,7 +11,8 @@ import {
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
-import { FilePickerCancelled } from '../../core/store/file-system';
+import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
+import { OneDriveService } from '../../core/store/onedrive.service';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
@@ -44,6 +45,9 @@ export class EvaluationPage {
   readonly fileName = this.vault.fileName;
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly autoSaveToFile = this.vault.autoSaveToFile;
+  readonly isInOneDrive = this.vault.isInOneDrive;
+  readonly showOneDrive = inject(OneDriveService).isConfigured && !isNativeApp();
+  readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
 
@@ -244,6 +248,18 @@ export class EvaluationPage {
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  /** Legt den Bestand in OneDrive ab - ab dann arbeiten alle Geräte mit dieser Datei. */
+  async moveToOneDrive(): Promise<void> {
+    try {
+      await this.vault.moveToOneDrive(this.oneDriveName().trim());
+      this.toasts.success('Der Datenbestand liegt jetzt in OneDrive.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht in OneDrive abgelegt werden.');
       }
     }
   }

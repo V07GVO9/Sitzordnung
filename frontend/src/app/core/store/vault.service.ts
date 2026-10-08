@@ -12,6 +12,7 @@ import { AutosaveEntry, clearAutosave, readAutosave, writeAutosave } from './bro
 import { createEmptyDatabase } from './database';
 import {
   FileHandle,
+  SaveConflictError,
   VAULT_EXTENSION,
   canWriteSilently,
   chooseSaveFile,
@@ -21,6 +22,7 @@ import {
   writeFile,
 } from './file-system';
 import { LocalStore } from './local-store';
+import { OneDriveFile, OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
 
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
@@ -37,6 +39,7 @@ const DEFAULT_FILE_NAME = 'sitzordnung' + VAULT_EXTENSION;
 @Injectable({ providedIn: 'root' })
 export class VaultService {
   private readonly store = inject(LocalStore);
+  private readonly oneDrive = inject(OneDriveService);
 
   private password: string | null = null;
   private handle: FileHandle | null = null;
@@ -62,6 +65,15 @@ export class VaultService {
 
   /** Der letzte Fehler beim automatischen Speichern - die Kopfzeile meldet ihn. */
   readonly autoSaveError = signal<unknown>(null);
+
+  /** Liegt der Bestand in OneDrive statt auf diesem Gerät? */
+  readonly isInOneDrive = signal(false);
+
+  /**
+   * Ein anderes Gerät hat die Datei seit dem Öffnen geändert. Bis die
+   * Lehrkraft entscheidet, welcher Stand gilt, ruht das automatische Speichern.
+   */
+  readonly saveConflict = signal(false);
 
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
@@ -114,22 +126,28 @@ export class VaultService {
       this.isSaving() ||
       !this.store.isOpen() ||
       !this.store.hasUnsavedChanges() ||
+      this.saveConflict() ||
       !(await canWriteSilently(handle))
     ) {
       return;
     }
 
     try {
-      await this.save();
+      await this.save({ interactive: false });
       this.autoSaveError.set(null);
     } catch (error) {
-      this.autoSaveError.set(error);
+      // Den Konflikt meldet die App eigens, mit der Frage, welcher Stand gilt.
+      if (!(error instanceof SaveConflictError)) {
+        this.autoSaveError.set(error);
+      }
     }
   }
 
   private setHandle(handle: FileHandle | null): void {
     this.handle = handle;
     this.hasFileHandle.set(handle !== null);
+    this.isInOneDrive.set(handle?.location === 'onedrive');
+    this.saveConflict.set(false);
   }
 
   private async writeAutosaveEntry(): Promise<void> {
@@ -185,6 +203,69 @@ export class VaultService {
     await this.loadContent(file.content, password, file.name, file.handle);
   }
 
+  /** Öffnet einen Bestand aus OneDrive. */
+  async openFromOneDrive(file: OneDriveFile, password: string): Promise<void> {
+    const { content, handle } = await this.oneDrive.open(file);
+    await this.loadContent(content, password, handle.name, handle);
+  }
+
+  /** Legt einen leeren Bestand gleich in OneDrive an. */
+  async createInOneDrive(name: string, password: string): Promise<void> {
+    this.requirePassword(password);
+    await this.oneDrive.ensureToken(true);
+
+    const database = createEmptyDatabase();
+    const handle = await this.oneDrive.create(name, await encryptDatabase(database, password));
+
+    this.password = password;
+    this.store.load(database);
+    this.setHandle(handle);
+    this.fileName.set(handle.name);
+    this.lastSavedAt.set(new Date());
+  }
+
+  /** Legt den geöffneten Bestand als neue Datei in OneDrive ab und arbeitet dort weiter. */
+  async moveToOneDrive(name: string): Promise<void> {
+    if (!this.store.isOpen() || this.password === null) {
+      throw new AppError('Es ist kein Datenbestand geöffnet.');
+    }
+
+    // Erst anmelden, solange das Anmeldefenster noch als Folge des Klicks gilt.
+    await this.oneDrive.ensureToken(true);
+    const handle = await this.oneDrive.create(
+      name,
+      await encryptDatabase(this.store.snapshot(), this.password),
+    );
+    this.setHandle(handle);
+    this.fileName.set(handle.name);
+    this.store.markSaved();
+    this.lastSavedAt.set(new Date());
+  }
+
+  /** Konflikt: Der eigene Stand gilt und überschreibt den des anderen Geräts. */
+  async keepMineAfterConflict(): Promise<void> {
+    this.handle?.allowOverwrite?.();
+    this.saveConflict.set(false);
+    await this.save();
+  }
+
+  /** Konflikt: Der Stand des anderen Geräts gilt, die eigenen Änderungen entfallen. */
+  async takeTheirsAfterConflict(): Promise<void> {
+    const handle = this.handle;
+    const password = this.password;
+    if (!handle || password === null) {
+      throw new AppError('Es ist kein Datenbestand geöffnet.');
+    }
+
+    const file = await handle.getFile();
+    await this.loadContent(await file.text(), password, handle.name, handle);
+
+    // Der Bestand bleibt offen - alle Seiten sollen den neuen Stand zeigen.
+    this.store.revision.update((value) => value + 1);
+    this.store.markSaved();
+    this.lastSavedAt.set(new Date());
+  }
+
   /** Setzt auf dem Zwischenstand aus dem Browser auf. */
   async restoreAutosave(entry: AutosaveEntry, password: string): Promise<void> {
     await this.loadContent(entry.content, password, entry.fileName, null);
@@ -211,18 +292,31 @@ export class VaultService {
 
   // --- Speichern ----------------------------------------------------------
 
-  /** Schreibt den Bestand in die Datei - oder bietet ihn als Download an. */
-  async save(): Promise<void> {
+  /**
+   * Schreibt den Bestand in die Datei - oder bietet ihn als Download an.
+   * `interactive: false` heißt: von selbst ausgelöst, also ohne Anmeldefenster.
+   */
+  async save(options: { interactive?: boolean } = {}): Promise<void> {
     if (!this.store.isOpen() || this.password === null) {
       throw new AppError('Es ist kein Datenbestand geöffnet.');
     }
 
     this.isSaving.set(true);
     try {
+      // Vor dem Verschlüsseln, damit ein Anmeldefenster noch als Folge des Klicks gilt.
+      await this.handle?.prepare?.(options.interactive ?? true);
+
       const blob = await encryptDatabase(this.store.snapshot(), this.password);
 
       if (this.handle) {
-        await writeFile(this.handle, blob);
+        try {
+          await writeFile(this.handle, blob);
+        } catch (error) {
+          if (error instanceof SaveConflictError) {
+            this.saveConflict.set(true);
+          }
+          throw error;
+        }
         // Die Android-App weicht auf eine neue Datei aus, wenn sie die alte nicht beschreiben darf.
         this.fileName.set(this.handle.name);
       } else {
