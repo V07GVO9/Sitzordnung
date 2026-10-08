@@ -105,17 +105,20 @@
           </div>
         }
 
-        @if (isSetup() && view() === 'sitzplan' && plans().length > 0) {
+        @if (view() === 'sitzplan' && plans().length > 0) {
+          <!-- Das Schloss: zu = Sitzplan fixiert, auf = Plätze lassen sich verschieben. -->
           <button
             class="round-btn edit-toggle"
             type="button"
             [class.on]="editMode()"
             (click)="toggleMode(!editMode())"
             [attr.aria-pressed]="editMode()"
-            [title]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
-            [attr.aria-label]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
+            [title]="editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'"
+            [attr.aria-label]="
+              editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'
+            "
           >
-            <app-icon [name]="editMode() ? 'circle-check' : 'pencil'" />
+            <app-icon [name]="editMode() ? 'lock-open' : 'lock'" />
           </button>
         }
       </div>
@@ -123,16 +126,18 @@
 
     @if (editMode()) {
       <div class="banner warn">
-        <app-icon name="pencil" />
+        <app-icon name="lock-open" />
         <span>
-          <strong>Sitzplan bearbeiten:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
+          <strong>Sitzplan entsperrt:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
           Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
         @if (saving()) {
           <span class="small">Wird übernommen …</span>
         }
-        <button class="btn small" type="button" (click)="toggleMode(false)">Fertig</button>
+        <button class="btn small" type="button" (click)="toggleMode(false)">
+          <app-icon name="lock" /> Sperren
+        </button>
       </div>
     }
 
@@ -155,15 +160,10 @@
             <button class="btn" type="button" (click)="setView('liste')">
               <app-icon name="list" /> Zur Liste
             </button>
-            @if (isSetup()) {
-              <button class="btn primary" type="button" (click)="addPlan()">
-                <app-icon name="plus" /> Sitzordnung anlegen
-              </button>
-            }
+            <button class="btn primary" type="button" (click)="addPlan()">
+              <app-icon name="plus" /> Sitzordnung anlegen
+            </button>
           </div>
-          @if (!isSetup()) {
-            <p class="small muted">Eine Sitzordnung legst du im Modus „Einrichten“ an.</p>
-          }
         </div>
       } @else {
         <!-- Werkzeugleiste nur im Einstellungsmodus -->

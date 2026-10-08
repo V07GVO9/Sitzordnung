@@ -99,7 +99,7 @@ export class CoursePage implements OnDestroy {
   private readonly confirm = inject(ConfirmService);
   private readonly modeService = inject(ModeService);
 
-  /** Im Unterricht wird nur bewertet - den Sitzplan baut man beim Einrichten um. */
+  /** Unterricht oder Einrichten - bestimmt, wohin die Rückwege führen. */
   readonly isSetup = this.modeService.isSetup;
 
   /** Der Tag, für den bewertet wird - aus dem Wochenplan gewählt, sonst heute. */
