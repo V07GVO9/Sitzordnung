@@ -46,6 +46,7 @@ export class EvaluationPage {
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly autoSaveToFile = this.vault.autoSaveToFile;
   readonly isInOneDrive = this.vault.isInOneDrive;
+  readonly rememberedFile = this.vault.rememberedFile;
   readonly showOneDrive = inject(OneDriveService).isConfigured && !isNativeApp();
   readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
@@ -249,6 +250,25 @@ export class EvaluationPage {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
       }
+    }
+  }
+
+  isRemembered(): boolean {
+    return this.vault.isRemembered();
+  }
+
+  /** Datei und Passwort auf diesem Gerät merken oder vergessen. */
+  async setRemember(enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await this.vault.rememberOnDevice();
+        this.toasts.success('Dieses Gerät öffnet den Bestand ab jetzt ohne Passwort.');
+      } else {
+        await this.vault.forgetOnDevice();
+        this.toasts.success('Datei und Passwort sind auf diesem Gerät vergessen.');
+      }
+    } catch (error) {
+      this.toasts.error(error, 'Die Einstellung konnte nicht gespeichert werden.');
     }
   }
 

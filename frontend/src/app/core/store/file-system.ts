@@ -22,6 +22,8 @@ export interface FileHandle {
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
   readonly location?: 'onedrive';
+  /** Die Kennung der Datei in OneDrive. */
+  readonly remoteId?: string;
   /**
    * Wird vor dem Speichern aufgerufen, noch bevor verschlüsselt wird. Die
    * OneDrive-Datei holt sich hier ihre Anmeldung - mit `interactive` darf

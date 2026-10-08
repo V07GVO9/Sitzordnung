@@ -65,6 +65,22 @@ Gute Argumente für die Freigabe:
 
 Gespeichert wird automatisch wenige Sekunden nach jeder Änderung.
 
+**Auf diesem Gerät merken:** Beim Öffnen oder Anlegen den Haken *Auf diesem
+Gerät merken* setzen (oder später unter **Datei & Passwort**). Ab dann öffnet
+die App beim Start diesen Bestand von selbst, ohne Passwort. Das Passwort liegt
+dafür verschlüsselt im Browser, mit einem Schlüssel, den der Browser nicht
+herausgibt. Wer das entsperrte Gerät benutzt, kommt trotzdem an die Noten.
+Deshalb gilt: **nur auf eigenen Geräten mit Bildschirmsperre, nie an
+Schul-PCs.** *Vergessen* oder *Abmelden* auf der Startseite löscht beides
+wieder.
+
+**Wie lange die Microsoft-Anmeldung hält:** Microsoft lässt Web-Apps die
+Anmeldung nur begrenzt speichern. Nach einem Neustart des Browsers erneuert die
+App sie meist still über die laufende Microsoft-Sitzung. Klappt das nicht (etwa
+in Safari), zeigt die Startseite den gemerkten Bestand mit **Öffnen**. Ein Klick
+genügt, das Microsoft-Fenster schließt sich in der Regel von selbst. Das
+Microsoft-Passwort ist nur nötig, wenn die Microsoft-Sitzung abgelaufen ist.
+
 **Zwei Geräte gleichzeitig:** Hat ein anderes Gerät inzwischen gespeichert,
 überschreibt die App dessen Stand nicht einfach. Sie fragt dann, welcher Stand
 gilt: *Meinen Stand behalten* oder *Anderen Stand laden*. Am sichersten ist

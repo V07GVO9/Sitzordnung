@@ -16,6 +16,25 @@
       </div>
     </div>
 
+    @if (autoOpening()) {
+      <p class="remembered muted">
+        <app-icon name="loader-circle" /> Öffne „{{ rememberedFile() }}“ aus OneDrive …
+      </p>
+    } @else if (rememberedFile(); as name) {
+      <div class="remembered">
+        <strong><app-icon name="cloud" /> Auf diesem Gerät gemerkt: „{{ name }}“</strong>
+        @if (rememberedError(); as message) {
+          <p class="muted small">{{ message }}</p>
+        }
+        <div class="row">
+          <button class="btn primary" type="button" [disabled]="busy()" (click)="openRemembered()">
+            Öffnen
+          </button>
+          <button class="btn small" type="button" (click)="forgetRemembered()">Vergessen</button>
+        </div>
+      </div>
+    }
+
     <div class="tabs" role="tablist">
       <button
         type="button"
@@ -167,6 +186,23 @@
             Das Passwort lässt sich nicht zurücksetzen. Ist es verloren, ist auch der Datenbestand
             verloren.
           </p>
+        }
+
+        @if (mode() === 'onedrive') {
+          <label class="inline remember">
+            <input
+              type="checkbox"
+              [ngModel]="remember()"
+              (ngModelChange)="remember.set($event)"
+              name="remember"
+            />
+            <span>
+              Auf diesem Gerät merken – beim nächsten Start ohne Passwort öffnen.
+              <span class="muted small"
+                >Nur auf eigenen, gesperrten Geräten, nie an Schul-PCs.</span
+              >
+            </span>
+          </label>
         }
 
         <button class="btn primary block" type="submit" [disabled]="!canSubmit()">

@@ -89,7 +89,7 @@ export class OneDriveService {
     try {
       const result = await msal.loginPopup({ scopes: SCOPES, prompt: 'select_account' });
       msal.setActiveAccount(result.account);
-      this.account.set(result.account);
+      this.accept(result);
     } catch (error) {
       throw await translateAuthError(error);
     }
@@ -99,6 +99,7 @@ export class OneDriveService {
     const msal = await this.msal();
     const account = this.account();
     this.account.set(null);
+    writeLastUser(null);
     // Nur in diesem Browser abmelden - die Microsoft-Sitzung bleibt bestehen.
     await msal.clearCache(account ? { account } : undefined);
   }
@@ -110,32 +111,50 @@ export class OneDriveService {
   private async token(interactive: boolean): Promise<string> {
     const msal = await this.msal();
     const account = this.account() ?? msal.getAllAccounts()[0] ?? null;
+    const loginHint = account?.username ?? readLastUser() ?? undefined;
 
-    if (account) {
-      try {
-        return (await msal.acquireTokenSilent({ scopes: SCOPES, account })).accessToken;
-      } catch (error) {
-        if (!interactive) {
-          throw new AppError(
-            'Die Anmeldung bei OneDrive ist abgelaufen. Bitte von Hand speichern und neu anmelden.',
-          );
-        }
-        console.warn('Stille Anmeldung bei OneDrive fehlgeschlagen', error);
+    try {
+      if (account) {
+        return this.accept(await msal.acquireTokenSilent({ scopes: SCOPES, account }));
       }
-    } else if (!interactive) {
+      // MSAL hält seine Anmeldung nur bis zum Schließen des Browsers. Danach
+      // genügt meist die noch laufende Microsoft-Sitzung - still, ohne Fenster.
+      if (!interactive && loginHint) {
+        return this.accept(await msal.ssoSilent({ scopes: SCOPES, loginHint }));
+      }
+    } catch (error) {
+      if (!interactive) {
+        throw new AppError(
+          'Die Anmeldung bei OneDrive muss erneuert werden. Ein Klick auf „Öffnen“ bzw. „Speichern“ genügt.',
+        );
+      }
+      console.warn('Stille Anmeldung bei OneDrive fehlgeschlagen', error);
+    }
+
+    if (!interactive) {
       throw new AppError('Nicht bei OneDrive angemeldet.');
     }
 
     try {
-      const result = await msal.acquireTokenPopup({
-        scopes: SCOPES,
-        account: account ?? undefined,
-      });
-      this.account.set(result.account);
-      return result.accessToken;
+      return this.accept(
+        await msal.acquireTokenPopup({
+          scopes: SCOPES,
+          account: account ?? undefined,
+          loginHint: account ? undefined : loginHint,
+        }),
+      );
     } catch (error) {
       throw await translateAuthError(error);
     }
+  }
+
+  /** Merkt sich das Konto der erfolgreichen Anmeldung. */
+  private accept(result: { accessToken: string; account: AccountInfo | null }): string {
+    if (result.account) {
+      this.account.set(result.account);
+      writeLastUser(result.account.username);
+    }
+    return result.accessToken;
   }
 
   private async graph(
@@ -193,10 +212,14 @@ export class OneDriveService {
   }
 
   /** Lädt eine Datei und gibt sie samt Griff zum Zurückschreiben zurück. */
-  async open(file: OneDriveFile): Promise<{ content: string; handle: FileHandle }> {
-    const handle = new OneDriveHandle(this, file.id, file.name);
-    const content = await (await handle.getFile()).text();
-    return { content, handle };
+  async open(
+    file: Pick<OneDriveFile, 'id' | 'name'>,
+    interactive = true,
+  ): Promise<{ content: string; handle: FileHandle }> {
+    const { blob, item } = await this.download(file.id, interactive);
+    const handle = new OneDriveHandle(this, item.id, item.name);
+    handle.eTag = item.eTag ?? null;
+    return { content: await blob.text(), handle };
   }
 
   /** Legt eine neue Datei an. Eine vorhandene gleichen Namens bleibt unangetastet. */
@@ -235,8 +258,8 @@ export class OneDriveService {
   // --- Für den Dateigriff ---------------------------------------------------
 
   /** @internal */
-  async download(id: string): Promise<{ blob: Blob; item: DriveItem }> {
-    const response = await this.graph(`/items/${id}`);
+  async download(id: string, interactive = false): Promise<{ blob: Blob; item: DriveItem }> {
+    const response = await this.graph(`/items/${id}`, {}, interactive);
     if (response.status === 404) {
       throw new AppError('Die Datei gibt es in OneDrive nicht mehr.');
     }
@@ -296,7 +319,7 @@ class OneDriveHandle implements FileHandle {
 
   constructor(
     private readonly drive: OneDriveService,
-    private readonly id: string,
+    readonly remoteId: string,
     public name: string,
   ) {}
 
@@ -313,7 +336,7 @@ class OneDriveHandle implements FileHandle {
   }
 
   async getFile(): Promise<File> {
-    const { blob, item } = await this.drive.download(this.id);
+    const { blob, item } = await this.drive.download(this.remoteId);
     this.eTag = item.eTag ?? null;
     this.name = item.name;
     return new File([blob], item.name);
@@ -326,11 +349,38 @@ class OneDriveHandle implements FileHandle {
         content = data;
       },
       close: async () => {
-        const item = await this.drive.upload(this.id, content, this.overwrite ? null : this.eTag);
+        const item = await this.drive.upload(
+          this.remoteId,
+          content,
+          this.overwrite ? null : this.eTag,
+        );
         this.overwrite = false;
         this.eTag = item.eTag ?? null;
       },
     };
+  }
+}
+
+/** Das zuletzt angemeldete Konto - als Hinweis für die stille Anmeldung. */
+const LAST_USER_KEY = 'sitzordnung.oneDriveUser';
+
+function readLastUser(): string | null {
+  try {
+    return localStorage.getItem(LAST_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastUser(username: string | null): void {
+  try {
+    if (username) {
+      localStorage.setItem(LAST_USER_KEY, username);
+    } else {
+      localStorage.removeItem(LAST_USER_KEY);
+    }
+  } catch {
+    // Ohne Speicher wird beim nächsten Start eben nachgefragt.
   }
 }
 

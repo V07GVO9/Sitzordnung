@@ -352,6 +352,21 @@
           </p>
         }
 
+        @if (isInOneDrive()) {
+          <label class="inline toggle">
+            <input
+              type="checkbox"
+              [checked]="isRemembered()"
+              (change)="setRemember($any($event.target).checked)"
+            />
+            Auf diesem Gerät merken – beim Start ohne Passwort öffnen
+          </label>
+          <p class="muted small">
+            Das Passwort liegt dann verschlüsselt im Browser dieses Geräts. Wer das entsperrte Gerät
+            benutzt, kommt an die Noten – deshalb nur auf eigenen Geräten, nie an Schul-PCs.
+          </p>
+        }
+
         <div class="row">
           <button class="btn" type="button" (click)="saveAs()">
             <app-icon name="save" /> Speichern unter …

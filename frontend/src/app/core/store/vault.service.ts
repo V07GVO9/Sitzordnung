@@ -8,7 +8,15 @@
 
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { AppError } from './app-error';
-import { AutosaveEntry, clearAutosave, readAutosave, writeAutosave } from './browser-storage';
+import {
+  AutosaveEntry,
+  clearAutosave,
+  clearRemembered,
+  readAutosave,
+  readRemembered,
+  writeAutosave,
+  writeRemembered,
+} from './browser-storage';
 import { createEmptyDatabase } from './database';
 import {
   FileHandle,
@@ -23,7 +31,7 @@ import {
 } from './file-system';
 import { LocalStore } from './local-store';
 import { OneDriveFile, OneDriveService } from './onedrive.service';
-import { decryptDatabase, encryptDatabase } from './vault-crypto';
+import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-crypto';
 
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
 const AUTOSAVE_DELAY_MS = 2_000;
@@ -75,9 +83,17 @@ export class VaultService {
    */
   readonly saveConflict = signal(false);
 
+  /** Name des OneDrive-Bestands, den dieses Gerät sich gemerkt hat. */
+  readonly rememberedFile = signal<string | null>(null);
+
+  /** Von selbst geöffnet wird nur einmal je Seitenaufruf - nicht nach dem Schließen. */
+  private autoOpenDone = false;
+
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
     this.watchChanges();
+
+    void readRemembered().then((entry) => this.rememberedFile.set(entry?.fileName ?? null));
 
     window.addEventListener('beforeunload', (event) => {
       if (this.store.isOpen() && this.store.hasUnsavedChanges()) {
@@ -160,6 +176,7 @@ export class VaultService {
       content: await blob.text(),
       savedAt: new Date().toISOString(),
       fileName: this.fileName(),
+      dirty: this.store.hasUnsavedChanges(),
     });
   }
 
@@ -240,6 +257,103 @@ export class VaultService {
     this.fileName.set(handle.name);
     this.store.markSaved();
     this.lastSavedAt.set(new Date());
+  }
+
+  // --- Auf diesem Gerät merken --------------------------------------------
+
+  /** Ist der geöffnete Bestand der, den sich dieses Gerät merkt? */
+  isRemembered(): boolean {
+    return (
+      this.isInOneDrive() &&
+      this.rememberedFile() !== null &&
+      this.rememberedFile() === this.fileName()
+    );
+  }
+
+  /**
+   * Merkt sich OneDrive-Datei und Passwort auf diesem Gerät. Beim nächsten
+   * Start öffnet die App den Bestand dann ohne Rückfrage.
+   */
+  async rememberOnDevice(): Promise<void> {
+    const handle = this.handle;
+    if (!handle?.remoteId || this.password === null) {
+      throw new AppError('Merken lässt sich nur ein Bestand in OneDrive.');
+    }
+
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
+      'encrypt',
+      'decrypt',
+    ]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const password = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(this.password),
+    );
+
+    await writeRemembered({ fileId: handle.remoteId, fileName: handle.name, key, iv, password });
+    this.rememberedFile.set(handle.name);
+  }
+
+  /** Vergisst Datei und Passwort auf diesem Gerät. */
+  async forgetOnDevice(): Promise<void> {
+    await clearRemembered();
+    this.rememberedFile.set(null);
+  }
+
+  /**
+   * Öffnet den gemerkten Bestand. Ohne `interactive` geht das nur still -
+   * ist die Anmeldung bei Microsoft abgelaufen, schlägt es dann fehl.
+   */
+  async openRemembered(interactive: boolean): Promise<void> {
+    const entry = await readRemembered();
+    if (!entry) {
+      throw new AppError('Auf diesem Gerät ist kein Bestand gemerkt.');
+    }
+
+    const password = new TextDecoder().decode(
+      await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: entry.iv as BufferSource },
+        entry.key,
+        entry.password,
+      ),
+    );
+    const { content, handle } = await this.oneDrive.open(
+      { id: entry.fileId, name: entry.fileName },
+      interactive,
+    );
+
+    try {
+      await this.loadContent(content, password, handle.name, handle);
+    } catch (error) {
+      if (error instanceof VaultPasswordError) {
+        // Auf einem anderen Gerät wurde das Passwort geändert.
+        await this.forgetOnDevice();
+        throw new AppError(
+          'Das gemerkte Passwort passt nicht mehr - vermutlich wurde es auf einem anderen Gerät geändert. Bitte neu eingeben.',
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Öffnet beim Start den gemerkten Bestand, einmal je Seitenaufruf. Liegt im
+   * Browser ein Zwischenstand mit ungesicherten Änderungen, entscheidet die
+   * Lehrkraft selbst - sonst gingen diese Änderungen unter.
+   */
+  async tryAutoOpen(): Promise<boolean> {
+    if (this.autoOpenDone || this.store.isOpen()) {
+      return false;
+    }
+    this.autoOpenDone = true;
+
+    if (!(await readRemembered()) || (await readAutosave())?.dirty) {
+      return false;
+    }
+
+    await this.openRemembered(false);
+    return true;
   }
 
   /** Konflikt: Der eigene Stand gilt und überschreibt den des anderen Geräts. */
@@ -357,6 +471,10 @@ export class VaultService {
     this.requirePassword(next);
     this.password = next;
     await this.save();
+
+    if (this.isRemembered()) {
+      await this.rememberOnDevice();
+    }
   }
 
   /** Schließt den Bestand und räumt den Zwischenspeicher ab. */

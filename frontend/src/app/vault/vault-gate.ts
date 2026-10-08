@@ -40,6 +40,14 @@ export class VaultGate {
   /** Im OneDrive-Reiter: einen neuen Bestand anlegen statt einen vorhandenen öffnen. */
   readonly driveCreate = signal(false);
   readonly newFileName = signal('sitzordnung');
+  /** OneDrive-Datei und Passwort auf diesem Gerät merken. */
+  readonly remember = signal(false);
+
+  /** Der gemerkte Bestand - und ob er gerade von selbst geöffnet wird. */
+  readonly rememberedFile = this.vault.rememberedFile;
+  readonly autoOpening = signal(false);
+  /** Warum das Öffnen des gemerkten Bestands zuletzt nicht geklappt hat. */
+  readonly rememberedError = signal<string | null>(null);
 
   readonly password = signal('');
   readonly passwordRepeat = signal('');
@@ -72,6 +80,43 @@ export class VaultGate {
 
   constructor() {
     void this.vault.findAutosave().then((entry) => this.autosave.set(entry));
+    void this.autoOpen();
+  }
+
+  /** Öffnet beim Start den gemerkten OneDrive-Bestand - ohne jede Eingabe. */
+  private async autoOpen(): Promise<void> {
+    this.autoOpening.set(true);
+    try {
+      if (await this.vault.tryAutoOpen()) {
+        this.toasts.success('Datenbestand aus OneDrive geöffnet.');
+      }
+    } catch (error) {
+      // Meist ist nur die Anmeldung abgelaufen; ein Klick auf „Öffnen“ erneuert sie.
+      this.rememberedError.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.autoOpening.set(false);
+    }
+  }
+
+  /** Öffnet den gemerkten Bestand, notfalls mit Anmeldefenster. */
+  async openRemembered(): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.vault.openRemembered(true);
+      this.toasts.success('Datenbestand aus OneDrive geöffnet.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der gemerkte Bestand konnte nicht geöffnet werden.');
+      }
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async forgetRemembered(): Promise<void> {
+    await this.vault.forgetOnDevice();
+    this.rememberedError.set(null);
+    this.toasts.success('Datei und Passwort sind auf diesem Gerät vergessen.');
   }
 
   setMode(mode: 'open' | 'create' | 'onedrive'): void {
@@ -93,6 +138,13 @@ export class VaultGate {
 
   // --- OneDrive -------------------------------------------------------------
 
+  private async rememberIfWanted(): Promise<void> {
+    if (this.remember()) {
+      await this.vault.rememberOnDevice();
+      this.rememberedError.set(null);
+    }
+  }
+
   async signIn(): Promise<void> {
     this.busy.set(true);
     try {
@@ -107,8 +159,11 @@ export class VaultGate {
     }
   }
 
+  /** Abmelden heißt auch: dieses Gerät vergisst Datei und Passwort. */
   async signOut(): Promise<void> {
     await this.oneDrive.signOut();
+    await this.vault.forgetOnDevice();
+    this.rememberedError.set(null);
     this.driveFiles.set(null);
     this.selectedFile.set(null);
   }
@@ -142,6 +197,9 @@ export class VaultGate {
 
     try {
       await this.oneDrive.delete(file);
+      if (this.rememberedFile() === file.name) {
+        await this.vault.forgetOnDevice();
+      }
       this.toasts.success('Die Datei wurde gelöscht.');
       await this.loadDriveFiles();
     } catch (error) {
@@ -168,9 +226,11 @@ export class VaultGate {
       const selected = this.selectedFile();
       if (this.mode() === 'onedrive' && this.driveCreate()) {
         await this.vault.createInOneDrive(this.newFileName().trim(), this.password());
+        await this.rememberIfWanted();
         this.toasts.success('Neuer Datenbestand in OneDrive angelegt.');
       } else if (this.mode() === 'onedrive' && selected) {
         await this.vault.openFromOneDrive(selected, this.password());
+        await this.rememberIfWanted();
         this.toasts.success('Datenbestand aus OneDrive geöffnet.');
       } else if (this.mode() === 'create') {
         await this.vault.createNew(this.password());

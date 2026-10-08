@@ -8,6 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { createEmptyDatabase } from './database';
 import { FileHandle, SaveConflictError } from './file-system';
 import { LocalStore } from './local-store';
+import { OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
 import { VaultService } from './vault.service';
 
@@ -60,6 +61,7 @@ class FakeHandle implements FileHandle {
  */
 class FakeCloudHandle extends FakeHandle {
   readonly location = 'onedrive' as const;
+  readonly remoteId = 'datei-1';
 
   /** Der Stand, den ein anderes Gerät hochgeladen hat. */
   fremderStand: Blob | null = null;
@@ -259,6 +261,65 @@ describe('VaultService', () => {
       expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['11b']);
       expect(vault.saveConflict()).toBeFalse();
       expect(store.hasUnsavedChanges()).toBeFalse();
+    });
+  });
+
+  describe('VaultService - auf diesem Gerät merken', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeCloudHandle;
+
+    beforeEach(async () => {
+      handle = new FakeCloudHandle();
+      // OneDrive liefert, was zuletzt in die Datei geschrieben wurde.
+      const oneDrive = {
+        open: async () => ({ content: await (await handle.getFile()).text(), handle }),
+      };
+      TestBed.configureTestingModule({
+        providers: [{ provide: OneDriveService, useValue: oneDrive }],
+      });
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+    });
+
+    afterEach(async () => {
+      await vault.forgetOnDevice();
+      await vault.closeVault();
+    });
+
+    it('öffnet den gemerkten Bestand ohne Passwort', async () => {
+      await vault.rememberOnDevice();
+      expect(vault.rememberedFile()).toBe(handle.name);
+
+      await vault.closeVault();
+      expect(store.isOpen()).toBeFalse();
+
+      await vault.openRemembered(false);
+
+      expect(store.isOpen()).toBeTrue();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a']);
+    });
+
+    it('vergisst Datei und Passwort auf Wunsch', async () => {
+      await vault.rememberOnDevice();
+      await vault.forgetOnDevice();
+
+      expect(vault.rememberedFile()).toBeNull();
+      await expectAsync(vault.openRemembered(false)).toBeRejected();
+    });
+
+    it('legt das Passwort nicht im Klartext ab', async () => {
+      await vault.rememberOnDevice();
+
+      const { readRemembered } = await import('./browser-storage');
+      const entry = await readRemembered();
+      const gespeichert = new TextDecoder().decode(entry!.password);
+
+      expect(gespeichert).not.toContain(PASSWORT);
     });
   });
 

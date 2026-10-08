@@ -198,3 +198,48 @@ label.drive-file {
     display: none;
   }
 }
+
+.remembered {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+
+  p {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+p.remembered {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+label.remember {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+
+  input {
+    width: auto;
+    margin-top: 0.2rem;
+  }
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-weight: 450;
+  }
+}
