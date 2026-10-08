@@ -54,6 +54,10 @@
       </div>
 
       <div class="kb-controls">
+        <a class="btn small" [routerLink]="['/kurs', courseId(), 'noten']">
+          <app-icon name="graduation-cap" /> Noten
+        </a>
+
         <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
           <button
             type="button"

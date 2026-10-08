@@ -25,6 +25,11 @@
       <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">Einstellungen</a>
     </span>
     <span class="spacer"></span>
+    @if (courseId() !== null) {
+      <a class="btn small primary" [routerLink]="['/kurs', courseId(), 'noten']">
+        <app-icon name="graduation-cap" /> Notenverwaltung
+      </a>
+    }
     <a class="btn small ghost" routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
       <app-icon name="file-down" /> Export
     </a>

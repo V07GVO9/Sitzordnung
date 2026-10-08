@@ -1,0 +1,152 @@
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+
+  h1,
+  h2 {
+    margin: 0;
+  }
+}
+
+.eyebrow {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.filter {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.periods {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.period-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+
+  button {
+    border: 1px solid transparent;
+    background: none;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    color: var(--text-muted);
+  }
+
+  button.active {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    border-color: var(--accent-soft);
+    font-weight: 600;
+  }
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 1.25rem 0 0.4rem;
+}
+
+.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+input.short {
+  width: 5rem;
+  text-align: right;
+}
+
+.badge.ok {
+  background: var(--positive-soft);
+  border-color: #b6e0c6;
+  color: var(--positive);
+}
+
+.mirror {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0.75rem 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0.75rem 0 0.25rem;
+}
+
+label.full {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.5rem;
+
+  input {
+    width: 100%;
+  }
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0;
+}
+
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: normal;
+}
+
+table.lessons {
+  td.cell select {
+    padding: 0.2rem;
+    min-width: 4.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  td.override select {
+    background: var(--warning-soft);
+  }
+
+  td.absent select {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+}

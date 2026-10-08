@@ -25,6 +25,10 @@
         Bewertet wird in der Stunde, die gerade läuft. Ein Klick auf eine Stunde öffnet den Kurs.
       </p>
     </div>
+    <span class="spacer"></span>
+    <a class="btn primary" routerLink="/stundenplan/import">
+      <app-icon name="calendar-days" /> Aus WebUntis importieren
+    </a>
   </div>
 
   @if (courses().length === 0) {

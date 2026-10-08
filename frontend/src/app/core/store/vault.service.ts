@@ -223,8 +223,10 @@ export class VaultService {
 
       if (this.handle) {
         await writeFile(this.handle, blob);
+        // Die Android-App weicht auf eine neue Datei aus, wenn sie die alte nicht beschreiben darf.
+        this.fileName.set(this.handle.name);
       } else {
-        download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
+        await download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
       }
 
       this.store.markSaved();
