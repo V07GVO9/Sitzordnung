@@ -12,9 +12,7 @@
       <button
         type="button"
         class="rate"
-        [class.pos]="option.value > 0"
-        [class.neg]="option.value < 0"
-        [class.aktiv]="score?.currentLessonValue === option.value"
+        [class]="ratingClass(option.value)"
         (click)="rate(student, option.value)"
         [title]="option.title"
         [attr.aria-label]="fullName(student) + ': ' + option.title"
@@ -25,111 +23,88 @@
   </ng-template>
 
   <div class="stack">
-    <!-- Kopfzeile: Kurs, Modusumschalter, Sitzordnungswahl -->
-    <section class="head">
-      <div class="title">
-        <div class="eyebrow">{{ course()!.schoolClassName }}</div>
-        <h1>{{ course()!.subjectName }}</h1>
+    <!-- Fach-Reiter der Klasse, wie im Kursbuch der Klassenmappe -->
+    <nav class="subject-tabs course-tabs" aria-label="Fach wählen">
+      @for (sibling of siblings(); track sibling.id) {
+        <a
+          [routerLink]="['/kurs', sibling.id]"
+          [class.active]="sibling.id === courseId()"
+          [attr.aria-current]="sibling.id === courseId() ? 'page' : null"
+        >
+          {{ sibling.subjectName }}
+        </a>
+      }
+    </nav>
+
+    <!-- Datum und Stunde, darunter Liste/Sitzplan und Bearbeiten -->
+    <section class="kb-bar">
+      <div class="today-box" [class.live]="isRunning()">
+        <strong>{{ todayLabel() }}</strong>
+        <span>
+          @if (isRunning()) {
+            <span class="dot"></span> läuft bis {{ lesson()!.endTime }} Uhr
+            @if (lesson()!.room) {
+              · Raum {{ lesson()!.room }}
+            }
+          } @else {
+            außerhalb des Stundenplans –
+            <a routerLink="/stundenplan">Stundenplan</a>
+          }
+        </span>
       </div>
 
-      <div class="spacer"></div>
-
-      @if (plans().length > 1) {
-        <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
-          @for (plan of plans(); track plan.id) {
-            <button
-              type="button"
-              role="tab"
-              [attr.aria-selected]="plan.id === activePlanId()"
-              (click)="selectPlan(plan.id)"
-            >
-              {{ plan.name }}
-            </button>
-          }
+      <div class="kb-controls">
+        <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="view() === 'liste'"
+            (click)="setView('liste')"
+          >
+            <app-icon name="list" /> Liste
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="view() === 'sitzplan'"
+            (click)="setView('sitzplan')"
+          >
+            <app-icon name="layout-grid" /> Sitzplan
+          </button>
         </div>
-      }
 
-      <div class="tabs mode-switch" role="tablist" aria-label="Modus wählen">
-        <button
-          type="button"
-          role="tab"
-          [attr.aria-selected]="!editMode()"
-          (click)="toggleMode(false)"
-        >
-          <app-icon name="presentation" /> Bewerten
-        </button>
-        <button
-          type="button"
-          role="tab"
-          [attr.aria-selected]="editMode()"
-          (click)="toggleMode(true)"
-        >
-          <app-icon name="pencil" /> Sitzplan bearbeiten
-        </button>
+        @if (view() === 'sitzplan' && plans().length > 1) {
+          <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
+            @for (plan of plans(); track plan.id) {
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="plan.id === activePlanId()"
+                (click)="selectPlan(plan.id)"
+              >
+                {{ plan.name }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (view() === 'sitzplan' && plans().length > 0) {
+          <button
+            class="round-btn edit-toggle"
+            type="button"
+            [class.on]="editMode()"
+            (click)="toggleMode(!editMode())"
+            [attr.aria-pressed]="editMode()"
+            [title]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
+            [attr.aria-label]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
+          >
+            <app-icon [name]="editMode() ? 'circle-check' : 'pencil'" />
+          </button>
+        }
       </div>
     </section>
 
-    <!-- Auf welche Unterrichtsstunde zahlt eine Bewertung gerade ein? -->
-    @if (!editMode()) {
-      @if (lessonSlot(); as slot) {
-        <div
-          class="banner stunde-leiste"
-          [class.ok]="slot.fromTimetable && slot.isCurrent"
-          [class.warn]="!slot.fromTimetable"
-          [class.vergangen]="slot.fromTimetable && !slot.isCurrent"
-        >
-          <!-- Zurück zur vorherigen Unterrichtsstunde dieser Klasse. -->
-          <button
-            class="blaettern"
-            type="button"
-            [disabled]="!slot.hasPrevious || switchingLesson()"
-            (click)="gotoLesson('prev')"
-            aria-label="Vorherige Unterrichtsstunde"
-            title="Vorherige Unterrichtsstunde"
-          >
-            <app-icon name="chevron-left" />
-          </button>
-
-          <div class="stunde-text">
-            <strong>
-              {{ slot.isCurrent ? 'Bewertete Stunde' : 'Frühere Stunde' }}
-            </strong>
-            <span>{{ slot.label }}</span>
-            <span class="muted small">
-              @if (slot.isCurrent) {
-                Je Stunde eine Bewertung – eine weitere ersetzt sie.
-              } @else {
-                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und werden sofort
-                gespeichert.
-              }
-            </span>
-          </div>
-
-          <!-- Weiter Richtung Gegenwart; über die aktuelle Stunde hinaus geht es nicht. -->
-          <button
-            class="blaettern"
-            type="button"
-            [disabled]="!slot.hasNext || switchingLesson()"
-            (click)="gotoLesson('next')"
-            aria-label="Nächste Unterrichtsstunde"
-            title="Nächste Unterrichtsstunde"
-          >
-            <app-icon name="chevron-right" />
-          </button>
-
-          <div class="stunde-extra">
-            @if (!slot.isCurrent) {
-              <button class="btn small" type="button" (click)="gotoCurrentLesson()">
-                Zur aktuellen Stunde
-              </button>
-            }
-            @if (!slot.fromTimetable) {
-              <a class="btn small" routerLink="/">Stundenplan ergänzen</a>
-            }
-          </div>
-        </div>
-      }
-    } @else {
+    @if (editMode()) {
       <div class="banner warn">
         <app-icon name="pencil" />
         <span>
@@ -140,252 +115,305 @@
         @if (saving()) {
           <span class="small">Wird übernommen …</span>
         }
+        <button class="btn small" type="button" (click)="toggleMode(false)">Fertig</button>
       </div>
     }
 
-    @if (plans().length === 0) {
-      <div class="empty">
-        <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
-        <button class="btn primary" type="button" (click)="addPlan()">
-          <app-icon name="plus" /> Sitzordnung anlegen
-        </button>
-      </div>
+    @if (view() === 'liste') {
+      <app-participation-list
+        [students]="students()"
+        [scores]="scoresById()"
+        [today]="todayRatings()"
+        [flashId]="flash()?.studentId ?? null"
+        (rate)="onRate($event)"
+        (openStudent)="openSheet($event)"
+      />
     } @else {
-      <!-- Werkzeugleiste nur im Einstellungsmodus -->
-      @if (editMode()) {
-        <section class="card toolbar">
-          <div class="fields">
-            <label class="name-field">
-              Name
-              <input
-                type="text"
-                [value]="activePlan()?.name ?? ''"
-                (change)="renamePlan($any($event.target).value)"
-              />
-            </label>
-            <label>
-              Reihen
-              <input
-                type="number"
-                min="1"
-                max="20"
-                [value]="rows()"
-                (change)="changeGrid(+$any($event.target).value, columns())"
-              />
-            </label>
-            <label>
-              Spalten
-              <input
-                type="number"
-                min="1"
-                max="20"
-                [value]="columns()"
-                (change)="changeGrid(rows(), +$any($event.target).value)"
-              />
-            </label>
-          </div>
-
-          <div class="tools">
-            <button
-              class="btn small"
-              type="button"
-              (click)="autoFill()"
-              title="Freie Plätze der Reihe nach füllen"
-            >
-              <app-icon name="wand-sparkles" /> Auffüllen
+      @if (plans().length === 0) {
+        <div class="empty">
+          <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
+          <p class="small">Mitarbeit lässt sich auch ohne Sitzplan in der Liste eintragen.</p>
+          <div class="row">
+            <button class="btn" type="button" (click)="setView('liste')">
+              <app-icon name="list" /> Zur Liste
             </button>
-            <button
-              class="btn small"
-              type="button"
-              (click)="arrange('alpha')"
-              title="Alle nach Nachnamen von vorn nach hinten setzen"
-            >
-              <app-icon name="arrow-down-a-z" /> Alphabetisch
-            </button>
-            <button
-              class="btn small"
-              type="button"
-              (click)="arrange('random')"
-              title="Alle zufällig neu setzen"
-            >
-              <app-icon name="shuffle" /> Zufällig
-            </button>
-            <button class="btn small" type="button" (click)="clearSeats()">
-              <app-icon name="eraser" /> Leeren
-            </button>
-            @if (plans().length < maxPlans) {
-              <button class="btn small" type="button" (click)="addPlan()">
-                <app-icon name="plus" /> Zweite Sitzordnung
-              </button>
-            }
-            <button class="btn small danger" type="button" (click)="deletePlan()">
-              <app-icon name="trash-2" /> Löschen
+            <button class="btn primary" type="button" (click)="addPlan()">
+              <app-icon name="plus" /> Sitzordnung anlegen
             </button>
           </div>
-        </section>
-      }
-
-      <div class="layout" [class.solo]="!showPool()" cdkDropListGroup>
-        <!-- Der Raum -->
-        <section class="room card">
-          <div class="board">Tafel</div>
-
-          <div class="grid" [style.--cols]="columns()">
-            @for (row of grid(); track $index) {
-              @for (cell of row; track cell.row + ':' + cell.column) {
-                <div
-                  class="cell"
-                  [class.occupied]="!!cell.student"
-                  [class.edit]="editMode()"
-                  cdkDropList
-                  [cdkDropListData]="cell.target"
-                  [cdkDropListSortingDisabled]="true"
-                  [cdkDropListDisabled]="!editMode()"
-                  (cdkDropListDropped)="drop($event)"
-                >
-                  @if (cell.student; as student) {
-                    <div
-                      class="student"
-                      cdkDrag
-                      [cdkDragData]="student.id"
-                      [cdkDragDisabled]="!editMode()"
-                      [class.today-pos]="!editMode() && (cell.score?.pointsToday ?? 0) > 0"
-                      [class.today-neg]="!editMode() && (cell.score?.pointsToday ?? 0) < 0"
-                      [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
-                      [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
-                    >
-                      <div class="drag-preview" *cdkDragPreview>
-                        {{ fullName(student) }}
-                      </div>
-
-                      @if (!editMode()) {
-                        <span
-                          class="score"
-                          [class.pos]="(cell.score?.points ?? 0) > 0"
-                          [class.neg]="(cell.score?.points ?? 0) < 0"
-                          [title]="
-                            'Punktestand ' +
-                            (cell.score?.points ?? 0) +
-                            ', heute ' +
-                            (cell.score?.pointsToday ?? 0)
-                          "
-                        >
-                          {{ signed(cell.score?.points ?? 0) }}
-                        </span>
-                      }
-
-                      <div class="avatar">
-                        @if (student.photoUrl) {
-                          <img [src]="student.photoUrl" [alt]="fullName(student)" />
-                        } @else {
-                          <span>{{ initials(student) }}</span>
-                        }
-                      </div>
-
-                      <div class="name">
-                        <span>{{ student.firstName }}</span>
-                        <span>{{ student.lastName }}</span>
-                      </div>
-
-                      @if (!editMode()) {
-                        <div class="actions">
-                          <ng-container
-                            *ngTemplateOutlet="
-                              rateButtons;
-                              context: { $implicit: student, score: cell.score }
-                            "
-                          />
-                        </div>
-                      }
-                    </div>
-                  } @else {
-                    <span class="free">{{ editMode() ? 'frei' : '' }}</span>
-                  }
-                </div>
-              }
-            }
-          </div>
-        </section>
-
-        <!-- Schüler ohne Platz. Sitzen beim Bewerten alle, bekommt der Raum die volle Breite. -->
-        @if (showPool()) {
-          <aside class="pool card">
-            <h2>
-              Ohne Platz <span class="badge">{{ unseated().length }}</span>
-            </h2>
-            <p class="muted small">
-              @if (editMode()) {
-                Von hier auf einen Platz ziehen – oder einen Schüler hierher zurückziehen.
-              } @else {
-                Diese Schüler sitzen auf keinem Platz, können aber bewertet werden.
-              }
-            </p>
-
-            <div
-              class="pool-list"
-              cdkDropList
-              [cdkDropListData]="poolTarget"
-              [cdkDropListSortingDisabled]="true"
-              [cdkDropListDisabled]="!editMode()"
-              (cdkDropListDropped)="drop($event)"
-            >
-              @for (student of unseated(); track student.id) {
-                <div
-                  class="pool-item"
-                  cdkDrag
-                  [cdkDragData]="student.id"
-                  [cdkDragDisabled]="!editMode()"
-                  [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
-                  [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
-                >
-                  <div class="drag-preview" *cdkDragPreview>{{ fullName(student) }}</div>
-
-                  <div class="avatar small">
-                    @if (student.photoUrl) {
-                      <img [src]="student.photoUrl" [alt]="fullName(student)" />
-                    } @else {
-                      <span>{{ initials(student) }}</span>
-                    }
-                  </div>
-
-                  <span class="pool-name">{{ fullName(student) }}</span>
-
-                  @if (!editMode()) {
-                    <span
-                      class="points"
-                      [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
-                      [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
-                    >
-                      {{ signed(scoreFor(student.id)?.points ?? 0) }}
-                    </span>
-                    <span class="mini-actions">
-                      <ng-container
-                        *ngTemplateOutlet="
-                          rateButtons;
-                          context: { $implicit: student, score: scoreFor(student.id) }
-                        "
-                      />
-                    </span>
-                  }
-                </div>
-              } @empty {
-                <p class="muted small all-seated">
-                  <app-icon name="circle-check" /> Alle Schüler sitzen auf einem Platz.
-                </p>
-              }
+        </div>
+      } @else {
+        <!-- Werkzeugleiste nur im Einstellungsmodus -->
+        @if (editMode()) {
+          <section class="card toolbar">
+            <div class="fields">
+              <label class="name-field">
+                Name
+                <input
+                  type="text"
+                  [value]="activePlan()?.name ?? ''"
+                  (change)="renamePlan($any($event.target).value)"
+                />
+              </label>
+              <label>
+                Reihen
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  [value]="rows()"
+                  (change)="changeGrid(+$any($event.target).value, columns())"
+                />
+              </label>
+              <label>
+                Spalten
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  [value]="columns()"
+                  (change)="changeGrid(rows(), +$any($event.target).value)"
+                />
+              </label>
             </div>
 
-            @if (students().length === 0) {
-              <div class="empty small">
-                <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-                <a class="btn small" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
-                  <app-icon name="plus" /> Schüler anlegen
-                </a>
-              </div>
-            }
-          </aside>
+            <div class="tools">
+              <button
+                class="btn small"
+                type="button"
+                (click)="autoFill()"
+                title="Freie Plätze der Reihe nach füllen"
+              >
+                <app-icon name="wand-sparkles" /> Auffüllen
+              </button>
+              <button
+                class="btn small"
+                type="button"
+                (click)="arrange('alpha')"
+                title="Alle nach Nachnamen von vorn nach hinten setzen"
+              >
+                <app-icon name="arrow-down-a-z" /> Alphabetisch
+              </button>
+              <button
+                class="btn small"
+                type="button"
+                (click)="arrange('random')"
+                title="Alle zufällig neu setzen"
+              >
+                <app-icon name="shuffle" /> Zufällig
+              </button>
+              <button class="btn small" type="button" (click)="clearSeats()">
+                <app-icon name="eraser" /> Leeren
+              </button>
+              @if (plans().length < maxPlans) {
+                <button class="btn small" type="button" (click)="addPlan()">
+                  <app-icon name="plus" /> Zweite Sitzordnung
+                </button>
+              }
+              <button class="btn small danger" type="button" (click)="deletePlan()">
+                <app-icon name="trash-2" /> Löschen
+              </button>
+            </div>
+          </section>
         }
-      </div>
+
+        <div class="layout" [class.solo]="!showPool()" cdkDropListGroup>
+          <!-- Der Raum -->
+          <section class="room card">
+            <div class="board">Tafel</div>
+
+            <div class="grid" [style.--cols]="columns()">
+              @for (row of grid(); track $index) {
+                @for (cell of row; track cell.row + ':' + cell.column) {
+                  <div
+                    class="cell"
+                    [class.occupied]="!!cell.student"
+                    [class.edit]="editMode()"
+                    cdkDropList
+                    [cdkDropListData]="cell.target"
+                    [cdkDropListSortingDisabled]="true"
+                    [cdkDropListDisabled]="!editMode()"
+                    (cdkDropListDropped)="drop($event)"
+                  >
+                    @if (cell.student; as student) {
+                      <div
+                        class="student"
+                        cdkDrag
+                        [cdkDragData]="student.id"
+                        [cdkDragDisabled]="!editMode()"
+                        [class.rated]="!editMode() && lastToday().has(student.id)"
+                        [style.--rated]="ratedColor(lastToday().get(student.id))"
+                        [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
+                        [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
+                      >
+                        <div class="drag-preview" *cdkDragPreview>
+                          {{ fullName(student) }}
+                        </div>
+
+                        @if (!editMode()) {
+                          <span
+                            class="score"
+                            [class.pos]="(cell.score?.points ?? 0) > 0"
+                            [class.neg]="(cell.score?.points ?? 0) < 0"
+                            [title]="
+                              'Punktestand ' +
+                              (cell.score?.points ?? 0) +
+                              ', heute ' +
+                              (cell.score?.pointsToday ?? 0)
+                            "
+                          >
+                            {{ signed(cell.score?.points ?? 0) }}
+                          </span>
+                        }
+
+                        <button
+                          class="tile-who"
+                          type="button"
+                          [disabled]="editMode()"
+                          (click)="openSheet(student)"
+                          [title]="'Verlauf von ' + fullName(student)"
+                        >
+                          <span class="avatar">
+                            @if (student.photoUrl) {
+                              <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                            } @else {
+                              <span>{{ initials(student) }}</span>
+                            }
+                          </span>
+                          @if (!editMode() && lastToday().has(student.id)) {
+                            <span class="today-badge">{{
+                              ratingSymbolOf(lastToday().get(student.id)!)
+                            }}</span>
+                          }
+
+                          <span class="name">
+                            <span>{{ student.firstName }}</span>
+                            <span>{{ student.lastName }}</span>
+                          </span>
+                        </button>
+
+                        @if (!editMode()) {
+                          <div class="actions">
+                            <ng-container
+                              *ngTemplateOutlet="
+                                rateButtons;
+                                context: { $implicit: student, score: cell.score }
+                              "
+                            />
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <span class="free">{{ editMode() ? 'frei' : '' }}</span>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </section>
+
+          <!-- Schüler ohne Platz. Sitzen beim Bewerten alle, bekommt der Raum die volle Breite. -->
+          @if (showPool()) {
+            <aside class="pool card">
+              <h2>
+                Ohne Platz <span class="badge">{{ unseated().length }}</span>
+              </h2>
+              <p class="muted small">
+                @if (editMode()) {
+                  Von hier auf einen Platz ziehen – oder einen Schüler hierher zurückziehen.
+                } @else {
+                  Diese Schüler sitzen auf keinem Platz, können aber bewertet werden.
+                }
+              </p>
+
+              <div
+                class="pool-list"
+                cdkDropList
+                [cdkDropListData]="poolTarget"
+                [cdkDropListSortingDisabled]="true"
+                [cdkDropListDisabled]="!editMode()"
+                (cdkDropListDropped)="drop($event)"
+              >
+                @for (student of unseated(); track student.id) {
+                  <div
+                    class="pool-item"
+                    cdkDrag
+                    [cdkDragData]="student.id"
+                    [cdkDragDisabled]="!editMode()"
+                    [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
+                    [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
+                  >
+                    <div class="drag-preview" *cdkDragPreview>{{ fullName(student) }}</div>
+
+                    <div class="avatar small">
+                      @if (student.photoUrl) {
+                        <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                      } @else {
+                        <span>{{ initials(student) }}</span>
+                      }
+                    </div>
+
+                    <button
+                      class="pool-name"
+                      type="button"
+                      [disabled]="editMode()"
+                      (click)="openSheet(student)"
+                    >
+                      {{ fullName(student) }}
+                    </button>
+
+                    @if (!editMode()) {
+                      <span
+                        class="points"
+                        [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
+                        [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
+                      >
+                        {{ signed(scoreFor(student.id)?.points ?? 0) }}
+                      </span>
+                      <span class="mini-actions">
+                        <ng-container
+                          *ngTemplateOutlet="
+                            rateButtons;
+                            context: { $implicit: student, score: scoreFor(student.id) }
+                          "
+                        />
+                      </span>
+                    }
+                  </div>
+                } @empty {
+                  <p class="muted small all-seated">
+                    <app-icon name="circle-check" /> Alle Schüler sitzen auf einem Platz.
+                  </p>
+                }
+              </div>
+
+              @if (students().length === 0) {
+                <div class="empty small">
+                  <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
+                  <a class="btn small" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+                    <app-icon name="plus" /> Schüler anlegen
+                  </a>
+                </div>
+              }
+            </aside>
+          }
+        </div>
+      }
+    }
+
+    @if (sheetStudent(); as student) {
+      <app-participation-sheet
+        [student]="student"
+        [subjectName]="course()!.subjectName"
+        [score]="scoreFor(student.id)"
+        [ratings]="sheetRatings()"
+        [hasPrev]="sheetIndex() > 0"
+        [hasNext]="sheetHasNext()"
+        (closed)="closeSheet()"
+        (step)="stepSheet($event)"
+        (rate)="rate(student, $event)"
+        (remove)="removeRating($event)"
+      />
     }
   </div>
 }

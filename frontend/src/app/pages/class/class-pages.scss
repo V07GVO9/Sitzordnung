@@ -1,0 +1,265 @@
+/* Gemeinsame Gestaltung der Klassenseiten (Übersicht, Schüler, Noten). */
+
+:host {
+  display: block;
+}
+
+.groups {
+  max-width: 52rem;
+  margin: 0 auto;
+
+  // Gruppen fließen in Spalten, ohne Lücken zwischen unterschiedlich hohen Blöcken.
+  section {
+    break-inside: avoid;
+    margin-bottom: 1.1rem;
+  }
+}
+
+@media (min-width: 72rem) {
+  .groups {
+    max-width: none;
+    columns: 2;
+    column-gap: 1.1rem;
+  }
+}
+
+.list-row.add {
+  color: var(--accent-text);
+
+  > app-icon:first-child {
+    color: var(--accent-text);
+  }
+}
+
+.list-row.danger {
+  color: var(--negative);
+
+  > app-icon:first-child {
+    color: var(--negative);
+  }
+}
+
+/* Fachkürzel in der Fachfarbe. */
+.subject-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.45rem;
+  background: hsl(var(--hue) 60% 50% / 16%);
+  color: hsl(var(--hue) 55% var(--subject-l));
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.page-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sticky-tabs {
+  margin: calc(var(--pad-seite) * -1) calc(var(--pad-seite) * -1) 0.75rem;
+  padding-top: 0.35rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--separator);
+}
+
+/* Schülerliste mit Register rechts */
+.list-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: start;
+}
+
+.student-list .letter-head:first-child {
+  border-top: 0;
+}
+
+.letter-head {
+  scroll-margin-top: 4rem;
+}
+
+.index-rail {
+  position: sticky;
+  top: 4.5rem;
+  display: flex;
+  flex-direction: column;
+
+  button {
+    padding: 0.05rem 0.3rem;
+    border: 0;
+    background: transparent;
+    color: var(--accent-text);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+}
+
+/* Blatt mit Stammdaten */
+.person-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.person-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.25;
+
+  strong {
+    font-size: 1.15rem;
+  }
+}
+
+.photo {
+  position: relative;
+  cursor: pointer;
+}
+
+.avatar.big {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.2rem;
+}
+
+.photo-badge {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.2rem;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+}
+
+.form-group .form-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.9rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 400;
+
+  & + .form-row {
+    border-top: 1px solid var(--separator);
+  }
+
+  input {
+    border: 0;
+    background: transparent;
+    padding-left: 0;
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+}
+
+.score-pill,
+.grade-pill {
+  flex: none;
+  min-width: 2.4rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.score-pill.pos {
+  background: var(--rate-p);
+  color: var(--rate-ink);
+}
+
+.score-pill.neg {
+  background: var(--rate-m);
+  color: var(--rate-ink);
+}
+
+.grade-pill {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Notenliste */
+.grade-row {
+  align-items: center;
+}
+
+.dist {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.dist-cell {
+  min-width: 2.6rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.dist-sym {
+  font-weight: 700;
+}
+
+.grade-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: none;
+  width: 4.2rem;
+  text-align: center;
+}
+
+.box-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-radius: 0.3rem 0.3rem 0 0;
+}
+
+.box-value {
+  padding: 0.25rem 0;
+  border-radius: 0 0 0.3rem 0.3rem;
+  background: var(--surface-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+
+  &.note {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+}
+
+@media (max-width: 30rem) {
+  .grade-box {
+    width: 3.2rem;
+  }
+
+  .dist-cell {
+    min-width: 2rem;
+  }
+}

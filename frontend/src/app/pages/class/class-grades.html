@@ -1,0 +1,76 @@
+@if (courses().length === 0) {
+  <div class="empty">
+    <p>Dieser Klasse ist noch kein Fach zugeordnet.</p>
+    <a class="btn primary" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+      <app-icon name="plus" /> Fach zuordnen
+    </a>
+  </div>
+} @else {
+  <div class="subject-tabs sticky-tabs" role="tablist" aria-label="Fach wählen">
+    @for (course of courses(); track course.id) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="course.id === courseId()"
+        (click)="selectCourse(course.id)"
+      >
+        {{ course.subjectName }}
+      </button>
+    }
+  </div>
+
+  <div class="page-bar">
+    <span class="muted small">
+      Ø {{ signed(+average().toFixed(1)) }} Punkte · Notenschlüssel unter
+      <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">Einstellungen</a>
+    </span>
+    <span class="spacer"></span>
+    <a class="btn small ghost" routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
+      <app-icon name="file-down" /> Export
+    </a>
+  </div>
+
+  <div class="list-group">
+    @for (row of rows(); track row.score.studentId) {
+      <div class="list-row grade-row">
+        <span class="avatar">
+          @if (row.photoUrl) {
+            <img [src]="row.photoUrl" alt="" />
+          } @else {
+            <span>{{ initials(row.score) }}</span>
+          }
+        </span>
+
+        <span class="row-text">
+          <strong>{{ row.score.firstName }} {{ row.score.lastName }}</strong>
+          <span class="dist" [attr.aria-label]="row.score.ratingCount + ' Bewertungen'">
+            @for (part of row.distribution; track part.value) {
+              <span
+                class="dist-cell"
+                [class]="part.count ? part.css : ''"
+                [title]="part.symbol + ': ' + part.count + '×'"
+              >
+                <span class="dist-sym">{{ part.symbol }}</span> {{ part.count }}
+              </span>
+            }
+          </span>
+        </span>
+
+        <span class="grade-box">
+          <span class="box-label">Punkte</span>
+          <span class="box-value" [class]="pointsClass(row.score)">{{
+            signed(row.score.points)
+          }}</span>
+        </span>
+        <span class="grade-box">
+          <span class="box-label">Note</span>
+          <span class="box-value note">{{ row.score.grade ?? '–' }}</span>
+        </span>
+      </div>
+    } @empty {
+      <div class="list-row">
+        <span class="row-text"><span class="sub muted">Keine Schüler in dieser Klasse.</span></span>
+      </div>
+    }
+  </div>
+}

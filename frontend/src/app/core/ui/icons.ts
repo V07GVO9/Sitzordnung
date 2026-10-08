@@ -290,6 +290,63 @@ export const ICONS = {
     { t: 'path', d: 'M12 17v4' },
     { t: 'path', d: 'M8 21h8' },
   ],
+  house: [
+    { t: 'path', d: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8' },
+    {
+      t: 'path',
+      d: 'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    },
+  ],
+  'panel-left': [
+    { t: 'rect', width: '18', height: '18', x: '3', y: '3', rx: '2' },
+    { t: 'path', d: 'M9 3v18' },
+  ],
+  folder: [
+    {
+      t: 'path',
+      d: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z',
+    },
+  ],
+  list: [
+    { t: 'path', d: 'M3 12h.01' },
+    { t: 'path', d: 'M3 18h.01' },
+    { t: 'path', d: 'M3 6h.01' },
+    { t: 'path', d: 'M8 12h13' },
+    { t: 'path', d: 'M8 18h13' },
+    { t: 'path', d: 'M8 6h13' },
+  ],
+  'layout-grid': [
+    { t: 'rect', width: '7', height: '7', x: '3', y: '3', rx: '1' },
+    { t: 'rect', width: '7', height: '7', x: '14', y: '3', rx: '1' },
+    { t: 'rect', width: '7', height: '7', x: '14', y: '14', rx: '1' },
+    { t: 'rect', width: '7', height: '7', x: '3', y: '14', rx: '1' },
+  ],
+  'thumbs-up': [
+    { t: 'path', d: 'M7 10v12' },
+    {
+      t: 'path',
+      d: 'M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z',
+    },
+  ],
+  search: [
+    { t: 'circle', cx: '11', cy: '11', r: '8' },
+    { t: 'path', d: 'm21 21-4.3-4.3' },
+  ],
+  'user-round': [
+    { t: 'circle', cx: '12', cy: '8', r: '5' },
+    { t: 'path', d: 'M20 21a8 8 0 0 0-16 0' },
+  ],
+  'notebook-pen': [
+    { t: 'path', d: 'M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4' },
+    { t: 'path', d: 'M2 6h4' },
+    { t: 'path', d: 'M2 10h4' },
+    { t: 'path', d: 'M2 14h4' },
+    { t: 'path', d: 'M2 18h4' },
+    {
+      t: 'path',
+      d: 'M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z',
+    },
+  ],
 } satisfies Record<string, IconShape[]>;
 
 export type IconName = keyof typeof ICONS;
