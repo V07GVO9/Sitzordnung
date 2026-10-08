@@ -16,24 +16,50 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import {
   Course,
+  CurrentLesson,
+  Rating,
   RatingValue,
-  LessonRef,
-  LessonSlot,
   SeatingPlan,
   Student,
   StudentScore,
+  WEEKDAY_NAMES,
   fullName,
   initials,
+  ratingClass,
   ratingSymbol,
 } from '../../core/models';
+import { toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
+import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
+import { ParticipationSheet } from './participation-sheet';
+
+/** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
+export type ParticipationView = 'liste' | 'sitzplan';
+
+const VIEW_KEY = 'sitzordnung.mitarbeit-ansicht';
+
+/** Die gewählte Ansicht merken - ohne dass ein gesperrter Speicher stört. */
+function readView(): ParticipationView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
+  } catch {
+    return 'sitzplan';
+  }
+}
+
+function writeView(view: ParticipationView): void {
+  try {
+    localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Dann gilt die Wahl eben nur bis zum Neuladen.
+  }
+}
 
 /** Woher ein gezogener Schüler kommt bzw. wohin er fällt. */
 type DropTarget = { kind: 'pool' } | { kind: 'seat'; row: number; column: number };
@@ -59,6 +85,8 @@ export interface SeatCell {
     CdkDropList,
     CdkDropListGroup,
     Icon,
+    ParticipationList,
+    ParticipationSheet,
   ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
@@ -76,20 +104,22 @@ export class CoursePage implements OnDestroy {
   readonly plans = signal<SeatingPlan[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
-  readonly lessonSlot = signal<LessonSlot | null>(null);
   readonly saving = signal(false);
 
-  /** Solange geblättert wird, bleiben die Pfeile gesperrt. */
-  readonly switchingLesson = signal(false);
+  /** Die anderen Fächer derselben Klasse - als Reiter oben. */
+  readonly siblings = signal<Course[]>([]);
+  /** Was laut Stundenplan gerade läuft. */
+  readonly lesson = signal<CurrentLesson | null>(null);
+  /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
+  readonly todayRatings = signal<Map<number, Rating[]>>(new Map());
 
-  /**
-   * Die angezeigte Stunde als Angabe für die API - null, solange die aktuelle
-   * Stunde zu sehen ist. Dann entscheidet der Server, welche das gerade ist.
-   */
-  private readonly lessonRef = computed<LessonRef | null>(() => {
-    const slot = this.lessonSlot();
-    return !slot || slot.isCurrent ? null : { date: slot.date, startTime: slot.startTime };
-  });
+  /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
+  readonly view = signal<ParticipationView>(readView());
+
+  /** Der Schüler, dessen Verlauf als Blatt offen ist. */
+  readonly sheetStudentId = signal<number | null>(null);
+  /** Alle Bewertungen dieses Kurses - nur geladen, solange das Blatt offen ist. */
+  readonly courseRatings = signal<Rating[]>([]);
 
   /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
   readonly editMode = signal(false);
@@ -104,12 +134,8 @@ export class CoursePage implements OnDestroy {
   readonly fullName = fullName;
   readonly initials = initials;
 
-  readonly ratingOptions: { value: RatingValue; symbol: string; title: string }[] = [
-    { value: 2, symbol: '++', title: 'Sehr gute Mitarbeit (++)' },
-    { value: 1, symbol: '+', title: 'Gute Mitarbeit (+)' },
-    { value: -1, symbol: '−', title: 'Schwache Mitarbeit (−)' },
-    { value: -2, symbol: '−−', title: 'Keine Mitarbeit / Störung (−−)' },
-  ];
+  readonly ratingOptions = RATING_OPTIONS;
+  readonly ratingClass = ratingClass;
 
   /** Die zuletzt bewertete Kachel leuchtet kurz auf. */
   readonly flash = signal<{ studentId: number; value: number } | null>(null);
@@ -126,7 +152,7 @@ export class CoursePage implements OnDestroy {
     () => new Map(this.students().map((s) => [s.id, s] as const)),
   );
 
-  private readonly scoresById = computed(
+  readonly scoresById = computed(
     () => new Map(this.scores().map((s) => [s.studentId, s] as const)),
   );
 
@@ -168,19 +194,56 @@ export class CoursePage implements OnDestroy {
     () => this.editMode() || this.unseated().length > 0 || this.students().length === 0,
   );
 
-  /** Bewertet werden darf immer - begrenzt ist nur eine Bewertung je Stunde. */
-  readonly canRate = computed(() => this.students().length > 0);
+  /** Läuft dieser Kurs gerade laut Stundenplan? */
+  readonly isRunning = computed(() => {
+    const lesson = this.lesson();
+    return !!lesson?.hasLesson && lesson.courseId === this.courseId();
+  });
 
-  /**
-   * Die angezeigte Stunde wechselt mit der Zeit. Statt eines Knopfes zum
-   * Nachprüfen holt die Seite sie selbst nach - aber nur, solange die aktuelle
-   * Stunde zu sehen ist und nicht am Sitzplan gearbeitet wird.
-   */
-  private readonly timer = setInterval(() => {
-    if (!this.editMode() && this.lessonSlot()?.isCurrent && !this.switchingLesson()) {
-      this.refreshSlot();
+  /** „Mittwoch, 08.10.2025“ für die Datumszeile. */
+  readonly todayLabel = computed(() => {
+    const now = new Date();
+    return `${WEEKDAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('de-DE')}`;
+  });
+
+  /** Die zuletzt heute vergebene Bewertung je Schüler - färbt die Kachel. */
+  readonly lastToday = computed(() => {
+    const map = new Map<number, number>();
+    for (const [studentId, ratings] of this.todayRatings()) {
+      if (ratings.length) {
+        map.set(studentId, ratings[ratings.length - 1].value);
+      }
     }
-  }, 60_000);
+    return map;
+  });
+
+  readonly sheetStudent = computed(
+    () => this.students().find((s) => s.id === this.sheetStudentId()) ?? null,
+  );
+
+  readonly sheetRatings = computed(() =>
+    this.courseRatings().filter((r) => r.studentId === this.sheetStudentId()),
+  );
+
+  /** Reihenfolge zum Blättern im Blatt - wie die Liste, nach Vorname. */
+  private readonly sheetOrder = computed(() =>
+    [...this.students()].sort(
+      (a, b) =>
+        a.firstName.localeCompare(b.firstName, 'de') || a.lastName.localeCompare(b.lastName, 'de'),
+    ),
+  );
+
+  readonly sheetIndex = computed(() =>
+    this.sheetOrder().findIndex((s) => s.id === this.sheetStudentId()),
+  );
+
+  readonly sheetHasNext = computed(() => {
+    const index = this.sheetIndex();
+    return index >= 0 && index < this.sheetOrder().length - 1;
+  });
+
+  /** Die laufende Stunde wechselt mit der Zeit - die Anzeige zieht nach. */
+  private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
@@ -201,21 +264,24 @@ export class CoursePage implements OnDestroy {
 
   private load(courseId: number): void {
     this.loading.set(true);
+    this.sheetStudentId.set(null);
 
     forkJoin({
       course: this.api.getCourse(courseId),
+      courses: this.api.getCourses(),
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
-      // Der Punktestand bringt die aktuelle Unterrichtsstunde gleich mit.
       scoreboard: this.api.getScoreboard(courseId),
     }).subscribe({
-      next: ({ course, students, plans, scoreboard }) => {
+      next: ({ course, courses, students, plans, scoreboard }) => {
         this.course.set(course);
+        this.siblings.set(courses.filter((c) => c.schoolClassId === course.schoolClassId));
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
-        this.lessonSlot.set(scoreboard.currentLesson ?? null);
         this.selectPlan(plans[0]?.id ?? null);
+        this.refreshToday();
+        this.refreshLesson();
         this.loading.set(false);
       },
       error: (err) => {
@@ -488,12 +554,25 @@ export class CoursePage implements OnDestroy {
     });
   }
 
+  // --- Ansicht ---
+
+  setView(view: ParticipationView): void {
+    this.view.set(view);
+    writeView(view);
+    if (view === 'liste') {
+      this.editMode.set(false);
+    }
+  }
+
   // --- Bewerten ---
+
+  onRate(request: RateRequest): void {
+    this.rate(request.student, request.value);
+  }
 
   rate(student: Student, value: RatingValue): void {
     const courseId = this.courseId();
 
-    // Wird gerade eine frühere Stunde angesehen, zählt die Bewertung auf sie.
     this.api.rate(courseId, student.id, value).subscribe({
       next: (rating) => {
         this.refreshScores();
@@ -527,6 +606,25 @@ export class CoursePage implements OnDestroy {
     });
   }
 
+  /** Löscht eine Bewertung aus dem Verlauf im Blatt - nach Rückfrage. */
+  async removeRating(rating: Rating): Promise<void> {
+    const date = new Date(`${rating.lessonDate}T12:00:00`).toLocaleDateString('de-DE');
+    const confirmed = await this.confirm.ask({
+      title: `Bewertung ${ratingSymbol(rating.value)} vom ${date} löschen?`,
+      message: 'Der Punktestand wird sofort neu berechnet.',
+      confirmLabel: 'Löschen',
+      danger: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.api.deleteRating(rating.id).subscribe({
+      next: () => this.refreshScores(),
+      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gelöscht werden.'),
+    });
+  }
+
   private flashTile(studentId: number, value: number): void {
     if (this.flashTimer) {
       clearTimeout(this.flashTimer);
@@ -546,73 +644,77 @@ export class CoursePage implements OnDestroy {
     return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
   }
 
-  /**
-   * Blättert zur vorherigen oder nächsten Unterrichtsstunde dieses Kurses und
-   * lädt den Punktestand dieser Stunde nach.
-   */
-  gotoLesson(direction: 'prev' | 'next'): void {
-    const slot = this.lessonSlot();
-    if (!slot || this.switchingLesson()) {
+  // --- Verlauf als Blatt ---
+
+  openSheet(student: Student): void {
+    if (this.editMode()) {
       return;
     }
-
-    this.switchingLesson.set(true);
-
-    // Blätter-Funktionalität: Vorübergehend deaktiviert
-    // this.api
-    //   .getNeighbourLessonSlot(
-    //     this.courseId(),
-    //     { date: slot.date, startTime: slot.startTime },
-    //     direction,
-    //   )
-    //   .subscribe({
-    //     next: (naechste) => {
-    //       this.lessonSlot.set(naechste);
-    //       this.refreshScores(naechste.isCurrent ? null : naechste);
-    //       this.switchingLesson.set(false);
-    //     },
-    //     error: (err) => {
-    //       this.switchingLesson.set(false);
-    //       this.toasts.error(
-    //         err,
-    //         direction === 'prev'
-    //           ? 'Davor gibt es keine Unterrichtsstunde dieses Kurses.'
-    //           : 'Danach gibt es keine weitere Unterrichtsstunde dieses Kurses.',
-    //       );
-    //     },
-    //   });
-
-    this.switchingLesson.set(false);
-    this.toasts.show('Navigation zwischen Stunden ist momentan nicht verfügbar.', 'info');
+    this.sheetStudentId.set(student.id);
+    this.loadCourseRatings();
   }
 
-  /** Zurück zu der Stunde, der eine Bewertung ohne Blättern zugerechnet wird. */
-  gotoCurrentLesson(): void {
-    this.refreshSlot();
-    this.refreshScores(null);
+  closeSheet(): void {
+    this.sheetStudentId.set(null);
+    this.courseRatings.set([]);
   }
 
-  private refreshScores(lesson: LessonRef | null = this.lessonRef()): void {
-    this.api.getScoreboard(this.courseId()).subscribe({
-      next: (board) => {
-        this.scores.set(board.students);
-        this.lessonSlot.set(board.currentLesson ?? null);
-      },
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+  stepSheet(direction: -1 | 1): void {
+    const next = this.sheetOrder()[this.sheetIndex() + direction];
+    if (next) {
+      this.sheetStudentId.set(next.id);
+    }
+  }
+
+  private loadCourseRatings(): void {
+    this.api.getRatings(this.courseId()).subscribe({
+      next: (ratings) => this.courseRatings.set(ratings),
+      error: (err) => this.toasts.error(err, 'Der Verlauf konnte nicht geladen werden.'),
     });
   }
 
-  /** Holt die aktuelle Unterrichtsstunde neu - sie wechselt mit der Zeit. */
-  private refreshSlot(): void {
-    // getCurrentLessonSlot ist momentan nicht implementiert
-    // this.api
-    //   .getCurrentLessonSlot(this.courseId())
-    //   .pipe(catchError(() => of(null)))
-    //   .subscribe((slot) => {
-    //     if (slot) {
-    //       this.lessonSlot.set(slot);
-    //     }
-    //   });
+  // --- Nachladen ---
+
+  /** Punktestand, heutige Bewertungen und - falls offen - der Verlauf. */
+  private refreshScores(): void {
+    this.api.getScoreboard(this.courseId()).subscribe({
+      next: (board) => this.scores.set(board.students),
+      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    });
+    this.refreshToday();
+    if (this.sheetStudentId() !== null) {
+      this.loadCourseRatings();
+    }
+  }
+
+  private refreshToday(): void {
+    const today = toDateKey(new Date());
+    this.api.getRatings(this.courseId(), { from: today, to: today }).subscribe({
+      next: (ratings) => {
+        const map = new Map<number, Rating[]>();
+        for (const rating of [...ratings].sort((a, b) => a.id - b.id)) {
+          map.set(rating.studentId, [...(map.get(rating.studentId) ?? []), rating]);
+        }
+        this.todayRatings.set(map);
+      },
+    });
+  }
+
+  private refreshLesson(): void {
+    this.api.getCurrentLesson().subscribe({
+      next: (lesson) => this.lesson.set(lesson),
+      error: () => this.lesson.set(null),
+    });
+  }
+
+  /** Die Farbe der heutigen Bewertung als CSS-Variable für die Kachel. */
+  ratedColor(value: number | undefined): string | null {
+    const css = ratingClass(value);
+    return css ? `var(--${css})` : null;
+  }
+
+  ratingSymbolOf(value: number): string {
+    return ratingSymbol(value);
   }
 
   scoreFor(studentId: number): StudentScore | null {
@@ -621,8 +723,10 @@ export class CoursePage implements OnDestroy {
 
   toggleMode(edit: boolean): void {
     this.editMode.set(edit);
-    if (!edit) {
-      // Beim Zurückwechseln kann inzwischen eine neue Stunde begonnen haben.
+    if (edit) {
+      this.setView('sitzplan');
+      this.editMode.set(true);
+    } else {
       this.refreshScores();
     }
   }

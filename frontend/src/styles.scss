@@ -8,31 +8,47 @@
 :root {
   color-scheme: light;
 
-  --bg: #f5f6fa;
+  /* Angelehnt an die iPad-App „Meine Klassenmappe“: gruppierte, hellgraue
+     Flächen, weiße Listen, ein gedämpftes Blau als Akzent. */
+  --bg: #f2f2f7;
   --surface: #ffffff;
-  --surface-muted: #f1f3f8;
-  --surface-hover: #e9ecf4;
-  --text: #121826;
-  --text-muted: #5b6477;
-  --border: #e2e6ee;
-  --border-strong: #cdd3df;
+  --surface-muted: #f2f2f7;
+  --surface-hover: #e9e9ef;
+  --sidebar: #f7f7f9;
+  --text: #1c1c1e;
+  --text-muted: #6e6e73;
+  --border: #e3e3e8;
+  --border-strong: #c7c7cc;
+  --separator: #e5e5ea;
 
-  /* Akzent: Knöpfe, aktive Navigation, Fokus. */
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-text: #4338ca;
-  --accent-soft: #eef0ff;
+  /* Akzent: Knöpfe, aktive Reiter, Fokus. */
+  --accent: #2f6ea5;
+  --accent-hover: #285f8f;
+  --accent-text: #2a6496;
+  --accent-soft: #e3edf6;
   --on-accent: #ffffff;
 
-  --positive: #15803d;
-  --positive-solid: #16a34a;
-  --positive-soft: #e8f6ee;
-  --positive-border: #b5e2c5;
-  --positive-text: #14532d;
+  /* Segment-Schalter wie unter iOS. */
+  --segment-bg: #e8e8ed;
+  --segment-on: #ffffff;
+
+  /* Die Bewertungsfarben der Klassenmappe: von Grün (++) bis Rot (−−). */
+  --rate-pp: #9be59b;
+  --rate-p: #d5f08f;
+  --rate-o: #f6ec8a;
+  --rate-m: #f8c792;
+  --rate-mm: #f4a3a3;
+  --rate-ink: #1c1c1e;
+
+  --positive: #2e7d32;
+  --positive-solid: #34a853;
+  --positive-soft: #e7f5e8;
+  --positive-border: #b8e0bb;
+  --positive-text: #1b5e20;
 
   --negative: #c62828;
-  --negative-solid: #dc2626;
-  --negative-soft: #fdeded;
+  --negative-solid: #e0453a;
+  --negative-soft: #fdecec;
   --negative-border: #f3c4c4;
   --negative-text: #7f1d1d;
 
@@ -41,71 +57,83 @@
   --warning-border: #f1d6a4;
   --warning-text: #78350f;
 
-  --board: #1f2937;
-  --on-board: #f3f4f6;
-  --backdrop: rgb(15 23 42 / 45%);
+  --board: #3a3a3c;
+  --on-board: #f2f2f7;
+  --backdrop: rgb(0 0 0 / 32%);
 
   /* Helligkeit der Fachfarben (Farbton kommt aus dem Fachnamen). */
-  --subject-l: 38%;
+  --subject-l: 42%;
 
-  --radius: 0.85rem;
-  --radius-sm: 0.55rem;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 6%);
-  --shadow-lg: 0 12px 32px rgb(16 24 40 / 14%), 0 2px 6px rgb(16 24 40 / 8%);
-  --ring: 0 0 0 3px rgb(79 70 229 / 25%);
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --shadow: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-lg: 0 10px 30px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 8%);
+  --ring: 0 0 0 3px rgb(47 110 165 / 25%);
 
   /* Abstände wachsen mit dem Bildschirm. */
   --pad-card: 1rem;
   --pad-seite: 0.85rem;
   --gap: 0.85rem;
 
-  /* Höhe der Navigationsleiste unten auf Handy und Tablet. */
-  --bottom-nav: 4rem;
+  /* Höhe der Reiterleiste unten. */
+  --bottom-nav: 3.6rem;
 }
 
 @mixin dark-tokens {
   color-scheme: dark;
 
-  --bg: #0e1016;
-  --surface: #171a23;
-  --surface-muted: #1f232e;
-  --surface-hover: #282d3a;
-  --text: #e8eaf0;
-  --text-muted: #9aa2b4;
-  --border: #2a303d;
-  --border-strong: #3a4151;
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-muted: #2c2c2e;
+  --surface-hover: #3a3a3c;
+  --sidebar: #161618;
+  --text: #f2f2f7;
+  --text-muted: #98989f;
+  --border: #2c2c2e;
+  --border-strong: #48484a;
+  --separator: #38383a;
 
-  --accent: #6366f1;
-  --accent-hover: #7c7ff5;
-  --accent-text: #b4b8fd;
-  --accent-soft: rgb(99 102 241 / 18%);
+  --accent: #4a90d0;
+  --accent-hover: #5c9fdc;
+  --accent-text: #8cbcea;
+  --accent-soft: rgb(74 144 208 / 20%);
   --on-accent: #ffffff;
 
-  --positive: #4ade80;
-  --positive-solid: #16a34a;
-  --positive-soft: rgb(74 222 128 / 12%);
-  --positive-border: rgb(74 222 128 / 32%);
-  --positive-text: #bbf7d0;
+  --segment-bg: #2c2c2e;
+  --segment-on: #5a5a5e;
 
-  --negative: #f87171;
-  --negative-solid: #dc2626;
-  --negative-soft: rgb(248 113 113 / 12%);
-  --negative-border: rgb(248 113 113 / 32%);
-  --negative-text: #fecaca;
+  --rate-pp: #3f8f4a;
+  --rate-p: #7a9a34;
+  --rate-o: #9a8f2c;
+  --rate-m: #a8692c;
+  --rate-mm: #a84646;
+  --rate-ink: #ffffff;
+
+  --positive: #6fd27a;
+  --positive-solid: #34a853;
+  --positive-soft: rgb(111 210 122 / 14%);
+  --positive-border: rgb(111 210 122 / 32%);
+  --positive-text: #c8f0cc;
+
+  --negative: #ff6b61;
+  --negative-solid: #e0453a;
+  --negative-soft: rgb(255 107 97 / 14%);
+  --negative-border: rgb(255 107 97 / 32%);
+  --negative-text: #ffd2cf;
 
   --warning: #fbbf24;
   --warning-soft: rgb(251 191 36 / 12%);
   --warning-border: rgb(251 191 36 / 30%);
   --warning-text: #fde68a;
 
-  --board: #0b0d12;
-  --on-board: #d1d5db;
+  --board: #0b0b0c;
+  --on-board: #d1d1d6;
   --backdrop: rgb(0 0 0 / 60%);
-  --subject-l: 76%;
+  --subject-l: 72%;
 
   --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
-  --ring: 0 0 0 3px rgb(129 140 248 / 35%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 60%);
+  --ring: 0 0 0 3px rgb(74 144 208 / 35%);
 }
 
 /* Systemeinstellung, solange niemand ausdrücklich "hell" gewählt hat … */
@@ -128,12 +156,6 @@
   }
 }
 
-@media (min-width: 64rem) {
-  :root {
-    --bottom-nav: 0rem;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
@@ -149,15 +171,10 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family:
-    'Inter Variable',
-    'Segoe UI',
-    system-ui,
-    -apple-system,
-    'Helvetica Neue',
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, 'Helvetica Neue',
     sans-serif;
   font-size: 16px;
-  line-height: 1.5;
-  font-feature-settings: 'cv11', 'ss01';
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -359,7 +376,7 @@ button {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 1px 2px rgb(79 70 229 / 30%);
+  box-shadow: none;
 }
 
 .btn.primary:hover:not(:disabled) {
@@ -481,8 +498,8 @@ label.inline {
   gap: 0.25rem;
   padding: 0.3rem;
   border-radius: calc(var(--radius-sm) + 0.3rem);
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
+  background: var(--segment-bg);
+  border: 0;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -492,10 +509,10 @@ label.inline {
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
-    min-height: 2.4rem;
-    padding: 0.4rem 0.9rem;
+    min-height: 2.1rem;
+    padding: 0.3rem 0.9rem;
     border: 0;
-    border-radius: var(--radius-sm);
+    border-radius: calc(var(--radius-sm) - 0.05rem);
     background: transparent;
     color: var(--text-muted);
     font-weight: 550;
@@ -511,9 +528,11 @@ label.inline {
 
     &.active,
     &[aria-selected='true'] {
-      background: var(--surface);
+      background: var(--segment-on);
       color: var(--text);
-      box-shadow: var(--shadow);
+      box-shadow:
+        0 1px 3px rgb(0 0 0 / 12%),
+        0 1px 1px rgb(0 0 0 / 4%);
     }
   }
 }
@@ -752,4 +771,335 @@ kbd {
   font-family: inherit;
   font-size: 0.8em;
   font-weight: 600;
+}
+
+/* --- Bausteine im Stil der Klassenmappe --- */
+
+/* Kleine Überschrift über einer Gruppe, wie in iOS-Listen. */
+.section-label {
+  margin: 0 0 0.35rem;
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Eine abgerundete, weiße Gruppe von Zeilen. */
+.list-group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+/* Eine Zeile: Symbol oder Foto links, zwei Textzeilen, Pfeil rechts. */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 3.1rem;
+  padding: 0.55rem 0.9rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  position: relative;
+
+  & + & {
+    border-top: 1px solid var(--separator);
+  }
+
+  > app-icon:first-child {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    flex: none;
+  }
+
+  .row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+
+    strong,
+    .title {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sub {
+      font-size: 0.8rem;
+      color: var(--accent-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sub.muted {
+      color: var(--text-muted);
+    }
+  }
+
+  .chevron {
+    flex: none;
+    color: var(--border-strong);
+  }
+}
+
+a.list-row:hover,
+button.list-row:hover {
+  background: var(--surface-hover);
+}
+
+/* Abschnitt mit Anfangsbuchstaben in Schülerlisten. */
+.letter-head {
+  padding: 0.15rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-top: 1px solid var(--separator);
+}
+
+/* Die drei breiten Flächen zum Blättern: ‹ Datum ›. */
+.date-bar {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  gap: 0.4rem;
+
+  > button,
+  > .date-label {
+    display: grid;
+    place-items: center;
+    min-height: 2.5rem;
+    padding: 0.3rem 0.6rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--segment-bg);
+    color: var(--text);
+    font-size: 1.05rem;
+  }
+
+  > .date-label {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  > button:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+
+  > button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* Fach-Reiter: Text mit kleinem Dreieck unter dem aktiven Fach. */
+.subject-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 0.5rem;
+
+  a,
+  button {
+    position: relative;
+    padding: 0.35rem 0.1rem 0.55rem;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .active,
+  [aria-selected='true'] {
+    color: var(--text);
+  }
+
+  .active::after,
+  [aria-selected='true']::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    translate: -50% 0;
+    border: 0.35rem solid transparent;
+    border-bottom-color: var(--text-muted);
+    border-top-width: 0;
+  }
+}
+
+/* Bewertungs-Kästchen in den Farben der Klassenmappe. */
+.rate-pp {
+  background: var(--rate-pp) !important;
+  color: var(--rate-ink) !important;
+}
+
+.rate-p {
+  background: var(--rate-p) !important;
+  color: var(--rate-ink) !important;
+}
+
+.rate-o {
+  background: var(--rate-o) !important;
+  color: var(--rate-ink) !important;
+}
+
+.rate-m {
+  background: var(--rate-m) !important;
+  color: var(--rate-ink) !important;
+}
+
+.rate-mm {
+  background: var(--rate-mm) !important;
+  color: var(--rate-ink) !important;
+}
+
+/* Ein Blatt, das sich über die Seite legt - wie die Detailansichten auf dem iPad. */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--backdrop);
+  animation: fade-in 0.15s ease;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 92vh;
+  background: var(--bg);
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: sheet-up 0.22s ease;
+}
+
+@media (min-width: 48rem) {
+  .sheet-backdrop {
+    align-items: center;
+  }
+
+  .sheet {
+    width: min(34rem, 92vw);
+    max-height: 86vh;
+    border-radius: 1rem;
+  }
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr 2.6rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--separator);
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    text-align: center;
+  }
+}
+
+.sheet-body {
+  overflow-y: auto;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* Runde Symbolknöpfe wie in der Kopfleiste der App. */
+.round-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.1rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+
+/* --- Gemeinsame Kleinteile: Live-Punkt und Ladekreis --- */
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--positive-solid);
+  box-shadow: 0 0 0 0 var(--positive-solid);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(52 168 83 / 55%);
+  }
+
+  70% {
+    box-shadow: 0 0 0 0.45rem rgb(52 168 83 / 0%);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgb(52 168 83 / 0%);
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

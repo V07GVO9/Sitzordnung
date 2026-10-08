@@ -1,39 +1,40 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
   OnDestroy,
   computed,
   effect,
   inject,
   signal,
   untracked,
-  viewChild,
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
-import { CurrentLesson } from './core/models';
+import { Course, CurrentLesson, SchoolClass, TimetableEntry, WEEKDAY_NAMES } from './core/models';
 import { FilePickerCancelled } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/store/vault.service';
 import { ToastHost } from './core/toast-host';
 import { ToastService } from './core/toast.service';
 import { ConfirmHost } from './core/ui/confirm-host';
+import { ConfirmService } from './core/ui/confirm.service';
 import { Icon } from './core/ui/icon';
-import { PwaService } from './core/ui/pwa.service';
 import { IconName } from './core/ui/icons';
+import { PwaService } from './core/ui/pwa.service';
+import { subjectHue } from './core/ui/subject-hue';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
 import { VaultGate } from './vault/vault-gate';
-import { ConfirmService } from './core/ui/confirm.service';
 
-interface NavItem {
-  path: string;
+/** Ein Reiter der Leiste unten - wie die Bereiche der Klassenmappe. */
+interface ClassTab {
+  key: 'uebersicht' | 'schueler' | 'mitarbeit' | 'noten';
   label: string;
-  short: string;
   icon: IconName;
-  exact: boolean;
 }
+
+/** Was die Seitenleiste zeigt: die Klassen oder den Unterricht eines Tages. */
+type SidebarView = 'klassen' | 'tag';
 
 const THEME_LABELS: Record<ThemeChoice, string> = {
   system: 'Wie im System',
@@ -47,6 +48,16 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   dark: 'moon',
 };
 
+/** Seiten außerhalb einer Klasse und ihre Titel in der Kopfleiste. */
+const PAGE_TITLES: Record<string, string> = {
+  stundenplan: 'Stundenplan',
+  verwaltung: 'Klassen, Fächer & Schüler',
+  auswertung: 'Auswertung & Einstellungen',
+};
+
+/** Ab dieser Breite steht die Seitenleiste neben dem Inhalt statt darüber. */
+const WIDE_QUERY = '(min-width: 56rem)';
+
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,7 +65,6 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
-    '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'menuOpen.set(false)',
     '(document:keydown)': 'onKeydown($event)',
   },
@@ -67,46 +77,95 @@ export class App implements OnDestroy {
   private readonly toasts = inject(ToastService);
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
-
-  readonly canInstall = this.pwa.canInstall;
   private readonly confirm = inject(ConfirmService);
 
-  readonly lesson = signal<CurrentLesson | null>(null);
-
+  readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
   readonly hasUnsavedChanges = this.store.hasUnsavedChanges;
   readonly fileName = this.vault.fileName;
   readonly isSaving = this.vault.isSaving;
 
-  /** Der Stundenplan ist die Startseite - er wird täglich gebraucht. */
-  readonly nav: NavItem[] = [
-    { path: '/', label: 'Stundenplan', short: 'Plan', icon: 'calendar-days', exact: true },
-    {
-      path: '/unterricht',
-      label: 'Unterricht',
-      short: 'Unterricht',
-      icon: 'presentation',
-      exact: false,
-    },
-    {
-      path: '/verwaltung',
-      label: 'Klassen & Schüler',
-      short: 'Klassen',
-      icon: 'users',
-      exact: false,
-    },
-    {
-      path: '/auswertung',
-      label: 'Auswertung',
-      short: 'Auswertung',
-      icon: 'chart-column',
-      exact: false,
-    },
+  readonly lesson = signal<CurrentLesson | null>(null);
+  readonly classes = signal<SchoolClass[]>([]);
+  readonly courses = signal<Course[]>([]);
+  readonly timetable = signal<TimetableEntry[]>([]);
+
+  /** Die Klasse, in der man sich gerade bewegt - aus der Adresse abgeleitet. */
+  readonly activeClassId = signal<number | null>(null);
+  /** Der zuletzt geöffnete Kurs je Klasse, damit „Mitarbeit“ dorthin zurückführt. */
+  private readonly lastCourseByClass = new Map<number, number>();
+  /** Die aktuelle Adresse ohne Abfrageteil - für die aktiven Reiter. */
+  private readonly currentPath = signal('/');
+  /** Der Titel für Seiten außerhalb einer Klasse. */
+  readonly pageTitle = signal('');
+
+  readonly sidebarView = signal<SidebarView>('klassen');
+  /** Auf breiten Bildschirmen: steht die Seitenleiste? Auf schmalen: ist sie aufgeklappt? */
+  readonly sidebarOpen = signal(this.isWide());
+  readonly menuOpen = signal(false);
+
+  /** Der Tag, den die Tagesansicht zeigt. */
+  readonly dayOffset = signal(0);
+
+  readonly tabs: ClassTab[] = [
+    { key: 'uebersicht', label: 'Übersicht', icon: 'house' },
+    { key: 'schueler', label: 'Schüler', icon: 'users' },
+    { key: 'mitarbeit', label: 'Mitarbeit', icon: 'notebook-pen' },
+    { key: 'noten', label: 'Noten', icon: 'graduation-cap' },
   ];
 
-  /** Das Menü oben rechts auf Handy und Tablet. */
-  readonly menuOpen = signal(false);
-  private readonly menuRef = viewChild<ElementRef<HTMLElement>>('menu');
+  readonly activeClass = computed(
+    () => this.classes().find((c) => c.id === this.activeClassId()) ?? null,
+  );
+
+  readonly title = computed(() => this.activeClass()?.name ?? this.pageTitle());
+
+  /** Fächer je Klasse für die zweite Zeile in der Klassenliste. */
+  readonly subjectsByClass = computed(() => {
+    const map = new Map<number, string>();
+    for (const course of this.courses()) {
+      const short = course.subjectShortName || course.subjectName;
+      map.set(
+        course.schoolClassId,
+        [map.get(course.schoolClassId), short].filter(Boolean).join(', '),
+      );
+    }
+    return map;
+  });
+
+  readonly day = computed(() => {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + this.dayOffset());
+    return date;
+  });
+
+  readonly dayLabel = computed(() => {
+    const offset = this.dayOffset();
+    if (offset === 0) {
+      return 'Heute';
+    }
+    if (offset === 1) {
+      return 'Morgen';
+    }
+    if (offset === -1) {
+      return 'Gestern';
+    }
+    return this.day().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  });
+
+  readonly dayLong = computed(() => {
+    const date = this.day();
+    return `${WEEKDAY_NAMES[date.getDay()]}, ${date.toLocaleDateString('de-DE')}`;
+  });
+
+  /** Der Unterricht des gewählten Tages laut Stundenplan. */
+  readonly dayLessons = computed(() => {
+    const weekday = this.day().getDay();
+    return this.timetable()
+      .filter((e) => e.dayOfWeek === weekday)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  });
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
     this.isSaving() ? 'saving' : this.hasUnsavedChanges() ? 'dirty' : 'saved',
@@ -127,13 +186,14 @@ export class App implements OnDestroy {
   readonly themeLabel = computed(() => THEME_LABELS[this.theme.choice()]);
   readonly themeIcon = computed(() => THEME_ICONS[this.theme.choice()]);
 
+  readonly hue = subjectHue;
+
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
-  private readonly timer = setInterval(() => this.refresh(), 60_000);
+  private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
-    // Jede Änderung am Bestand - etwa ein neuer Stundenplaneintrag - kann die
-    // laufende Stunde betreffen. Das Signal wird gelesen, damit der Effekt
-    // bei jeder Änderung erneut läuft.
+    // Jede Änderung am Bestand kann Klassenliste, Stundenplan und die
+    // laufende Stunde betreffen.
     effect(() => {
       this.store.revision();
       this.store.isOpen();
@@ -153,16 +213,59 @@ export class App implements OnDestroy {
       }
     });
 
-    // Nach dem Bearbeiten des Stundenplans soll die Anzeige sofort stimmen,
-    // nicht erst beim nächsten Takt.
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
       this.menuOpen.set(false);
-      this.refresh();
+      // Auf schmalen Geräten verschwindet die Seitenleiste nach der Auswahl.
+      if (!this.isWide()) {
+        this.sidebarOpen.set(false);
+      }
+      this.currentPath.set(e.urlAfterRedirects.split('?')[0]);
+      this.readUrl(e.urlAfterRedirects);
+      this.refreshLesson();
     });
   }
 
   ngOnDestroy(): void {
     clearInterval(this.timer);
+  }
+
+  /** Wohin ein Reiter der Leiste unten führt. */
+  tabLink(tab: ClassTab['key']): unknown[] {
+    const classId = this.activeClassId();
+    if (tab === 'mitarbeit') {
+      const courseId = classId === null ? undefined : this.courseForClass(classId);
+      if (courseId !== undefined) {
+        return ['/kurs', courseId];
+      }
+    }
+    return ['/klasse', classId, tab];
+  }
+
+  /** Ist der Reiter gerade offen? Die Kursseite gehört zu „Mitarbeit“. */
+  isTabActive(tab: ClassTab['key']): boolean {
+    const url = this.currentPath();
+    if (tab === 'mitarbeit') {
+      return url.startsWith('/kurs/') || url.endsWith('/mitarbeit');
+    }
+    return url.endsWith(`/${tab}`);
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  shiftDay(step: number): void {
+    this.dayOffset.update((offset) => offset + step);
+  }
+
+  isRunning(entry: TimetableEntry): boolean {
+    const lesson = this.lesson();
+    return (
+      this.dayOffset() === 0 &&
+      !!lesson?.hasLesson &&
+      lesson.courseId === entry.courseId &&
+      lesson.startTime === entry.startTime
+    );
   }
 
   install(): void {
@@ -172,11 +275,6 @@ export class App implements OnDestroy {
 
   cycleTheme(): void {
     this.theme.cycle();
-  }
-
-  toggleMenu(event: Event): void {
-    event.stopPropagation();
-    this.menuOpen.update((open) => !open);
   }
 
   /** Strg+S (bzw. Cmd+S) speichert - statt die Seite als HTML zu sichern. */
@@ -189,16 +287,9 @@ export class App implements OnDestroy {
     }
   }
 
-  /** Ein Klick neben das Menü schließt es. */
-  onDocumentClick(event: MouseEvent): void {
-    const menu = this.menuRef()?.nativeElement;
-    if (this.menuOpen() && menu && !menu.contains(event.target as Node)) {
-      this.menuOpen.set(false);
-    }
-  }
-
   /** Schreibt den Datenbestand in die Datei. */
   async save(): Promise<void> {
+    this.menuOpen.set(false);
     try {
       await this.vault.save();
       this.toasts.success('Gespeichert.');
@@ -230,7 +321,64 @@ export class App implements OnDestroy {
     await this.router.navigateByUrl('/');
   }
 
+  /** Erster Kurs einer Klasse - oder der, der dort zuletzt offen war. */
+  private courseForClass(classId: number): number | undefined {
+    const last = this.lastCourseByClass.get(classId);
+    if (last !== undefined && this.courses().some((c) => c.id === last)) {
+      return last;
+    }
+    return this.courses().find((c) => c.schoolClassId === classId)?.id;
+  }
+
+  /** Leitet aus der Adresse ab, welche Klasse und welcher Titel gelten. */
+  private readUrl(url: string): void {
+    const path = url.split('?')[0].split('/').filter(Boolean);
+
+    if (path[0] === 'klasse' && path[1]) {
+      this.activeClassId.set(Number(path[1]));
+      this.pageTitle.set('');
+      return;
+    }
+
+    if (path[0] === 'kurs' && path[1]) {
+      const courseId = Number(path[1]);
+      const known = this.courses().find((c) => c.id === courseId);
+      this.pageTitle.set('');
+      if (known) {
+        this.activeClassId.set(known.schoolClassId);
+        this.lastCourseByClass.set(known.schoolClassId, courseId);
+      } else {
+        this.api.getCourse(courseId).subscribe({
+          next: (course) => {
+            this.activeClassId.set(course.schoolClassId);
+            this.lastCourseByClass.set(course.schoolClassId, courseId);
+          },
+          error: () => this.activeClassId.set(null),
+        });
+      }
+      return;
+    }
+
+    this.activeClassId.set(null);
+    this.pageTitle.set(PAGE_TITLES[path[0] ?? ''] ?? '');
+  }
+
   private refresh(): void {
+    if (!this.store.isOpen()) {
+      this.lesson.set(null);
+      this.classes.set([]);
+      this.courses.set([]);
+      this.timetable.set([]);
+      return;
+    }
+
+    this.api.getClasses().subscribe({ next: (classes) => this.classes.set(classes) });
+    this.api.getCourses().subscribe({ next: (courses) => this.courses.set(courses) });
+    this.api.getTimetable().subscribe({ next: (entries) => this.timetable.set(entries) });
+    this.refreshLesson();
+  }
+
+  private refreshLesson(): void {
     if (!this.store.isOpen()) {
       this.lesson.set(null);
       return;
@@ -240,5 +388,9 @@ export class App implements OnDestroy {
       next: (lesson) => this.lesson.set(lesson),
       error: () => this.lesson.set(null),
     });
+  }
+
+  private isWide(): boolean {
+    return typeof matchMedia === 'function' ? matchMedia(WIDE_QUERY).matches : true;
   }
 }

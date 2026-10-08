@@ -29,16 +29,32 @@ vollständig im Browser.
 
 ## Bedienung
 
-- **Navigation:** am PC links in der Seitenleiste, auf Handy und Tablet unten.
-  Die laufende Stunde steht immer sichtbar daneben bzw. oben und führt mit einem
-  Klick zum Bewerten.
-- **Bewerten:** Auf jeder Kachel stehen der Punktestand und die vier Knöpfe.
-  Wer heute schon bewertet wurde, ist grün bzw. rot hinterlegt. Nach jeder
-  Bewertung erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
-- **Sitzplan bearbeiten:** Neben Drag and Drop setzen *Auffüllen*,
-  *Alphabetisch* und *Zufällig* die Schüler auf einen Schlag.
+Aufbau und Bedienung sind an die iPad-App „Meine Klassenmappe“ angelehnt:
+
+- **Klassen links:** Die Seitenleiste zeigt alle Klassen (Ordner, Schülerzahl,
+  Fächer). Der Umschalter *Tagesansicht* zeigt stattdessen den Unterricht eines
+  Tages aus dem Stundenplan – ein Tipp auf eine Stunde öffnet sie. Mit dem
+  Symbol oben rechts lässt sich die Leiste ausblenden; auf schmalen Geräten
+  liegt sie als Schublade über dem Inhalt.
+- **Bereiche einer Klasse unten:** *Übersicht* (laufende und heutige Stunden,
+  Fächer, gute und schwache Mitarbeit der letzten 14 Tage), *Schüler*
+  (Klassenliste mit Buchstaben-Register, Stammdaten als Blatt mit ‹ ›),
+  *Mitarbeit* und *Noten* (Punkte, Note und Farbbalken je Fach).
+- **Mitarbeit eintragen:** Oben die Fächer der Klasse, darunter Datum und
+  laufende Stunde. Bewertet wird wahlweise in der **Liste** oder auf dem
+  **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in den Farben Grün bis
+  Rot. Wer heute bewertet wurde, bekommt die Farbe seiner Bewertung. Ein Tipp
+  auf Foto oder Namen öffnet den Verlauf mit Verteilung (7 Tage, 30 Tage,
+  gesamt); dort lassen sich einzelne Bewertungen löschen. Nach jeder Bewertung
+  erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
+- **Sitzplan bearbeiten:** Stift-Symbol neben *Liste | Sitzplan*. Neben Drag and
+  Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
+  Schlag.
+- **Menü (drei Balken):** Klassen & Fächer verwalten, Schüler importieren,
+  Stundenplan, Auswertung & Export, Notenschlüssel, Einstellungen, Speichern und
+  Datenbestand schließen.
 - **Darstellung:** hell, dunkel oder wie im Betriebssystem eingestellt –
-  umschaltbar unten in der Seitenleiste bzw. im Menü. Die Wahl gilt je Gerät.
+  umschaltbar im Menü. Die Wahl gilt je Gerät.
 - **Als App installieren:** In Chrome und Edge erscheint *Als App
   installieren*. Die App bekommt dann ein eigenes Symbol und startet auch ohne
   Internet. Zwischengespeichert werden dabei nur die Programmdateien, nie die

@@ -1,102 +1,59 @@
 /* Mobile first: kleine Kacheln, die sich über Container-Abfragen an die
    tatsächliche Platzbreite anpassen – so muss nie seitlich gescrollt werden. */
 
-.head {
+/* --- Kopf im Stil des Kursbuchs: Fach-Reiter, Datum, Ansicht --- */
+
+.course-tabs {
+  margin: calc(var(--pad-seite) * -1) calc(var(--pad-seite) * -1) 0;
+  padding-top: 0.35rem;
+  border-bottom: 1px solid var(--separator);
+}
+
+.kb-bar {
   display: flex;
-  align-items: flex-end;
-  gap: 0.75rem;
   flex-wrap: wrap;
-
-  h1 {
-    margin: 0;
-  }
+  align-items: center;
+  gap: 0.6rem;
 }
 
-.title {
-  flex: 1 1 100%;
-  min-width: 0;
-}
-
-/* Auf dem Handy füllen die Umschalter die Breite. */
-.mode-switch,
-.plan-switch {
-  flex: 1 1 100%;
-}
-
-@media (min-width: 40rem) {
-  .title {
-    flex: 0 1 auto;
-  }
-
-  .mode-switch,
-  .plan-switch {
-    flex: 0 0 auto;
-  }
-}
-
-/* --- Die Leiste mit der bewerteten Stunde --- */
-
-.stunde-leiste {
-  gap: 0.5rem;
-
-  /* Eine frühere Stunde sieht anders aus als die laufende. */
-  &.vergangen {
-    background: var(--surface-muted);
-    border-color: var(--border);
-    color: var(--text);
-  }
-}
-
-.stunde-text {
-  flex: 1 1 8rem;
-  min-width: 0;
+.today-box {
   display: flex;
   flex-direction: column;
-  line-height: 1.3;
-}
-
-/* Die Pfeile links und rechts führen zur vorherigen bzw. nächsten Stunde. */
-.blaettern {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--border-strong);
+  flex: 1 1 14rem;
+  padding: 0.45rem 0.85rem;
   border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 1.1rem;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  line-height: 1.3;
 
-  &:hover:not(:disabled) {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-text);
+  strong {
+    font-size: 0.95rem;
   }
 
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
+  > span {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  &.live > span {
+    color: var(--positive);
+    font-weight: 600;
   }
 }
 
-.stunde-extra {
+.kb-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-
-  /* Auf dem Handy in eine eigene Zeile unter Pfeilen und Text. */
-  flex: 1 1 100%;
-
-  &:empty {
-    display: none;
-  }
+  align-items: center;
+  gap: 0.5rem;
 }
 
-@media (min-width: 40rem) {
-  .stunde-extra {
-    flex: 0 0 auto;
-  }
+.edit-toggle.on {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* --- Werkzeugleiste beim Bearbeiten --- */
@@ -274,16 +231,44 @@
     border-color 0.2s ease,
     background 0.2s ease;
 
-  /* Wer heute schon bewertet wurde, ist auf einen Blick zu sehen. */
-  &.today-pos {
-    border-color: var(--positive-border);
-    background: linear-gradient(to bottom, var(--positive-soft), var(--surface) 70%);
+  /* Wer heute bewertet wurde, bekommt die Farbe der Bewertung - wie in der Klassenmappe. */
+  &.rated {
+    border-color: var(--rated);
+    background: color-mix(in srgb, var(--rated) 55%, var(--surface));
   }
+}
 
-  &.today-neg {
-    border-color: var(--negative-border);
-    background: linear-gradient(to bottom, var(--negative-soft), var(--surface) 70%);
+/* Foto und Name öffnen den Verlauf. */
+.tile-who {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: inherit;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+
+  &:disabled {
+    cursor: inherit;
   }
+}
+
+.today-badge {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0.1rem;
+  min-width: 1.5rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
 }
 
 /* Kurzes Aufleuchten als Bestätigung nach dem Tippen. */
@@ -402,50 +387,24 @@
 }
 
 .rate {
-  border: 1px solid transparent;
+  border: 0;
   border-radius: 0.4rem;
   min-height: 1.75rem;
   padding: 0.25rem 0;
   font-size: 0.75rem;
   font-weight: 750;
   line-height: 1;
+  opacity: 0.9;
   transition:
-    background 0.12s ease,
+    opacity 0.12s ease,
     transform 0.08s ease;
+
+  &:hover {
+    opacity: 1;
+  }
 
   &:active {
     transform: scale(0.94);
-  }
-
-  &.pos {
-    color: var(--positive);
-    background: var(--positive-soft);
-
-    &:hover:not(.aktiv) {
-      border-color: var(--positive-border);
-    }
-  }
-
-  &.neg {
-    color: var(--negative);
-    background: var(--negative-soft);
-
-    &:hover:not(.aktiv) {
-      border-color: var(--negative-border);
-    }
-  }
-
-  /* Die Bewertung, die für die aktuelle Stunde gilt. */
-  &.aktiv {
-    color: #fff;
-  }
-
-  &.pos.aktiv {
-    background: var(--positive-solid);
-  }
-
-  &.neg.aktiv {
-    background: var(--negative-solid);
   }
 }
 
@@ -471,6 +430,11 @@
 @container platz (min-width: 3.8rem) {
   .student .avatar {
     display: grid;
+  }
+
+  /* Erst mit Foto ist Platz für das Zeichen - schmaler genügt die Farbe. */
+  .today-badge {
+    display: block;
   }
 
   .name {
@@ -584,6 +548,10 @@
 .pool-name {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

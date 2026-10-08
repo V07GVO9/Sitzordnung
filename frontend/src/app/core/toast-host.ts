@@ -40,7 +40,7 @@ import { Icon } from './ui/icon';
   `,
   styles: [
     `
-      /* Unten mittig über der Navigationsleiste, ab Desktop unten rechts. */
+      /* Unten über der Reiterleiste, ab Desktop rechts. */
       .toast-host {
         position: fixed;
         left: 50%;
@@ -59,7 +59,6 @@ import { Icon } from './ui/icon';
         .toast-host {
           left: auto;
           right: 1.25rem;
-          bottom: 1.25rem;
           transform: none;
         }
       }
