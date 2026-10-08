@@ -274,6 +274,9 @@
             <strong>{{ fileName() ?? 'Ohne Datei' }}</strong>
             <span>
               {{ saveStateText() }}
+              @if (isInOneDrive()) {
+                · in OneDrive
+              }
               @if (autoSaveActive()) {
                 · speichert automatisch
               }

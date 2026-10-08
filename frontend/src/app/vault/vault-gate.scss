@@ -1,6 +1,8 @@
 .gate {
   min-height: 100vh;
   display: grid;
+  // Ohne feste Spalte würde die Karte so breit wie ihre Reiter.
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 1.25rem;
   background:
@@ -59,6 +61,8 @@
 
   button {
     flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.5rem;
   }
 }
 
@@ -128,5 +132,114 @@ label input {
 
   p {
     margin: 0.3rem 0 0.75rem;
+  }
+}
+
+.tabs.sub {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.drive-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.drive-files {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  max-height: 14rem;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  li.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+}
+
+label.drive-file {
+  flex: 1;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  cursor: pointer;
+
+  input {
+    width: auto;
+  }
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+// Auf schmalen Handys passen drei Reiter nur ohne Symbole nebeneinander.
+@media (max-width: 26rem) {
+  .tabs:not(.sub) app-icon {
+    display: none;
+  }
+}
+
+.remembered {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+
+  p {
+    margin: 0;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+}
+
+p.remembered {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+label.remember {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+
+  input {
+    width: auto;
+    margin-top: 0.2rem;
+  }
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-weight: 450;
   }
 }

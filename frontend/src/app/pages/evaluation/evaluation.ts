@@ -11,7 +11,8 @@ import {
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
-import { FilePickerCancelled } from '../../core/store/file-system';
+import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
+import { OneDriveService } from '../../core/store/onedrive.service';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
@@ -44,6 +45,10 @@ export class EvaluationPage {
   readonly fileName = this.vault.fileName;
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly autoSaveToFile = this.vault.autoSaveToFile;
+  readonly isInOneDrive = this.vault.isInOneDrive;
+  readonly rememberedFile = this.vault.rememberedFile;
+  readonly showOneDrive = inject(OneDriveService).isConfigured && !isNativeApp();
+  readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
 
@@ -244,6 +249,37 @@ export class EvaluationPage {
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  isRemembered(): boolean {
+    return this.vault.isRemembered();
+  }
+
+  /** Datei und Passwort auf diesem Gerät merken oder vergessen. */
+  async setRemember(enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await this.vault.rememberOnDevice();
+        this.toasts.success('Dieses Gerät öffnet den Bestand ab jetzt ohne Passwort.');
+      } else {
+        await this.vault.forgetOnDevice();
+        this.toasts.success('Datei und Passwort sind auf diesem Gerät vergessen.');
+      }
+    } catch (error) {
+      this.toasts.error(error, 'Die Einstellung konnte nicht gespeichert werden.');
+    }
+  }
+
+  /** Legt den Bestand in OneDrive ab - ab dann arbeiten alle Geräte mit dieser Datei. */
+  async moveToOneDrive(): Promise<void> {
+    try {
+      await this.vault.moveToOneDrive(this.oneDriveName().trim());
+      this.toasts.success('Der Datenbestand liegt jetzt in OneDrive.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht in OneDrive abgelegt werden.');
       }
     }
   }

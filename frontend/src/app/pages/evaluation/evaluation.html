@@ -317,10 +317,15 @@
         <h2>Datenbestand</h2>
         <p class="muted small">
           Alle Daten liegen verschlüsselt in der Datei
-          <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
+          <strong>{{ fileName() ?? 'ohne Namen' }}</strong>
+          @if (isInOneDrive()) {
+            in OneDrive (Ordner „Sitzordnung“).
+          } @else {
+            auf diesem Rechner.
+          }
         </p>
 
-        @if (canWriteInPlace) {
+        @if (canWriteInPlace || isInOneDrive()) {
           <label class="inline toggle">
             <input
               type="checkbox"
@@ -330,8 +335,14 @@
             Nach jeder Änderung automatisch in die Datei speichern
           </label>
           <p class="muted small">
-            Wirkt, sobald einmal von Hand gespeichert wurde – der Browser fragt dabei einmal nach
-            der Erlaubnis, in die Datei zu schreiben. Die Einstellung gilt für dieses Gerät.
+            @if (isInOneDrive()) {
+              Gespeichert wird wenige Sekunden nach jeder Änderung in OneDrive. Hat ein anderes
+              Gerät inzwischen gespeichert, fragt die App, welcher Stand gilt.
+            } @else {
+              Wirkt, sobald einmal von Hand gespeichert wurde – der Browser fragt dabei einmal nach
+              der Erlaubnis, in die Datei zu schreiben.
+            }
+            Die Einstellung gilt für dieses Gerät.
           </p>
         } @else {
           <p class="muted small">
@@ -341,12 +352,58 @@
           </p>
         }
 
+        @if (isInOneDrive()) {
+          <label class="inline toggle">
+            <input
+              type="checkbox"
+              [checked]="isRemembered()"
+              (change)="setRemember($any($event.target).checked)"
+            />
+            Auf diesem Gerät merken – beim Start ohne Passwort öffnen
+          </label>
+          <p class="muted small">
+            Das Passwort liegt dann verschlüsselt im Browser dieses Geräts. Wer das entsperrte Gerät
+            benutzt, kommt an die Noten – deshalb nur auf eigenen Geräten, nie an Schul-PCs.
+          </p>
+        }
+
         <div class="row">
           <button class="btn" type="button" (click)="saveAs()">
             <app-icon name="save" /> Speichern unter …
           </button>
         </div>
       </section>
+
+      @if (showOneDrive && !isInOneDrive()) {
+        <section class="card narrow">
+          <h2><app-icon name="cloud" /> In OneDrive ablegen</h2>
+          <p class="muted small">
+            Legt den Datenbestand als neue Datei in OneDrive ab (Ordner „Sitzordnung“). Danach
+            speichert die App dorthin, und jedes Gerät öffnet ihn über
+            <strong>OneDrive</strong> auf der Startseite – mit demselben Passwort. Die Datei bleibt
+            verschlüsselt.
+          </p>
+          <label class="full">
+            Dateiname in OneDrive
+            <input
+              type="text"
+              [ngModel]="oneDriveName()"
+              (ngModelChange)="oneDriveName.set($event)"
+              name="oneDriveName"
+            />
+          </label>
+          <div class="row">
+            <button
+              class="btn primary"
+              type="button"
+              [disabled]="oneDriveName().trim() === ''"
+              (click)="moveToOneDrive()"
+            >
+              <app-icon name="cloud" /> In OneDrive ablegen
+            </button>
+          </div>
+        </section>
+      }
 
       <section class="card narrow">
         <h2><app-icon name="key-round" /> Passwort ändern</h2>

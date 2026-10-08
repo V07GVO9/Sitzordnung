@@ -5,9 +5,11 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { FileHandle } from './file-system';
+import { createEmptyDatabase } from './database';
+import { FileHandle, SaveConflictError } from './file-system';
 import { LocalStore } from './local-store';
-import { decryptDatabase } from './vault-crypto';
+import { OneDriveService } from './onedrive.service';
+import { decryptDatabase, encryptDatabase } from './vault-crypto';
 import { VaultService } from './vault.service';
 
 const PASSWORT = 'TestPasswort123';
@@ -48,6 +50,50 @@ class FakeHandle implements FileHandle {
         if (puffer) {
           this.geschrieben.push(puffer);
         }
+      },
+    };
+  }
+}
+
+/**
+ * Eine Datei in der Cloud: Hat ein anderes Gerät inzwischen gespeichert,
+ * lehnt sie das Schreiben ab - wie OneDrive bei veralteter Versionskennung.
+ */
+class FakeCloudHandle extends FakeHandle {
+  readonly location = 'onedrive' as const;
+  readonly remoteId = 'datei-1';
+
+  /** Der Stand, den ein anderes Gerät hochgeladen hat. */
+  fremderStand: Blob | null = null;
+
+  private ueberschreiben = false;
+
+  allowOverwrite(): void {
+    this.ueberschreiben = true;
+  }
+
+  override async getFile(): Promise<File> {
+    if (this.fremderStand) {
+      // Wer den fremden Stand lädt, arbeitet ab jetzt auf ihm weiter.
+      const stand = this.fremderStand;
+      this.geschrieben.push(stand);
+      this.fremderStand = null;
+      return new File([stand], this.name);
+    }
+    return super.getFile();
+  }
+
+  override async createWritable() {
+    const schreiber = await super.createWritable();
+    return {
+      write: (data: Blob) => schreiber.write(data),
+      close: async () => {
+        if (this.fremderStand && !this.ueberschreiben) {
+          throw new SaveConflictError();
+        }
+        this.fremderStand = null;
+        this.ueberschreiben = false;
+        await schreiber.close();
       },
     };
   }
@@ -154,6 +200,126 @@ describe('VaultService', () => {
 
       expect(vault.autoSaveError()).toBeNull();
       expect(store.hasUnsavedChanges()).toBeFalse();
+    });
+  });
+
+  describe('VaultService - Konflikt mit einem anderen Gerät', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeCloudHandle;
+
+    beforeEach(async () => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+      handle = new FakeCloudHandle();
+      await oeffne(vault, handle);
+      await warteAufAutosave();
+
+      // Ein anderes Gerät legt eine Klasse an und speichert.
+      const fremd = createEmptyDatabase();
+      fremd.schoolClasses.push({ id: 1, name: '11b' });
+      handle.fremderStand = await encryptDatabase(fremd, PASSWORT);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+    });
+
+    it('überschreibt den fremden Stand nicht stillschweigend', async () => {
+      store.createClass('10a');
+      await warteAufAutosave();
+
+      expect(vault.isInOneDrive()).toBeTrue();
+      expect(vault.saveConflict()).toBeTrue();
+      expect(store.hasUnsavedChanges()).toBeTrue();
+      // Der Konflikt wird eigens gefragt, nicht als allgemeiner Fehler gemeldet.
+      expect(vault.autoSaveError()).toBeNull();
+    });
+
+    it('behält auf Wunsch den eigenen Stand', async () => {
+      store.createClass('10a');
+      await warteAufAutosave();
+
+      await vault.keepMineAfterConflict();
+
+      const bestand = await decryptDatabase(
+        await handle.geschrieben[handle.geschrieben.length - 1].text(),
+        PASSWORT,
+      );
+      expect(bestand.schoolClasses.map((c) => c.name)).toEqual(['10a']);
+      expect(vault.saveConflict()).toBeFalse();
+      expect(store.hasUnsavedChanges()).toBeFalse();
+    });
+
+    it('lädt auf Wunsch den Stand des anderen Geräts', async () => {
+      store.createClass('10a');
+      await warteAufAutosave();
+
+      await vault.takeTheirsAfterConflict();
+
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['11b']);
+      expect(vault.saveConflict()).toBeFalse();
+      expect(store.hasUnsavedChanges()).toBeFalse();
+    });
+  });
+
+  describe('VaultService - auf diesem Gerät merken', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeCloudHandle;
+
+    beforeEach(async () => {
+      handle = new FakeCloudHandle();
+      // OneDrive liefert, was zuletzt in die Datei geschrieben wurde.
+      const oneDrive = {
+        open: async () => ({ content: await (await handle.getFile()).text(), handle }),
+      };
+      TestBed.configureTestingModule({
+        providers: [{ provide: OneDriveService, useValue: oneDrive }],
+      });
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+    });
+
+    afterEach(async () => {
+      await vault.forgetOnDevice();
+      await vault.closeVault();
+    });
+
+    it('öffnet den gemerkten Bestand ohne Passwort', async () => {
+      await vault.rememberOnDevice();
+      expect(vault.rememberedFile()).toBe(handle.name);
+
+      await vault.closeVault();
+      expect(store.isOpen()).toBeFalse();
+
+      await vault.openRemembered(false);
+
+      expect(store.isOpen()).toBeTrue();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a']);
+    });
+
+    it('vergisst Datei und Passwort auf Wunsch', async () => {
+      await vault.rememberOnDevice();
+      await vault.forgetOnDevice();
+
+      expect(vault.rememberedFile()).toBeNull();
+      await expectAsync(vault.openRemembered(false)).toBeRejected();
+    });
+
+    it('legt das Passwort nicht im Klartext ab', async () => {
+      await vault.rememberOnDevice();
+
+      const { readRemembered } = await import('./browser-storage');
+      const entry = await readRemembered();
+      const gespeichert = new TextDecoder().decode(entry!.password);
+
+      expect(gespeichert).not.toContain(PASSWORT);
     });
   });
 

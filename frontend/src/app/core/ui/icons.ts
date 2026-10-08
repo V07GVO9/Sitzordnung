@@ -8,6 +8,7 @@ export interface IconShape {
 }
 
 export const ICONS = {
+  cloud: [{ t: 'path', d: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z' }],
   'calendar-days': [
     { t: 'path', d: 'M8 2v3' },
     { t: 'path', d: 'M16 2v3' },

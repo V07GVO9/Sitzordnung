@@ -107,6 +107,17 @@ Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
 *Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
+### Auf mehreren Geräten: OneDrive
+
+Statt auf einem Gerät kann der Bestand auch in **OneDrive** liegen (Ordner
+*Sitzordnung*). Dann öffnet jedes Gerät denselben Stand über den Reiter
+**OneDrive** auf der Startseite, und die App speichert automatisch dorthin. Die
+Datei bleibt verschlüsselt, Microsoft sieht nur den verschlüsselten Inhalt. Hat
+ein anderes Gerät inzwischen gespeichert, fragt die App, welcher Stand gilt.
+
+Dafür muss die App einmal bei Microsoft registriert werden – siehe
+[docs/onedrive-einrichten.md](docs/onedrive-einrichten.md).
+
 ### Was in der Datei steht
 
 Alles: Klassen, Schüler samt Fotos, Kurse, Sitzordnungen, Stundenplan,

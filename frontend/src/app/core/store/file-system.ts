@@ -20,6 +20,30 @@ export interface FileHandle {
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+  /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
+  readonly location?: 'onedrive';
+  /** Die Kennung der Datei in OneDrive. */
+  readonly remoteId?: string;
+  /**
+   * Wird vor dem Speichern aufgerufen, noch bevor verschlüsselt wird. Die
+   * OneDrive-Datei holt sich hier ihre Anmeldung - mit `interactive` darf
+   * sie dafür ein Anmeldefenster öffnen.
+   */
+  prepare?(interactive: boolean): Promise<void>;
+  /** Überschreibt beim nächsten Speichern, auch wenn ein anderes Gerät gespeichert hat. */
+  allowOverwrite?(): void;
+}
+
+/**
+ * Wird beim Speichern geworfen, wenn ein anderes Gerät die Datei seit dem
+ * Öffnen geändert hat. Ohne diese Prüfung würde dessen Stand stillschweigend
+ * überschrieben.
+ */
+export class SaveConflictError extends Error {
+  constructor() {
+    super('Die Datei wurde inzwischen auf einem anderen Gerät gespeichert.');
+    this.name = 'SaveConflictError';
+  }
 }
 
 interface FilePickerWindow {
