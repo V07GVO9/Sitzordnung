@@ -53,6 +53,39 @@ Gesamtnote vorläufig (*). Zeiträume wie „1. Halbjahr" grenzen alles ein.
 Die Vorgaben im Schema sind nur ein Vorschlag – verbindlich sind Schulgesetz,
 Verordnungen und Konferenzbeschlüsse.
 
+## Bedienung
+
+Aufbau und Bedienung sind an die iPad-App „Meine Klassenmappe“ angelehnt:
+
+- **Klassen links:** Die Seitenleiste zeigt alle Klassen (Ordner, Schülerzahl,
+  Fächer). Der Umschalter *Tagesansicht* zeigt stattdessen den Unterricht eines
+  Tages aus dem Stundenplan – ein Tipp auf eine Stunde öffnet sie. Mit dem
+  Symbol oben rechts lässt sich die Leiste ausblenden; auf schmalen Geräten
+  liegt sie als Schublade über dem Inhalt.
+- **Bereiche einer Klasse unten:** *Übersicht* (laufende und heutige Stunden,
+  Fächer, gute und schwache Mitarbeit der letzten 14 Tage), *Schüler*
+  (Klassenliste mit Buchstaben-Register, Stammdaten als Blatt mit ‹ ›),
+  *Mitarbeit* und *Noten* (Punkte, Note und Farbbalken je Fach).
+- **Mitarbeit eintragen:** Oben die Fächer der Klasse, darunter Datum und
+  laufende Stunde. Bewertet wird wahlweise in der **Liste** oder auf dem
+  **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in den Farben Grün bis
+  Rot. Wer heute bewertet wurde, bekommt die Farbe seiner Bewertung. Ein Tipp
+  auf Foto oder Namen öffnet den Verlauf mit Verteilung (7 Tage, 30 Tage,
+  gesamt); dort lassen sich einzelne Bewertungen löschen. Nach jeder Bewertung
+  erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
+- **Sitzplan bearbeiten:** Stift-Symbol neben *Liste | Sitzplan*. Neben Drag and
+  Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
+  Schlag.
+- **Menü (drei Balken):** Klassen & Fächer verwalten, Schüler importieren,
+  Stundenplan, Auswertung & Export, Notenschlüssel, Einstellungen, Speichern und
+  Datenbestand schließen.
+- **Darstellung:** hell, dunkel oder wie im Betriebssystem eingestellt –
+  umschaltbar im Menü. Die Wahl gilt je Gerät.
+- **Als App installieren:** In Chrome und Edge erscheint *Als App
+  installieren*. Die App bekommt dann ein eigenes Symbol und startet auch ohne
+  Internet. Zwischengespeichert werden dabei nur die Programmdateien, nie die
+  Daten. Liegt eine neue Version bereit, meldet die App das.
+
 ## Die Datei mit den Daten
 
 Beim Öffnen der Anwendung fragt sie nach einer Datei und dem zugehörigen
@@ -62,13 +95,17 @@ Passwort. Ohne beides zeigt sie keine Daten an.
   Speicherort.
 - **Datei öffnen** liest einen vorhandenen Bestand ein.
 
-Gespeichert wird über die Schaltfläche **Speichern** in der Kopfzeile. Die
-Kopfzeile zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim
-Schließen des Fensters warnt der Browser davor.
+Gespeichert wird über **Speichern** (am PC in der Seitenleiste, auf Handy und
+Tablet über das Symbol oben rechts) oder mit <kbd>Strg</kbd>+<kbd>S</kbd>. Die
+App zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim Schließen des
+Fensters warnt der Browser davor.
 
 In Chrome und Edge merkt sich die Anwendung die gewählte Datei und schreibt beim
-Speichern direkt dorthin zurück. Firefox und Safari unterstützen das nicht – dort
-landet beim Speichern jedes Mal eine neue Datei im Download-Ordner.
+Speichern direkt dorthin zurück. Dort speichert sie auch **automatisch** wenige
+Sekunden nach jeder Änderung – sobald einmal von Hand gespeichert und dem
+Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
+*Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
+beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 ### Was in der Datei steht
 
@@ -206,6 +243,8 @@ frontend/
         file-system.ts   Zugriff auf Dateien im Browser
         photo.ts         Fotos einlesen und verkleinern
         browser-storage.ts  Zwischenspeicher in IndexedDB
+      ui/                Gemeinsame Bausteine: Symbole, Dunkelmodus,
+                         Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
     pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Noten, Verwaltung,
                          Stundenplan, Auswertung

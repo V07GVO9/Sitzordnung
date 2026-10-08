@@ -19,6 +19,7 @@ export interface FileHandle {
   readonly name: string;
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
+  queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
 }
 
 interface FilePickerWindow {
@@ -55,7 +56,11 @@ function isAbort(error: unknown): boolean {
 }
 
 /** Öffnet den Dateidialog und gibt Inhalt und - falls möglich - die Datei zurück. */
-export async function openFile(): Promise<{ content: string; handle: FileHandle | null; name: string }> {
+export async function openFile(): Promise<{
+  content: string;
+  handle: FileHandle | null;
+  name: string;
+}> {
   if (isNativeApp()) {
     // Android verrät nicht, wo die gewählte Datei liegt. Weitergeschrieben
     // wird deshalb in die gleichnamige Datei unter "Dokumente/Sitzordnung".
@@ -136,6 +141,23 @@ export async function writeFile(handle: FileHandle, blob: Blob): Promise<void> {
   await writable.close();
 }
 
+/**
+ * Darf ohne Rückfrage in die Datei geschrieben werden? Der Browser fragt beim
+ * ersten Speichern einmal nach - das geht nur nach einem Klick. Automatisches
+ * Speichern wartet deshalb, bis die Erlaubnis einmal erteilt ist.
+ */
+export async function canWriteSilently(handle: FileHandle): Promise<boolean> {
+  if (!handle.queryPermission) {
+    return false;
+  }
+
+  try {
+    return (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
+  } catch {
+    return false;
+  }
+}
+
 /** Läuft die App als Android-App statt im Browser? */
 export function isNativeApp(): boolean {
   return Capacitor.isNativePlatform();
@@ -197,6 +219,10 @@ function nativeHandle(fileName: string): FileHandle {
   return {
     get name() {
       return name;
+    },
+    // Die App darf in ihren Ordner jederzeit schreiben.
+    async queryPermission() {
+      return 'granted' as const;
     },
     async getFile() {
       const { data } = await Filesystem.readFile({

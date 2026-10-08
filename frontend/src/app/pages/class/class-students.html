@@ -1,0 +1,205 @@
+<div class="page-bar">
+  <span class="muted small">{{ students().length }} Schüler:innen</span>
+  <span class="spacer"></span>
+  <a class="btn small ghost" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+    <app-icon name="list-plus" /> Liste importieren
+  </a>
+  <button
+    class="round-btn"
+    type="button"
+    (click)="openNew()"
+    aria-label="Schüler anlegen"
+    title="Schüler anlegen"
+  >
+    <app-icon name="plus" />
+  </button>
+</div>
+
+@if (loading()) {
+  <p class="muted">Wird geladen …</p>
+} @else if (students().length === 0) {
+  <div class="empty">
+    <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
+    <button class="btn primary" type="button" (click)="openNew()">
+      <app-icon name="plus" /> Ersten Schüler anlegen
+    </button>
+  </div>
+} @else {
+  <div class="list-wrap">
+    <div class="list-group student-list">
+      @for (group of groups(); track group.letter) {
+        <div class="letter-head" [id]="'buchstabe-' + group.letter">{{ group.letter }}</div>
+        @for (entry of group.students; track entry.student.id) {
+          <button class="list-row" type="button" (click)="open(entry.student)">
+            <span class="avatar">
+              @if (entry.student.photoUrl) {
+                <img [src]="entry.student.photoUrl" [alt]="" />
+              } @else {
+                <span>{{ initials(entry.student) }}</span>
+              }
+            </span>
+            <span class="row-text">
+              <strong>{{ entry.number }}. {{ fullName(entry.student) }}</strong>
+              <span class="sub muted">{{
+                summary(entry.student.id) || 'noch keine Bewertung'
+              }}</span>
+            </span>
+            <app-icon class="chevron" name="chevron-right" />
+          </button>
+        }
+      }
+    </div>
+
+    <!-- Register am rechten Rand zum Springen -->
+    <nav class="index-rail" aria-label="Zum Buchstaben springen">
+      @for (group of groups(); track group.letter) {
+        <button type="button" (click)="jumpTo(group.letter)">{{ group.letter }}</button>
+      }
+    </nav>
+  </div>
+}
+
+@if (openId() !== null) {
+  <div class="sheet-backdrop" (click)="closeSheet()">
+    <div class="sheet" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="sheet-head">
+        <button class="round-btn" type="button" (click)="closeSheet()" aria-label="Schließen">
+          <app-icon name="x" />
+        </button>
+        <h2>{{ openId() === 'neu' ? 'Neuer Schüler' : 'Stammdaten' }}</h2>
+        <span></span>
+      </div>
+
+      <div class="sheet-body">
+        @if (openStudent(); as student) {
+          <div class="person-nav">
+            <button
+              class="btn ghost icon"
+              type="button"
+              [disabled]="!canStep(-1)"
+              (click)="step(-1)"
+              aria-label="Vorheriger Schüler"
+            >
+              <app-icon name="chevron-left" />
+            </button>
+            <label class="photo" title="Foto ändern">
+              <span class="avatar big">
+                @if (student.photoUrl) {
+                  <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                } @else {
+                  <span>{{ initials(student) }}</span>
+                }
+              </span>
+              <span class="photo-badge"><app-icon name="camera" /></span>
+              <input type="file" accept="image/*" (change)="photoChosen($event)" hidden />
+            </label>
+            <span class="person-name">
+              <strong>{{ student.firstName }}</strong>
+              <span class="muted">{{ student.lastName }}</span>
+            </span>
+            <button
+              class="btn ghost icon"
+              type="button"
+              [disabled]="!canStep(1)"
+              (click)="step(1)"
+              aria-label="Nächster Schüler"
+            >
+              <app-icon name="chevron-right" />
+            </button>
+          </div>
+        }
+
+        <div>
+          <p class="section-label">Name</p>
+          <div class="list-group form-group">
+            <label class="form-row">
+              <span>Vorname</span>
+              <input
+                type="text"
+                [ngModel]="editFirst()"
+                (ngModelChange)="editFirst.set($event)"
+                (blur)="openId() !== 'neu' && saveName()"
+                (keydown.enter)="openId() === 'neu' ? create() : saveName()"
+                autocomplete="off"
+              />
+            </label>
+            <label class="form-row">
+              <span>Nachname</span>
+              <input
+                type="text"
+                [ngModel]="editLast()"
+                (ngModelChange)="editLast.set($event)"
+                (blur)="openId() !== 'neu' && saveName()"
+                (keydown.enter)="openId() === 'neu' ? create() : saveName()"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+        </div>
+
+        @if (openId() === 'neu') {
+          <button
+            class="btn primary"
+            type="button"
+            [disabled]="!editFirst().trim()"
+            (click)="create()"
+          >
+            <app-icon name="plus" /> Anlegen
+          </button>
+          <p class="muted small">
+            Nach dem Anlegen bleibt das Blatt offen – so lässt sich eine ganze Klasse zügig
+            erfassen.
+          </p>
+        } @else {
+          <div>
+            <p class="section-label">Mitarbeit</p>
+            <div class="list-group">
+              @for (item of openScores(); track item.board.courseId) {
+                <a class="list-row" [routerLink]="['/kurs', item.board.courseId]">
+                  <span class="subject-mark" [style.--hue]="hue(item.board.subjectName)">
+                    {{ item.board.subjectName.slice(0, 2) }}
+                  </span>
+                  <span class="row-text">
+                    <strong>{{ item.board.subjectName }}</strong>
+                    <span class="sub muted">{{ item.score?.ratingCount ?? 0 }} Bewertungen</span>
+                  </span>
+                  <span
+                    class="score-pill"
+                    [class.pos]="(item.score?.points ?? 0) > 0"
+                    [class.neg]="(item.score?.points ?? 0) < 0"
+                  >
+                    {{ signed(item.score?.points ?? 0) }}
+                  </span>
+                  @if (item.score?.grade) {
+                    <span class="grade-pill">{{ item.score!.grade }}</span>
+                  }
+                </a>
+              } @empty {
+                <div class="list-row">
+                  <span class="row-text"
+                    ><span class="sub muted"
+                      >Dieser Klasse ist noch kein Fach zugeordnet.</span
+                    ></span
+                  >
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="list-group">
+            @if (openStudent()?.photoUrl) {
+              <button class="list-row" type="button" (click)="removePhoto()">
+                <app-icon name="image-off" />
+                <span class="row-text"><span class="title">Foto entfernen</span></span>
+              </button>
+            }
+            <button class="list-row danger" type="button" (click)="remove()">
+              <app-icon name="trash-2" />
+              <span class="row-text"><span class="title">Schüler löschen</span></span>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

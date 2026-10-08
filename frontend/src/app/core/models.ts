@@ -463,3 +463,21 @@ export interface StudentReport {
   overall: number | null;
   partial: boolean;
 }
+
+/** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */
+export function ratingClass(value: number | null | undefined): string {
+  switch (value) {
+    case 2:
+      return 'rate-pp';
+    case 1:
+      return 'rate-p';
+    case 0:
+      return 'rate-o';
+    case -1:
+      return 'rate-m';
+    case -2:
+      return 'rate-mm';
+    default:
+      return '';
+  }
+}

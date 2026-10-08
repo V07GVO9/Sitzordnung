@@ -5,6 +5,8 @@ import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
 import { LocalStore } from '../core/store/local-store';
 import { VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
+import { Icon } from '../core/ui/icon';
+import { ConfirmService } from '../core/ui/confirm.service';
 
 /**
  * Der Startbildschirm. Solange kein Datenbestand geöffnet ist, zeigt die App
@@ -13,7 +15,7 @@ import { ToastService } from '../core/toast.service';
 @Component({
   selector: 'app-vault-gate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   templateUrl: './vault-gate.html',
   styleUrl: './vault-gate.scss',
 })
@@ -21,6 +23,7 @@ export class VaultGate {
   private readonly vault = inject(VaultService);
   private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   /** Welcher Weg ist gerade gewählt: vorhandene Datei oder neuer Bestand? */
   readonly mode = signal<'open' | 'create'>('open');
@@ -105,9 +108,13 @@ export class VaultGate {
 
   /** Verwirft den Zwischenstand im Browser. */
   async discardAutosave(): Promise<void> {
-    const confirmed = confirm(
-      'Den Zwischenstand im Browser endgültig löschen? Was nicht in einer Datei steht, ist danach weg.',
-    );
+    const confirmed = await this.confirm.ask({
+      title: 'Zwischenstand verwerfen?',
+      message:
+        'Der Zwischenstand im Browser wird endgültig gelöscht. Was nicht in einer Datei steht, ist danach weg.',
+      confirmLabel: 'Verwerfen',
+      danger: true,
+    });
     if (!confirmed) {
       return;
     }

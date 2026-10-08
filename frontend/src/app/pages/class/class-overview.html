@@ -1,0 +1,116 @@
+<div class="groups">
+  <section>
+    <p class="section-label">Aktueller Unterricht</p>
+    <div class="list-group">
+      @if (runningCourse(); as course) {
+        <a class="list-row" [routerLink]="['/kurs', course.id]">
+          <app-icon name="presentation" />
+          <span class="row-text">
+            <strong>{{ course.subjectName }} – läuft bis {{ lesson()!.endTime }} Uhr</strong>
+            <span class="sub">Jetzt Mitarbeit eintragen</span>
+          </span>
+          <app-icon class="chevron" name="chevron-right" />
+        </a>
+      } @else {
+        <div class="list-row">
+          <app-icon name="presentation" />
+          <span class="row-text">
+            <strong>Unterricht nach Stundenplan</strong>
+            <span class="sub muted">derzeit kein Unterricht in dieser Klasse</span>
+          </span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">Unterricht heute</p>
+    <div class="list-group">
+      @for (entry of today(); track entry.id) {
+        <a class="list-row" [routerLink]="['/kurs', entry.courseId]">
+          <app-icon name="clock" />
+          <span class="row-text">
+            <strong>{{ entry.startTime }}–{{ entry.endTime }} · {{ entry.subjectName }}</strong>
+            <span class="sub muted">
+              {{ entry.room ? 'Raum ' + entry.room : 'ohne Raumangabe' }}
+            </span>
+          </span>
+          <app-icon class="chevron" name="chevron-right" />
+        </a>
+      } @empty {
+        <div class="list-row">
+          <app-icon name="calendar-days" />
+          <span class="row-text">
+            <span class="sub muted">heute kein Unterricht in dieser Klasse</span>
+          </span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">Fächer</p>
+    <div class="list-group">
+      @for (course of courses(); track course.id) {
+        <a class="list-row" [routerLink]="['/kurs', course.id]">
+          <span class="subject-mark" [style.--hue]="hue(course.subjectName)">
+            {{ course.subjectShortName || course.subjectName.slice(0, 2) }}
+          </span>
+          <span class="row-text">
+            <strong>{{ course.subjectName }}</strong>
+            <span class="sub muted">
+              {{ course.seatingPlanCount }}
+              {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }} ·
+              {{ ratingCount().get(course.id) ?? 0 }} Bewertungen ({{ lookback }} Tage)
+            </span>
+          </span>
+          <app-icon class="chevron" name="chevron-right" />
+        </a>
+      }
+      <a class="list-row add" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+        <app-icon name="plus" />
+        <span class="row-text"><span class="title">Fach zuordnen</span></span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">Gute Mitarbeit ({{ lookback }} Tage)</p>
+    <div class="list-group">
+      @for (item of good(); track item.student.id) {
+        <div class="list-row">
+          <app-icon name="thumbs-up" />
+          <span class="row-text">
+            <strong>{{ fullName(item.student) }}</strong>
+            <span class="sub">{{ item.summary }}</span>
+          </span>
+        </div>
+      } @empty {
+        <div class="list-row">
+          <app-icon name="thumbs-up" />
+          <span class="row-text"><span class="sub muted">keine Einträge im Zeitraum</span></span>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <p class="section-label">Schwache Mitarbeit ({{ lookback }} Tage)</p>
+    <div class="list-group">
+      @for (item of weak(); track item.student.id) {
+        <div class="list-row">
+          <app-icon name="triangle-alert" />
+          <span class="row-text">
+            <strong>{{ fullName(item.student) }}</strong>
+            <span class="sub">{{ item.summary }}</span>
+          </span>
+        </div>
+      } @empty {
+        <div class="list-row">
+          <app-icon name="triangle-alert" />
+          <span class="row-text"><span class="sub muted">keine Einträge im Zeitraum</span></span>
+        </div>
+      }
+    </div>
+  </section>
+</div>

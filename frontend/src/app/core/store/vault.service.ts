@@ -6,13 +6,14 @@
  * Bestand deshalb erneut geöffnet werden.
  */
 
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { AppError } from './app-error';
 import { AutosaveEntry, clearAutosave, readAutosave, writeAutosave } from './browser-storage';
 import { createEmptyDatabase } from './database';
 import {
   FileHandle,
   VAULT_EXTENSION,
+  canWriteSilently,
   chooseSaveFile,
   download,
   openFile,
@@ -22,8 +23,14 @@ import {
 import { LocalStore } from './local-store';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
 
-/** So lange nach der letzten Änderung wird gespeichert. */
+/** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
 const AUTOSAVE_DELAY_MS = 2_000;
+
+/** So lange nach der letzten Änderung wird automatisch in die Datei geschrieben. */
+const FILE_AUTOSAVE_DELAY_MS = 3_000;
+
+/** Die Wahl „automatisch speichern“ gilt je Gerät und liegt deshalb im Browser. */
+const AUTOSAVE_PREF_KEY = 'sitzordnung.autoSaveToFile';
 
 const DEFAULT_FILE_NAME = 'sitzordnung' + VAULT_EXTENSION;
 
@@ -34,6 +41,7 @@ export class VaultService {
   private password: string | null = null;
   private handle: FileHandle | null = null;
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private fileAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Name der geöffneten Datei, zur Anzeige in der Kopfzeile. */
   readonly fileName = signal<string | null>(null);
@@ -44,26 +52,16 @@ export class VaultService {
   /** True, während gespeichert wird. */
   readonly isSaving = signal(false);
 
-  /** Gesetzt, wenn das selbsttätige Speichern zuletzt nicht geklappt hat. */
-  readonly saveError = signal<string | null>(null);
-
   readonly canWriteInPlace = supportsFileHandles();
 
-  /**
-   * Kann still in die Datei zurückgeschrieben werden? Nur dann läuft das
-   * Speichern von allein. Ohne Dateizugriff bliebe nur ein Download, und den
-   * ungefragt bei jeder Änderung auszulösen wäre eine Zumutung - dort muss
-   * die Datei von Hand gesichert werden.
-   */
-  readonly speichertVonAllein = computed(() => this.handleSignal() !== null);
+  /** Ist eine Datei gewählt, in die direkt zurückgeschrieben werden kann? */
+  readonly hasFileHandle = signal(false);
 
-  /** Zeigt an, dass ein Bestand offen ist, der nicht von allein in die Datei geht. */
-  readonly brauchtHandarbeit = computed(
-    () => this.store.isOpen() && this.handleSignal() === null,
-  );
+  /** Nach jeder Änderung von selbst in die Datei schreiben (nur Chrome und Edge). */
+  readonly autoSaveToFile = signal(readAutoSavePref());
 
-  /** Der Dateigriff auch als Signal, damit die Oberfläche darauf reagieren kann. */
-  private readonly handleSignal = signal<FileHandle | null>(null);
+  /** Der letzte Fehler beim automatischen Speichern - die Kopfzeile meldet ihn. */
+  readonly autoSaveError = signal<unknown>(null);
 
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
@@ -85,52 +83,53 @@ export class VaultService {
       if (this.autosaveTimer) {
         clearTimeout(this.autosaveTimer);
       }
-      this.autosaveTimer = setTimeout(() => void this.speichereVonAllein(), AUTOSAVE_DELAY_MS);
+      this.autosaveTimer = setTimeout(() => void this.writeAutosaveEntry(), AUTOSAVE_DELAY_MS);
+
+      if (this.fileAutosaveTimer) {
+        clearTimeout(this.fileAutosaveTimer);
+      }
+      if (this.autoSaveToFile()) {
+        this.fileAutosaveTimer = setTimeout(() => void this.autoSave(), FILE_AUTOSAVE_DELAY_MS);
+      }
     });
   }
 
-  /**
-   * Speichert nach einer Änderung von allein: in die Datei, wenn wir hineinschreiben
-   * dürfen, und in jedem Fall in den Zwischenspeicher des Browsers.
-   *
-   * Läuft ohne Zutun, darf also niemandem im Weg stehen: schlägt das Schreiben fehl
-   * - etwa weil die Datei inzwischen verschoben wurde -, bleibt der Zwischenspeicher
-   * als Netz, der Bestand gilt weiter als ungespeichert und es gibt einen Hinweis.
-   */
-  private async speichereVonAllein(): Promise<void> {
-    if (!this.store.isOpen() || this.password === null) {
-      return;
-    }
-
-    if (!this.handle) {
-      await this.writeAutosaveEntry();
-      return;
-    }
-
-    // Während einer laufenden Speicherung nicht dazwischenfunken.
-    if (this.isSaving()) {
-      this.autosaveTimer = setTimeout(() => void this.speichereVonAllein(), AUTOSAVE_DELAY_MS);
-      return;
-    }
-
-    this.isSaving.set(true);
+  setAutoSaveToFile(enabled: boolean): void {
+    this.autoSaveToFile.set(enabled);
     try {
-      const blob = await encryptDatabase(this.store.snapshot(), this.password);
-      await writeFile(this.handle, blob);
-      this.fileName.set(this.handle.name);
-
-      this.store.markSaved();
-      this.lastSavedAt.set(new Date());
-      this.saveError.set(null);
-      await this.writeAutosaveEntry();
+      localStorage.setItem(AUTOSAVE_PREF_KEY, enabled ? '1' : '0');
     } catch {
-      this.saveError.set(
-        'Die Datei ließ sich gerade nicht beschreiben. Die Änderungen liegen im Browser bereit.',
-      );
-      await this.writeAutosaveEntry();
-    } finally {
-      this.isSaving.set(false);
+      // Ohne Speicher gilt die Wahl nur bis zum Neuladen.
     }
+  }
+
+  /**
+   * Schreibt still in die Datei, sofern der Browser das ohne Rückfrage
+   * erlaubt. Sonst bleibt der Bestand als „nicht gespeichert“ markiert.
+   */
+  private async autoSave(): Promise<void> {
+    const handle = this.handle;
+    if (
+      !handle ||
+      this.isSaving() ||
+      !this.store.isOpen() ||
+      !this.store.hasUnsavedChanges() ||
+      !(await canWriteSilently(handle))
+    ) {
+      return;
+    }
+
+    try {
+      await this.save();
+      this.autoSaveError.set(null);
+    } catch (error) {
+      this.autoSaveError.set(error);
+    }
+  }
+
+  private setHandle(handle: FileHandle | null): void {
+    this.handle = handle;
+    this.hasFileHandle.set(handle !== null);
   }
 
   private async writeAutosaveEntry(): Promise<void> {
@@ -153,24 +152,24 @@ export class VaultService {
 
   // --- Öffnen und Anlegen -------------------------------------------------
 
-  /**
-   * Öffnet einen leeren Bestand mit einer bereits gewählten Datei. Mit einem
-   * Griff wird sofort geschrieben und danach läuft das Speichern von allein;
-   * ohne einen gilt der Bestand als ungesichert, damit die App dazu auffordert.
-   */
-  async startWith(password: string, handle: FileHandle | null): Promise<void> {
+  /** Legt einen leeren Bestand an und fragt gleich nach einer Datei dafür. */
+  async createNew(password: string): Promise<void> {
     this.requirePassword(password);
 
     this.password = password;
     this.store.load(createEmptyDatabase());
-    this.handle = handle;
-    this.handleSignal.set(handle);
-    this.saveError.set(null);
 
-    if (handle) {
-      this.fileName.set(handle.name);
-      await this.save();
-      return;
+    if (this.canWriteInPlace) {
+      try {
+        this.setHandle(await chooseSaveFile(DEFAULT_FILE_NAME));
+        this.fileName.set(this.handle?.name ?? DEFAULT_FILE_NAME);
+        await this.save();
+        return;
+      } catch {
+        // Der Bestand steht bereits - wählt die Lehrkraft jetzt keine Datei,
+        // geht es ohne weiter und das Speichern läuft über einen Download.
+        this.setHandle(null);
+      }
     }
 
     this.fileName.set(DEFAULT_FILE_NAME);
@@ -178,24 +177,6 @@ export class VaultService {
     // Ohne Datei steht noch nichts auf der Festplatte. Das zählt als
     // ungesicherte Änderung, damit die App zum Speichern auffordert.
     this.store.revision.update((value) => value + 1);
-  }
-
-  /** Legt einen leeren Bestand an und fragt gleich nach einer Datei dafür. */
-  async createNew(password: string): Promise<void> {
-    this.requirePassword(password);
-
-    let handle: FileHandle | null = null;
-    if (this.canWriteInPlace) {
-      try {
-        handle = await chooseSaveFile(DEFAULT_FILE_NAME);
-      } catch {
-        // Wählt die Lehrkraft jetzt keine Datei, geht es ohne weiter und das
-        // Speichern läuft über einen Download.
-        handle = null;
-      }
-    }
-
-    await this.startWith(password, handle);
   }
 
   /** Öffnet eine Datei und entschlüsselt sie. */
@@ -222,8 +203,7 @@ export class VaultService {
     const database = await decryptDatabase(content, password);
 
     this.password = password;
-    this.handle = handle;
-    this.handleSignal.set(handle);
+    this.setHandle(handle);
     this.fileName.set(name);
     this.store.load(database);
     this.lastSavedAt.set(null);
@@ -243,6 +223,7 @@ export class VaultService {
 
       if (this.handle) {
         await writeFile(this.handle, blob);
+        // Die Android-App weicht auf eine neue Datei aus, wenn sie die alte nicht beschreiben darf.
         this.fileName.set(this.handle.name);
       } else {
         await download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
@@ -250,7 +231,6 @@ export class VaultService {
 
       this.store.markSaved();
       this.lastSavedAt.set(new Date());
-      this.saveError.set(null);
       await this.writeAutosaveEntry();
     } finally {
       this.isSaving.set(false);
@@ -262,8 +242,7 @@ export class VaultService {
     if (this.canWriteInPlace) {
       const handle = await chooseSaveFile(this.fileName() ?? DEFAULT_FILE_NAME);
       if (handle) {
-        this.handle = handle;
-    this.handleSignal.set(handle);
+        this.setHandle(handle);
         this.fileName.set(handle.name);
       }
     }
@@ -289,8 +268,7 @@ export class VaultService {
   /** Schließt den Bestand und räumt den Zwischenspeicher ab. */
   async closeVault(): Promise<void> {
     this.password = null;
-    this.handle = null;
-    this.handleSignal.set(null);
+    this.setHandle(null);
     this.fileName.set(null);
     this.lastSavedAt.set(null);
     this.store.close();
@@ -301,5 +279,14 @@ export class VaultService {
     if (password.length < 8) {
       throw new AppError('Das Passwort muss mindestens 8 Zeichen lang sein.');
     }
+  }
+}
+
+function readAutoSavePref(): boolean {
+  try {
+    // Ohne ausdrückliche Wahl ist es eingeschaltet - wie in anderen Programmen auch.
+    return localStorage.getItem(AUTOSAVE_PREF_KEY) !== '0';
+  } catch {
+    return false;
   }
 }
