@@ -32,7 +32,8 @@ import {
   ratingClass,
   ratingSymbol,
 } from '../../core/models';
-import { toDateKey } from '../../core/store/time';
+import { isValidDateKey, toDateKey } from '../../core/store/time';
+import { ModeService } from '../../core/ui/mode.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -96,6 +97,26 @@ export class CoursePage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
+  private readonly modeService = inject(ModeService);
+
+  /** Im Unterricht wird nur bewertet - den Sitzplan baut man beim Einrichten um. */
+  readonly isSetup = this.modeService.isSetup;
+
+  /** Der Tag, für den bewertet wird - aus dem Wochenplan gewählt, sonst heute. */
+  readonly lessonDate = signal(toDateKey(new Date()));
+  /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
+  readonly lessonTime = signal<{ from: string; to: string } | null>(null);
+  readonly isToday = computed(() => this.lessonDate() === toDateKey(new Date()));
+  /** Für Hinweise wie „keine Bewertung heute“ bzw. „… am 05.10.“. */
+  readonly dayWord = computed(() =>
+    this.isToday()
+      ? 'heute'
+      : 'am ' +
+        new Date(`${this.lessonDate()}T12:00:00`).toLocaleDateString('de-DE', {
+          day: '2-digit',
+          month: '2-digit',
+        }),
+  );
 
   readonly courseId = signal(0);
   readonly loading = signal(true);
@@ -197,13 +218,13 @@ export class CoursePage implements OnDestroy {
   /** Läuft dieser Kurs gerade laut Stundenplan? */
   readonly isRunning = computed(() => {
     const lesson = this.lesson();
-    return !!lesson?.hasLesson && lesson.courseId === this.courseId();
+    return this.isToday() && !!lesson?.hasLesson && lesson.courseId === this.courseId();
   });
 
   /** „Mittwoch, 08.10.2025“ für die Datumszeile. */
   readonly todayLabel = computed(() => {
-    const now = new Date();
-    return `${WEEKDAY_NAMES[now.getDay()]}, ${now.toLocaleDateString('de-DE')}`;
+    const date = new Date(`${this.lessonDate()}T12:00:00`);
+    return `${WEEKDAY_NAMES[date.getDay()]}, ${date.toLocaleDateString('de-DE')}`;
   });
 
   /** Die zuletzt heute vergebene Bewertung je Schüler - färbt die Kachel. */
@@ -246,6 +267,17 @@ export class CoursePage implements OnDestroy {
   private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
+    this.route.queryParamMap.subscribe((query) => {
+      const datum = query.get('datum');
+      this.lessonDate.set(datum && isValidDateKey(datum) ? datum : toDateKey(new Date()));
+      const from = query.get('von');
+      const to = query.get('bis');
+      this.lessonTime.set(from && to ? { from, to } : null);
+      if (this.courseId() > 0 && !this.loading()) {
+        this.refreshToday();
+      }
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('courseId'));
       if (Number.isFinite(id) && id > 0) {
@@ -573,7 +605,7 @@ export class CoursePage implements OnDestroy {
   rate(student: Student, value: RatingValue): void {
     const courseId = this.courseId();
 
-    this.api.rate(courseId, student.id, value).subscribe({
+    this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
       next: (rating) => {
         this.refreshScores();
         this.flashTile(student.id, value);
@@ -688,8 +720,8 @@ export class CoursePage implements OnDestroy {
   }
 
   private refreshToday(): void {
-    const today = toDateKey(new Date());
-    this.api.getRatings(this.courseId(), { from: today, to: today }).subscribe({
+    const day = this.lessonDate();
+    this.api.getRatings(this.courseId(), { from: day, to: day }).subscribe({
       next: (ratings) => {
         const map = new Map<number, Rating[]>();
         for (const rating of [...ratings].sort((a, b) => a.id - b.id)) {

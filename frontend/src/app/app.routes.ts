@@ -1,4 +1,6 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
+import { ModeService } from './core/ui/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
 // entschluesselte Datei offen ist, zeigt AppComponent das Schloss statt der
@@ -7,6 +9,14 @@ import { Routes } from '@angular/router';
 // Aufbau nach dem Vorbild der Klassenmappe: Man wählt links eine Klasse und
 // bewegt sich dann in ihren Bereichen Übersicht, Schüler, Mitarbeit und Noten.
 export const routes: Routes = [
+  // Im Unterricht ist der Wochenplan die Startseite.
+  {
+    path: '',
+    pathMatch: 'full',
+    title: 'Wochenplan',
+    canMatch: [() => !inject(ModeService).isSetup()],
+    loadComponent: () => import('./pages/week/week').then((m) => m.WeekPage),
+  },
   {
     path: '',
     pathMatch: 'full',

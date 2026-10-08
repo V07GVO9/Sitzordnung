@@ -766,7 +766,18 @@ export class LocalStore {
     return ratingWindow(this.lessonContext(), courseId, this.clock.now());
   }
 
-  rate(courseId: number, studentId: number, value: RatingValue, comment?: string): Rating {
+  /**
+   * Vergibt eine Bewertung. Ohne Datum gilt sie für die laufende Stunde und nur
+   * innerhalb des Stundenplans. Mit Datum wird sie gezielt für diesen Tag
+   * eingetragen - so lassen sich Stunden aus dem Wochenplan jederzeit nachtragen.
+   */
+  rate(
+    courseId: number,
+    studentId: number,
+    value: RatingValue,
+    comment?: string,
+    lessonDate?: string,
+  ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
       throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), - (-1) und -- (-2).');
     }
@@ -778,9 +789,13 @@ export class LocalStore {
       throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
     }
 
-    const window = this.getRatingWindow(courseId);
-    if (!window.canRate) {
-      throw new AppError(window.reason);
+    if (lessonDate === undefined) {
+      const window = this.getRatingWindow(courseId);
+      if (!window.canRate) {
+        throw new AppError(window.reason);
+      }
+    } else if (!isValidDateKey(lessonDate)) {
+      throw new AppError('Das Datum der Stunde ist ungültig.');
     }
 
     const now = this.clock.now();
@@ -789,7 +804,7 @@ export class LocalStore {
       courseId,
       studentId,
       value,
-      lessonDate: toDateKey(now),
+      lessonDate: lessonDate ?? toDateKey(now),
       createdAt: now.toISOString(),
       comment: comment?.trim() ? comment.trim() : null,
     };

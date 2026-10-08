@@ -73,9 +73,11 @@
             }
           </nav>
 
-          <a class="side-link" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
-            <app-icon name="plus" /> Klasse anlegen
-          </a>
+          @if (isSetup()) {
+            <a class="side-link" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+              <app-icon name="plus" /> Klasse anlegen
+            </a>
+          }
         } @else {
           <div class="date-bar">
             <button type="button" aria-label="Vorheriger Tag" (click)="shiftDay(-1)">
@@ -112,41 +114,56 @@
             }
           </div>
 
-          <a class="side-link" routerLink="/stundenplan">
-            <app-icon name="calendar-days" /> Stundenplan bearbeiten
-          </a>
+          @if (isSetup()) {
+            <a class="side-link" routerLink="/stundenplan">
+              <app-icon name="calendar-days" /> Stundenplan bearbeiten
+            </a>
+          }
         }
       </div>
 
       <!-- Kurzbefehle unten, wie die Symbolleiste der Klassenmappe -->
       <div class="side-bottom">
-        <a
-          class="btn ghost icon"
-          routerLink="/stundenplan"
-          routerLinkActive="on"
-          aria-label="Stundenplan"
-          title="Stundenplan"
-        >
-          <app-icon name="calendar-days" />
-        </a>
-        <a
-          class="btn ghost icon"
-          routerLink="/verwaltung"
-          routerLinkActive="on"
-          aria-label="Klassen, Fächer und Schüler verwalten"
-          title="Klassen, Fächer & Schüler"
-        >
-          <app-icon name="users" />
-        </a>
-        <a
-          class="btn ghost icon"
-          routerLink="/auswertung"
-          routerLinkActive="on"
-          aria-label="Auswertung und Einstellungen"
-          title="Auswertung & Einstellungen"
-        >
-          <app-icon name="chart-column" />
-        </a>
+        @if (!isSetup()) {
+          <a
+            class="btn ghost icon"
+            routerLink="/"
+            routerLinkActive="on"
+            [routerLinkActiveOptions]="{ exact: true }"
+            aria-label="Wochenplan"
+            title="Wochenplan"
+          >
+            <app-icon name="calendar-days" />
+          </a>
+        } @else {
+          <a
+            class="btn ghost icon"
+            routerLink="/stundenplan"
+            routerLinkActive="on"
+            aria-label="Stundenplan"
+            title="Stundenplan"
+          >
+            <app-icon name="calendar-days" />
+          </a>
+          <a
+            class="btn ghost icon"
+            routerLink="/verwaltung"
+            routerLinkActive="on"
+            aria-label="Klassen, Fächer und Schüler verwalten"
+            title="Klassen, Fächer & Schüler"
+          >
+            <app-icon name="users" />
+          </a>
+          <a
+            class="btn ghost icon"
+            routerLink="/auswertung"
+            routerLinkActive="on"
+            aria-label="Auswertung und Einstellungen"
+            title="Auswertung & Einstellungen"
+          >
+            <app-icon name="chart-column" />
+          </a>
+        }
         <span class="spacer"></span>
         <button
           class="save-btn"
@@ -190,6 +207,16 @@
         <h1 class="title">{{ title() || 'Sitzordnung' }}</h1>
 
         <div class="title-right">
+          @if (isSetup()) {
+            <button
+              class="setup-pill"
+              type="button"
+              (click)="setSetup(false)"
+              title="Einrichten beenden und zurück zum Unterricht"
+            >
+              <app-icon name="settings" /> Einrichten · Fertig
+            </button>
+          }
           @if (lesson()?.hasLesson) {
             <a
               class="live-pill"
@@ -244,25 +271,33 @@
           </button>
         </div>
 
-        <p class="menu-label">Klassen & Daten</p>
-        <a routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
-          <app-icon name="plus" /> Klassen & Fächer verwalten
-        </a>
-        <a routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
-          <app-icon name="users" /> Schüler anlegen & importieren
-        </a>
-        <a routerLink="/stundenplan"><app-icon name="calendar-days" /> Stundenplan</a>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
-          <app-icon name="file-down" /> Auswertung & Export
-        </a>
+        @if (isSetup()) {
+          <p class="menu-label">Klassen & Daten</p>
+          <a routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+            <app-icon name="plus" /> Klassen & Fächer verwalten
+          </a>
+          <a routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+            <app-icon name="users" /> Schüler anlegen & importieren
+          </a>
+          <a routerLink="/stundenplan"><app-icon name="calendar-days" /> Stundenplan</a>
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
+            <app-icon name="file-down" /> Auswertung & Export
+          </a>
 
-        <p class="menu-label">Einstellungen</p>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
-          <app-icon name="graduation-cap" /> Notenschlüssel
-        </a>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
-          <app-icon name="settings" /> App-Einstellungen
-        </a>
+          <p class="menu-label">Einstellungen</p>
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
+            <app-icon name="graduation-cap" /> Notenschlüssel
+          </a>
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
+            <app-icon name="settings" /> App-Einstellungen
+          </a>
+        } @else {
+          <p class="menu-label">Unterricht</p>
+          <a routerLink="/"><app-icon name="calendar-days" /> Wochenplan</a>
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
+            <app-icon name="file-down" /> Auswertung & Export
+          </a>
+        }
         <button type="button" (click)="cycleTheme()">
           <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
         </button>
@@ -294,6 +329,17 @@
         <button type="button" class="danger" (click)="closeVault()">
           <app-icon name="log-out" /> Datenbestand schließen
         </button>
+
+        <p class="menu-label">Modus</p>
+        @if (isSetup()) {
+          <button type="button" (click)="setSetup(false)">
+            <app-icon name="notebook-pen" /> Einrichten beenden – zum Unterricht
+          </button>
+        } @else {
+          <button type="button" (click)="setSetup(true)">
+            <app-icon name="settings" /> Einrichten (Klassen, Schüler, Stundenplan …)
+          </button>
+        }
       </div>
     }
   </div>

@@ -297,6 +297,26 @@ describe('LocalStore - Bewertungen', () => {
     expect(store.rate(course.id, student.id, 1).value).toBe(1);
   });
 
+  it('trägt mit Datum jederzeit für genau diesen Tag ein - auch außerhalb der Stunde', () => {
+    const store = setup();
+    const { course, student } = withCourse(store);
+    store.clock.setFixed(new Date('2026-08-31T14:00:00'));
+
+    const rating = store.rate(course.id, student.id, -1, undefined, '2026-08-25');
+
+    expect(rating.lessonDate).toBe('2026-08-25');
+    expect(store.getRatings(course.id, { from: '2026-08-25', to: '2026-08-25' }).length).toBe(1);
+  });
+
+  it('lehnt ein ungültiges Datum ab', () => {
+    const store = setup();
+    const { course, student } = withCourse(store);
+
+    expect(() => store.rate(course.id, student.id, 1, undefined, '25.08.2026')).toThrowError(
+      AppError,
+    );
+  });
+
   it('lehnt einen unzulässigen Wert ab', () => {
     const store = setup();
     const { course, student } = withCourse(store);

@@ -588,3 +588,9 @@
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
 }
+
+/* Eine Stunde aus dem Wochenplan, die nicht heute ist - Bewertungen werden nachgetragen. */
+.nachtrag {
+  color: var(--warning-text);
+  font-weight: 600;
+}

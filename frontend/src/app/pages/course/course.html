@@ -28,6 +28,7 @@
       @for (sibling of siblings(); track sibling.id) {
         <a
           [routerLink]="['/kurs', sibling.id]"
+          [queryParams]="isToday() ? {} : { datum: lessonDate() }"
           [class.active]="sibling.id === courseId()"
           [attr.aria-current]="sibling.id === courseId() ? 'page' : null"
         >
@@ -46,14 +47,26 @@
             @if (lesson()!.room) {
               · Raum {{ lesson()!.room }}
             }
+          } @else if (lessonTime(); as time) {
+            {{ time.from }}–{{ time.to }} Uhr
+            @if (!isToday()) {
+              · <span class="nachtrag">Bewertungen für diesen Tag</span>
+            }
           } @else {
             außerhalb des Stundenplans –
-            <a routerLink="/stundenplan">Stundenplan</a>
+            <a [routerLink]="isSetup() ? '/stundenplan' : '/'">{{
+              isSetup() ? 'Stundenplan' : 'Wochenplan'
+            }}</a>
           }
         </span>
       </div>
 
       <div class="kb-controls">
+        @if (!isSetup()) {
+          <a class="btn small" routerLink="/">
+            <app-icon name="calendar-days" /> Wochenplan
+          </a>
+        }
         <a class="btn small" [routerLink]="['/kurs', courseId(), 'noten']">
           <app-icon name="graduation-cap" /> Noten
         </a>
@@ -92,7 +105,7 @@
           </div>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 0) {
+        @if (isSetup() && view() === 'sitzplan' && plans().length > 0) {
           <button
             class="round-btn edit-toggle"
             type="button"
@@ -129,6 +142,7 @@
         [scores]="scoresById()"
         [today]="todayRatings()"
         [flashId]="flash()?.studentId ?? null"
+        [dayLabel]="dayWord()"
         (rate)="onRate($event)"
         (openStudent)="openSheet($event)"
       />
@@ -141,10 +155,15 @@
             <button class="btn" type="button" (click)="setView('liste')">
               <app-icon name="list" /> Zur Liste
             </button>
-            <button class="btn primary" type="button" (click)="addPlan()">
-              <app-icon name="plus" /> Sitzordnung anlegen
-            </button>
+            @if (isSetup()) {
+              <button class="btn primary" type="button" (click)="addPlan()">
+                <app-icon name="plus" /> Sitzordnung anlegen
+              </button>
+            }
           </div>
+          @if (!isSetup()) {
+            <p class="small muted">Eine Sitzordnung legst du im Modus „Einrichten“ an.</p>
+          }
         </div>
       } @else {
         <!-- Werkzeugleiste nur im Einstellungsmodus -->

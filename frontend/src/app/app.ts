@@ -24,6 +24,7 @@ import { IconName } from './core/ui/icons';
 import { PwaService } from './core/ui/pwa.service';
 import { subjectHue } from './core/ui/subject-hue';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
+import { ModeService } from './core/ui/mode.service';
 import { VaultGate } from './vault/vault-gate';
 
 /** Ein Reiter der Leiste unten - wie die Bereiche der Klassenmappe. */
@@ -78,6 +79,10 @@ export class App implements OnDestroy {
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
   private readonly confirm = inject(ConfirmService);
+  private readonly modeService = inject(ModeService);
+
+  /** Einrichten (Klassen, Schüler, Stundenplan …) oder Unterricht (Wochenplan, Bewerten). */
+  readonly isSetup = this.modeService.isSetup;
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
@@ -273,6 +278,16 @@ export class App implements OnDestroy {
     void this.pwa.install();
   }
 
+  /**
+   * Wechselt zwischen Unterricht und Einrichten. Danach geht es zur Startseite
+   * des Modus - im Unterricht ist das der Wochenplan.
+   */
+  setSetup(setup: boolean): void {
+    this.menuOpen.set(false);
+    this.modeService.set(setup ? 'einrichten' : 'unterricht');
+    void this.router.navigateByUrl('/', { onSameUrlNavigation: 'reload' });
+  }
+
   cycleTheme(): void {
     this.theme.cycle();
   }
@@ -360,6 +375,10 @@ export class App implements OnDestroy {
     }
 
     this.activeClassId.set(null);
+    if (path.length === 0 && !this.isSetup()) {
+      this.pageTitle.set('Wochenplan');
+      return;
+    }
     this.pageTitle.set(PAGE_TITLES[path[0] ?? ''] ?? '');
   }
 

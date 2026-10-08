@@ -1103,3 +1103,20 @@ button.list-row:hover {
     transform: rotate(360deg);
   }
 }
+
+/* Sichtbarer Hinweis, solange eingerichtet wird - ein Tipp führt zurück in den Unterricht. */
+.setup-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--warning-border);
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
