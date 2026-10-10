@@ -105,8 +105,8 @@ export interface LessonRef {
   startTime: string;
 }
 
-/** Die vier möglichen Bewertungen. */
-export type RatingValue = -2 | -1 | 1 | 2;
+/** Die fünf möglichen Bewertungen; 0 ist die Mitte. */
+export type RatingValue = -2 | -1 | 0 | 1 | 2;
 
 export interface Rating {
   id: number;
@@ -188,6 +188,8 @@ export function ratingSymbol(value: number): string {
       return '++';
     case 1:
       return '+';
+    case 0:
+      return '0';
     case -1:
       return '−';
     case -2:

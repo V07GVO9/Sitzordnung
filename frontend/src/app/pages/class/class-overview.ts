@@ -145,7 +145,7 @@ export class ClassOverviewPage {
       if (!student) {
         continue;
       }
-      const parts = [2, 1, -1, -2]
+      const parts = [2, 1, 0, -1, -2]
         .map((v) => ({ v, n: values.filter((x) => x === v).length }))
         .filter((p) => p.n > 0)
         .map((p) => `${p.n}× ${ratingSymbol(p.v)}`);

@@ -87,7 +87,7 @@ export interface DateRange {
 }
 
 /** "--", "-", "+" und "++" - andere Werte nimmt die App nicht an. */
-const ALLOWED_RATING_VALUES = [-2, -1, 1, 2];
+const ALLOWED_RATING_VALUES = [-2, -1, 0, 1, 2];
 
 @Injectable({ providedIn: 'root' })
 export class LocalStore {
@@ -768,7 +768,7 @@ export class LocalStore {
 
   rate(courseId: number, studentId: number, value: RatingValue, comment?: string): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
-      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), - (-1) und -- (-2).');
+      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
     }
 
     const course = this.requireCourse(courseId);

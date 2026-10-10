@@ -384,6 +384,11 @@
   gap: 0.15rem;
   width: 100%;
   margin-top: auto;
+
+  // Auf schmalen Plätzen liegt die 0 als Mitte zwischen + und −.
+  .rate-o {
+    grid-column: 1 / -1;
+  }
 }
 
 .rate {
@@ -491,8 +496,12 @@
   }
 
   .actions {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.2rem;
+
+    .rate-o {
+      grid-column: auto;
+    }
   }
 
   .rate {
@@ -560,7 +569,7 @@
 
 .mini-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.2rem;
   flex: 1 1 100%;
 

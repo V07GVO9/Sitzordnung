@@ -6,7 +6,7 @@
     <a class="btn" routerLink="/unterricht">Zurück zur Übersicht</a>
   </div>
 } @else {
-  <!-- Die vier Bewertungsknöpfe - auf dem Platz und in der Liste dieselben. -->
+  <!-- Die fünf Bewertungsknöpfe - auf dem Platz und in der Liste dieselben. -->
   <ng-template #rateButtons let-student let-score="score">
     @for (option of ratingOptions; track option.value) {
       <button
