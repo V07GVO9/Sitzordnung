@@ -1,186 +1,122 @@
 /* Mobile first: kleine Kacheln, die sich über Container-Abfragen an die
    tatsächliche Platzbreite anpassen – so muss nie seitlich gescrollt werden. */
 
-.head {
+/* --- Kopf im Stil des Kursbuchs: Fach-Reiter, Datum, Ansicht --- */
+
+.course-tabs {
+  margin: calc(var(--pad-seite) * -1) calc(var(--pad-seite) * -1) 0;
+  padding-top: 0.35rem;
+  border-bottom: 1px solid var(--separator);
+}
+
+.kb-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
-  flex-wrap: wrap;
-
-  h1 {
-    margin: 0;
-  }
 }
 
-@media (min-width: 48rem) {
-  .head {
-    gap: 1rem;
-  }
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.mode-switch,
-.plan-switch {
-  display: flex;
-  flex: 1 1 100%;
-  border: 1px solid var(--border);
-  border-radius: 0.55rem;
-  overflow: hidden;
-  background: var(--surface-muted);
-
-  button {
-    flex: 1;
-    border: 0;
-    background: transparent;
-    min-height: 2.5rem;
-    padding: 0.45rem 0.6rem;
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-
-    &.active {
-      background: var(--accent);
-      color: #fff;
-      font-weight: 600;
-    }
-  }
-}
-
-@media (min-width: 40rem) {
-  .mode-switch,
-  .plan-switch {
-    display: inline-flex;
-    flex: 0 0 auto;
-
-    button {
-      flex: 0 0 auto;
-      padding: 0.45rem 0.9rem;
-      font-size: 1rem;
-    }
-  }
-}
-
-.banner {
-  flex-wrap: wrap;
-}
-
-/* --- Die Leiste mit der bewerteten Stunde --- */
-
-.stunde-leiste {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-
-  /* Eine frühere Stunde sieht anders aus als die laufende. */
-  &.vergangen {
-    background: var(--surface-muted);
-    border-color: var(--border);
-  }
-}
-
-.stunde-text {
-  flex: 1 1 8rem;
-  min-width: 0;
+.today-box {
   display: flex;
   flex-direction: column;
-  line-height: 1.25;
-}
+  flex: 1 1 14rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  line-height: 1.3;
 
-/* Die Pfeile links und rechts führen zur vorherigen bzw. nächsten Stunde. */
-.blaettern {
-  flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 1.4rem;
-  line-height: 1;
-
-  &:hover:not(:disabled) {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-dark);
+  strong {
+    font-size: 0.95rem;
   }
 
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
+  > span {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  &.live > span {
+    color: var(--positive);
+    font-weight: 600;
   }
 }
 
-.stunde-extra {
+.kb-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-
-  /* Auf dem Handy in eine eigene Zeile unter Pfeilen und Text. */
-  flex: 1 1 100%;
-
-  &:empty {
-    display: none;
-  }
+  align-items: center;
+  gap: 0.5rem;
 }
 
-@media (min-width: 40rem) {
-  .stunde-extra {
-    flex: 0 0 auto;
-  }
+.edit-toggle.on {
+  background: var(--accent);
+  color: var(--on-accent);
 }
+
+/* --- Werkzeugleiste beim Bearbeiten --- */
 
 .toolbar {
   display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+}
 
-  input[type='number'] {
-    width: 4.5rem;
-  }
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex: 1 1 100%;
 
-  label:first-child {
+  .name-field {
     flex: 1 1 100%;
 
     input {
       width: 100%;
     }
   }
+
+  input[type='number'] {
+    width: 5rem;
+  }
 }
 
-@media (min-width: 40rem) {
-  .toolbar {
-    gap: 0.75rem;
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
 
-    input[type='number'] {
-      width: 5rem;
+@media (min-width: 48rem) {
+  .fields {
+    flex: 0 1 auto;
+
+    .name-field {
+      flex: 0 1 14rem;
     }
+  }
 
-    label:first-child {
-      flex: 0 1 auto;
-
-      input {
-        width: auto;
-      }
-    }
+  .tools {
+    margin-left: auto;
   }
 }
 
 .layout {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: var(--gap);
   align-items: start;
 
-  @media (min-width: 60rem) {
-    grid-template-columns: minmax(0, 1fr) 19rem;
+  @media (min-width: 64rem) {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+
+    &.solo {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
@@ -189,27 +125,35 @@
 .room {
   /* Notausgang: erst bei sehr vielen Sitzreihen auf sehr schmalem Gerät. */
   overflow-x: auto;
+  padding: 0.6rem;
+}
+
+@media (min-width: 48rem) {
+  .room {
+    padding: var(--pad-card);
+  }
 }
 
 .board {
-  margin: 0 auto 0.75rem;
+  margin: 0 auto 0.85rem;
   width: min(70%, 26rem);
   padding: 0.35rem;
   text-align: center;
-  border-radius: 0.4rem;
-  background: #2f3a4f;
-  color: #fff;
-  font-size: 0.72rem;
-  letter-spacing: 0.15em;
+  border-radius: 0.5rem;
+  background: var(--board);
+  color: var(--on-board);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
 @media (min-width: 48rem) {
   .board {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.35rem;
     width: min(60%, 26rem);
-    padding: 0.4rem;
-    font-size: 0.8rem;
+    padding: 0.45rem;
+    font-size: 0.78rem;
   }
 }
 
@@ -218,13 +162,13 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
 
 @media (min-width: 48rem) {
   .grid {
     grid-template-columns: repeat(var(--cols), minmax(3.5rem, 1fr));
-    gap: 0.5rem;
+    gap: 0.55rem;
   }
 }
 
@@ -234,19 +178,13 @@
   container-name: platz;
 
   min-height: 4.2rem;
-  border-radius: 0.55rem;
-  border: 1px dashed transparent;
+  border-radius: 0.7rem;
+  border: 1.5px dashed transparent;
   display: flex;
 
   &.edit {
-    border-color: var(--border);
-    background: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 7px,
-      rgb(0 0 0 / 2%) 7px,
-      rgb(0 0 0 / 2%) 14px
-    );
+    border-color: var(--border-strong);
+    background: var(--surface-muted);
   }
 
   &.edit.cdk-drop-list-dragging,
@@ -276,18 +214,102 @@
 /* --- Schülerkarte: die schmalste Stufe ist der Ausgangspunkt --- */
 
 .student {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.25rem 0.15rem;
-  border-radius: 0.5rem;
+  gap: 0.2rem;
+  padding: 0.3rem 0.2rem;
+  border-radius: 0.65rem;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);
   text-align: center;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+
+  /* Wer heute bewertet wurde, bekommt die Farbe der Bewertung - wie in der Klassenmappe. */
+  &.rated {
+    border-color: var(--rated);
+    background: color-mix(in srgb, var(--rated) 55%, var(--surface));
+  }
+}
+
+/* Foto und Name öffnen den Verlauf. */
+.tile-who {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: inherit;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+
+  &:disabled {
+    cursor: inherit;
+  }
+}
+
+.today-badge {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0.1rem;
+  min-width: 1.5rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+}
+
+/* Kurzes Aufleuchten als Bestätigung nach dem Tippen. */
+.flash-pos {
+  animation: flash-pos 0.6s ease-out;
+}
+
+.flash-neg {
+  animation: flash-neg 0.6s ease-out;
+}
+
+@keyframes flash-pos {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(22 163 74 / 60%);
+  }
+
+  30% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0.6rem rgb(22 163 74 / 0%);
+  }
+}
+
+@keyframes flash-neg {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(220 38 38 / 60%);
+  }
+
+  30% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0.6rem rgb(220 38 38 / 0%);
+  }
 }
 
 .cell.edit .student {
@@ -298,29 +320,29 @@
   }
 }
 
-.avatar {
-  width: 2.6rem;
-  height: 2.6rem;
-  flex: none;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  display: grid;
-  place-items: center;
+/* Der Punktestand oben rechts auf der Kachel. */
+.score {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  min-width: 1.4rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.6rem;
   font-weight: 700;
-  font-size: 0.85rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  &.pos {
+    background: var(--positive-soft);
+    color: var(--positive);
   }
 
-  &.small {
-    width: 2rem;
-    height: 2rem;
-    font-size: 0.7rem;
+  &.neg {
+    background: var(--negative-soft);
+    color: var(--negative);
   }
 }
 
@@ -339,7 +361,7 @@
   min-width: 0;
   font-size: 0.6rem;
   line-height: 1.15;
-  font-weight: 500;
+  font-weight: 550;
 
   /* Lieber kürzen als mitten im Wort umbrechen. */
   span {
@@ -349,51 +371,40 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  span + span {
+    color: var(--text-muted);
+    font-weight: 450;
+  }
 }
 
 .actions {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.12rem;
+  gap: 0.15rem;
   width: 100%;
+  margin-top: auto;
 }
 
 .rate {
-  border: 1px solid var(--border);
-  border-radius: 0.35rem;
-  min-height: 1.6rem;
-  padding: 0.3rem 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: var(--surface);
+  border: 0;
+  border-radius: 0.4rem;
+  min-height: 1.75rem;
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  font-weight: 750;
   line-height: 1;
+  opacity: 0.9;
+  transition:
+    opacity 0.12s ease,
+    transform 0.08s ease;
 
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
+  &:hover {
+    opacity: 1;
   }
 
-  &.plus2,
-  &.plus1 {
-    color: var(--positive);
-    border-color: #b6e0c6;
-  }
-
-  &.minus1,
-  &.minus2 {
-    color: var(--negative);
-    border-color: #f0c3be;
-  }
-
-  /* :not(.aktiv), sonst überdeckt der Mauszeiger die vergebene Bewertung. */
-  &.plus2:hover:not(:disabled):not(.aktiv),
-  &.plus1:hover:not(:disabled):not(.aktiv) {
-    background: var(--positive-soft);
-  }
-
-  &.minus1:hover:not(:disabled):not(.aktiv),
-  &.minus2:hover:not(:disabled):not(.aktiv) {
-    background: var(--negative-soft);
+  &:active {
+    transform: scale(0.94);
   }
 }
 
@@ -405,8 +416,12 @@
     font-size: 0.55rem;
   }
 
+  .score {
+    display: none;
+  }
+
   .rate {
-    min-height: 1.3rem;
+    min-height: 1.4rem;
     padding: 0.15rem 0;
     font-size: 0.6rem;
   }
@@ -417,6 +432,11 @@
     display: grid;
   }
 
+  /* Erst mit Foto ist Platz für das Zeichen - schmaler genügt die Farbe. */
+  .today-badge {
+    display: block;
+  }
+
   .name {
     font-size: 0.66rem;
   }
@@ -424,8 +444,8 @@
 
 @container platz (min-width: 5.5rem) {
   .student {
-    gap: 0.25rem;
-    padding: 0.4rem 0.3rem;
+    gap: 0.3rem;
+    padding: 0.45rem 0.35rem;
   }
 
   .student .avatar {
@@ -435,14 +455,25 @@
   }
 
   .name {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
+  }
+
+  .score {
+    top: 0.3rem;
+    right: 0.3rem;
+    font-size: 0.7rem;
+  }
+
+  .rate {
+    min-height: 2rem;
+    font-size: 0.82rem;
   }
 }
 
 @container platz (min-width: 7.5rem) {
   .student {
-    gap: 0.3rem;
-    padding: 0.5rem 0.35rem;
+    gap: 0.35rem;
+    padding: 0.55rem 0.4rem 0.45rem;
   }
 
   .student .avatar {
@@ -452,34 +483,41 @@
   }
 
   .name {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
+  }
+
+  .score {
+    font-size: 0.75rem;
   }
 
   .actions {
     grid-template-columns: repeat(4, 1fr);
-    gap: 0.15rem;
+    gap: 0.2rem;
   }
 
   .rate {
-    padding: 0.25rem 0;
-    font-size: 0.8rem;
+    min-height: 2.2rem;
+    font-size: 0.85rem;
   }
 }
 
 /* --- Liste ohne Platz --- */
 
 .pool h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.15rem;
 }
 
 .pool-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
   min-height: 5rem;
-  padding: 0.35rem;
-  border: 1px dashed var(--border);
-  border-radius: 0.55rem;
+  padding: 0.4rem;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
 
   &.cdk-drop-list-receiving {
     border-color: var(--accent);
@@ -487,53 +525,57 @@
   }
 }
 
+.all-seated {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: auto;
+  color: var(--positive);
+}
+
 .pool-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.45rem;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.45rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 0.45rem;
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 
 .pool-name {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 550;
 }
 
 .mini-actions {
-  display: flex;
-  gap: 0.15rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.2rem;
+  flex: 1 1 100%;
 
-  button {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 0.3rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    min-width: 1.9rem;
-    padding: 0.35rem 0.3rem;
-    line-height: 1;
-
-    &:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
+  .rate {
+    min-height: 2.1rem;
   }
 }
 
 /* --- Ziehen --- */
 
 .drag-preview {
-  padding: 0.45rem 0.75rem;
-  border-radius: 0.45rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   box-shadow: var(--shadow-lg);
@@ -545,28 +587,4 @@
 
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
-}
-
-/* Die Bewertung, die für die aktuelle Stunde gilt. */
-.rate.aktiv {
-  color: #fff;
-  font-weight: 800;
-}
-
-.rate.plus2.aktiv,
-.rate.plus1.aktiv {
-  background: var(--positive);
-  border-color: var(--positive);
-}
-
-.rate.minus1.aktiv,
-.rate.minus2.aktiv {
-  background: var(--negative);
-  border-color: var(--negative);
-}
-
-.mini-actions button.aktiv {
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
 }

@@ -162,6 +162,6 @@ export class TimetableImportPage {
   }
 
   zumStundenplan(): void {
-    void this.router.navigate(['/']);
+    void this.router.navigate(['/stundenplan']);
   }
 }

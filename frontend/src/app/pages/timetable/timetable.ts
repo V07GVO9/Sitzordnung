@@ -1,23 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { ModeService } from '../../core/mode.service';
 import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
 
 @Component({
   selector: 'app-timetable',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, Icon],
   templateUrl: './timetable.html',
   styleUrl: './timetable.scss',
 })
 export class TimetablePage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
-  readonly mode = inject(ModeService);
+  private readonly confirm = inject(ConfirmService);
 
   readonly entries = signal<TimetableEntry[]>([]);
   readonly courses = signal<Course[]>([]);
@@ -145,9 +147,22 @@ export class TimetablePage {
       });
   }
 
-  remove(entry: TimetableEntry): void {
+  async remove(entry: TimetableEntry): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: 'Stunde aus dem Plan nehmen?',
+      message: `${entry.subjectName} (${entry.schoolClassName}) am ${WEEKDAY_NAMES[entry.dayOfWeek]} um ${entry.startTime} Uhr. Bereits vergebene Bewertungen bleiben erhalten.`,
+      confirmLabel: 'Entfernen',
+      danger: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+
     this.api.deleteTimetableEntry(entry.id).subscribe({
-      next: () => this.entries.update((list) => list.filter((e) => e.id !== entry.id)),
+      next: () => {
+        this.entries.update((list) => list.filter((e) => e.id !== entry.id));
+        this.toasts.show('Die Stunde wurde aus dem Plan genommen.');
+      },
       error: (err) => this.toasts.error(err, 'Die Stunde konnte nicht gelöscht werden.'),
     });
   }

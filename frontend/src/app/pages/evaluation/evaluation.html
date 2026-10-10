@@ -1,105 +1,191 @@
 <div class="stack">
-  <section class="card">
-    <h1>Auswertung &amp; Export</h1>
-    <div class="filter">
-      <label>
-        Kurs
-        <select [ngModel]="selectedCourseId()" (ngModelChange)="selectCourse($event)" name="course">
-          @for (course of courses(); track course.id) {
-            <option [ngValue]="course.id">
-              {{ course.subjectName }} · {{ course.schoolClassName }}
-            </option>
-          } @empty {
-            <option [ngValue]="null">Noch keine Kurse</option>
-          }
-        </select>
-      </label>
-
-      <label>
-        Von
-        <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" name="from" />
-      </label>
-
-      <label>
-        Bis
-        <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" name="to" />
-      </label>
-
-      <button class="btn" type="button" (click)="refreshScoreboard()">Aktualisieren</button>
-
-      <span class="spacer"></span>
-
-      <button class="btn primary" type="button" (click)="exportCsv('summary', false)">
-        Punktestand als CSV
-      </button>
-      <button class="btn" type="button" (click)="exportCsv('ratings', false)">
-        Einzelbewertungen
-      </button>
-      <button class="btn" type="button" (click)="exportCsv('summary', true)">Alle Kurse</button>
+  <div class="page-head">
+    <div>
+      <h1>Auswertung</h1>
+      <p class="muted small">
+        @if (isEdit()) {
+          Punktestände, Notenschlüssel, Einstellungen und die Datendatei.
+        } @else {
+          Punktestände und Export. Notenschlüssel und Einstellungen gibt es im Bearbeitungsmodus.
+        }
+      </p>
     </div>
-    <p class="muted small">
-      Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet. Die CSV-Dateien öffnen sich direkt in
-      Excel oder LibreOffice.
-    </p>
-  </section>
+  </div>
 
-  @if (scoreboard(); as board) {
+  <div class="tabs" role="tablist" aria-label="Bereich wählen">
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'punkte'"
+      (click)="setTab('punkte')"
+    >
+      <app-icon name="chart-column" /> Punkte &amp; Export
+    </button>
+    @if (isEdit()) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'noten'"
+        (click)="setTab('noten')"
+      >
+        <app-icon name="graduation-cap" /> Notenschlüssel
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'einstellungen'"
+        (click)="setTab('einstellungen')"
+      >
+        <app-icon name="sliders-horizontal" /> Einstellungen
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'datei'"
+        (click)="setTab('datei')"
+      >
+        <app-icon name="lock" /> Datei
+      </button>
+    }
+  </div>
+
+  <!-- Kurswahl für Punktestand und kursbezogenen Notenschlüssel -->
+  @if (activeTab() === 'punkte' || activeTab() === 'noten') {
     <section class="card">
-      <h2>{{ board.subjectName }} · {{ board.schoolClassName }}</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Punkte</th>
-              <th>Bewertungen</th>
-              <th>Heute</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (student of board.students; track student.studentId) {
-              <tr>
-                <td>{{ student.lastName }}, {{ student.firstName }}</td>
-                <td>
-                  <span
-                    class="points"
-                    [class.pos]="student.points > 0"
-                    [class.neg]="student.points < 0"
-                  >
-                    {{ student.points }}
-                  </span>
-                </td>
-                <td class="muted">{{ student.ratingCount }}</td>
-                <td class="muted">{{ student.pointsToday }}</td>
-                <td>
-                  @if (student.grade) {
-                    <span class="badge">{{ student.grade }}</span>
-                  } @else {
-                    <span class="muted small">–</span>
-                  }
-                </td>
-              </tr>
+      <div class="filter">
+        <label class="course-select">
+          Kurs
+          <select
+            [ngModel]="selectedCourseId()"
+            (ngModelChange)="selectCourse($event)"
+            name="course"
+          >
+            @for (course of courses(); track course.id) {
+              <option [ngValue]="course.id">
+                {{ course.subjectName }} · {{ course.schoolClassName }}
+              </option>
             } @empty {
-              <tr>
-                <td colspan="5" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
-              </tr>
+              <option [ngValue]="null">Noch keine Kurse</option>
             }
-          </tbody>
-        </table>
+          </select>
+        </label>
+
+        @if (activeTab() === 'punkte') {
+          <label>
+            Von
+            <input
+              type="date"
+              [ngModel]="from()"
+              (ngModelChange)="from.set($event); refreshScoreboard()"
+              name="from"
+            />
+          </label>
+
+          <label>
+            Bis
+            <input
+              type="date"
+              [ngModel]="to()"
+              (ngModelChange)="to.set($event); refreshScoreboard()"
+              name="to"
+            />
+          </label>
+
+          @if (from() || to()) {
+            <button class="btn ghost" type="button" (click)="clearRange()">
+              <app-icon name="x" /> Zeitraum zurücksetzen
+            </button>
+          }
+        }
       </div>
+      @if (activeTab() === 'punkte') {
+        <p class="muted small hint">Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet.</p>
+      }
     </section>
   }
 
-  @if (mode.isEdit()) {
-    <div class="cols">
-      <section class="card">
+  @switch (activeTab()) {
+    @case ('punkte') {
+      @if (scoreboard(); as board) {
+        <section class="card">
+          <div class="row card-head">
+            <h2>{{ board.subjectName }} · {{ board.schoolClassName }}</h2>
+            <span class="spacer"></span>
+            <div class="exports">
+              <button class="btn primary small" type="button" (click)="exportCsv('summary', false)">
+                <app-icon name="file-down" /> Punktestand (CSV)
+              </button>
+              <button class="btn small" type="button" (click)="exportCsv('ratings', false)">
+                <app-icon name="download" /> Einzelbewertungen
+              </button>
+              <button class="btn small" type="button" (click)="exportCsv('summary', true)">
+                <app-icon name="download" /> Alle Kurse
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th class="num">Punkte</th>
+                  <th class="num">Bewertungen</th>
+                  <th class="num">Heute</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (student of board.students; track student.studentId) {
+                  <tr>
+                    <td>
+                      <strong>{{ student.lastName }}</strong
+                      >, {{ student.firstName }}
+                    </td>
+                    <td class="num">
+                      <span
+                        class="points"
+                        [class.pos]="student.points > 0"
+                        [class.neg]="student.points < 0"
+                      >
+                        {{ student.points }}
+                      </span>
+                    </td>
+                    <td class="num muted">{{ student.ratingCount }}</td>
+                    <td class="num muted">{{ student.pointsToday }}</td>
+                    <td>
+                      @if (student.grade) {
+                        <span class="badge grade">{{ student.grade }}</span>
+                      } @else {
+                        <span class="muted small">–</span>
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="muted small hint">
+            Die CSV-Dateien öffnen sich direkt in Excel oder LibreOffice.
+          </p>
+        </section>
+      } @else if (courses().length === 0) {
+        <div class="empty"><p>Noch keine Kurse angelegt.</p></div>
+      }
+    }
+
+    @case ('noten') {
+      <section class="card narrow">
         <h2>Notenschlüssel</h2>
         <p class="muted small">
           Ab wie vielen Mitarbeitspunkten gilt welche Note? Jeder Schüler startet bei 0 Punkten.
         </p>
 
-        <div class="scale-target">
+        <div class="chips scale-target">
           <button
             type="button"
             class="chip"
@@ -143,13 +229,16 @@
               <input
                 type="number"
                 [value]="entry.minPoints"
+                aria-label="Mindestpunkte"
                 (change)="updateScaleEntry($index, { minPoints: +$any($event.target).value })"
               />
-              <span class="muted small">Punkten →</span>
+              <span class="muted small">Punkten</span>
+              <app-icon class="muted" name="arrow-right" />
               <input
                 type="text"
                 class="grade"
                 placeholder="Note"
+                aria-label="Note"
                 [value]="entry.grade"
                 (change)="updateScaleEntry($index, { grade: $any($event.target).value })"
               />
@@ -158,8 +247,9 @@
                 type="button"
                 (click)="removeScaleEntry($index)"
                 title="Stufe entfernen"
+                aria-label="Stufe entfernen"
               >
-                ×
+                <app-icon name="x" />
               </button>
             </div>
           } @empty {
@@ -168,8 +258,12 @@
         </div>
 
         <div class="row">
-          <button class="btn" type="button" (click)="addScaleEntry()">Stufe hinzufügen</button>
-          <button class="btn primary" type="button" (click)="saveScale()">Speichern</button>
+          <button class="btn" type="button" (click)="addScaleEntry()">
+            <app-icon name="plus" /> Stufe hinzufügen
+          </button>
+          <button class="btn primary" type="button" (click)="saveScale()">
+            <app-icon name="save" /> Übernehmen
+          </button>
           @if (scaleIsCourseSpecific() && loadedScale() && !loadedScale()!.isGlobalDefault) {
             <button class="btn danger" type="button" (click)="deleteCourseScale()">
               Eigenen Schlüssel entfernen
@@ -177,9 +271,11 @@
           }
         </div>
       </section>
+    }
 
-      <section class="card">
-        <h2>Einstellungen</h2>
+    @case ('einstellungen') {
+      <section class="card narrow">
+        <h2>Sperre für Bewertungen</h2>
         @if (settings(); as s) {
           <label class="full">
             Kulanzzeit vor und nach der Stunde (Minuten)
@@ -196,7 +292,7 @@
             weiterhin möglich.
           </p>
 
-          <label class="inline">
+          <label class="inline toggle">
             <input
               type="checkbox"
               [checked]="s.allowRatingOutsideLesson"
@@ -211,29 +307,114 @@
 
           @if (s.allowRatingOutsideLesson) {
             <div class="banner warn">
+              <app-icon name="triangle-alert" />
               Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
             </div>
           }
 
-          <p class="muted small">
+          <p class="muted small hint">
             Die Sperre ist eine Hilfe für den Unterrichtsalltag, keine Zugriffskontrolle: sie läuft
             im Browser und lässt sich dort umgehen.
           </p>
         }
       </section>
+    }
 
-      <section class="card">
+    @case ('datei') {
+      <section class="card narrow">
         <h2>Datenbestand</h2>
         <p class="muted small">
           Alle Daten liegen verschlüsselt in der Datei
-          <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
+          <strong>{{ fileName() ?? 'ohne Namen' }}</strong>
+          @if (isInOneDrive()) {
+            in OneDrive (Ordner „Sitzordnung“).
+          } @else {
+            auf diesem Rechner.
+          }
         </p>
 
-        <div class="row">
-          <button class="btn" type="button" (click)="saveAs()">Speichern unter …</button>
-        </div>
+        @if (canWriteInPlace || isInOneDrive()) {
+          <label class="inline toggle">
+            <input
+              type="checkbox"
+              [checked]="autoSaveToFile()"
+              (change)="setAutoSave($any($event.target).checked)"
+            />
+            Nach jeder Änderung automatisch in die Datei speichern
+          </label>
+          <p class="muted small">
+            @if (isInOneDrive()) {
+              Gespeichert wird wenige Sekunden nach jeder Änderung in OneDrive. Hat ein anderes
+              Gerät inzwischen gespeichert, fragt die App, welcher Stand gilt.
+            } @else {
+              Wirkt, sobald einmal von Hand gespeichert wurde – der Browser fragt dabei einmal nach
+              der Erlaubnis, in die Datei zu schreiben.
+            }
+            Die Einstellung gilt für dieses Gerät.
+          </p>
+        } @else {
+          <p class="muted small">
+            Dieser Browser kann nicht direkt in die Datei schreiben. Gespeichert wird als Download
+            über <strong>Speichern</strong> oder <kbd>Strg</kbd>+<kbd>S</kbd>. In Chrome oder Edge
+            geht es automatisch.
+          </p>
+        }
 
-        <h3>Passwort ändern</h3>
+        @if (isInOneDrive()) {
+          <label class="inline toggle">
+            <input
+              type="checkbox"
+              [checked]="isRemembered()"
+              (change)="setRemember($any($event.target).checked)"
+            />
+            Auf diesem Gerät merken – beim Start ohne Passwort öffnen
+          </label>
+          <p class="muted small">
+            Das Passwort liegt dann verschlüsselt im Browser dieses Geräts. Wer das entsperrte Gerät
+            benutzt, kommt an die Noten – deshalb nur auf eigenen Geräten, nie an Schul-PCs.
+          </p>
+        }
+
+        <div class="row">
+          <button class="btn" type="button" (click)="saveAs()">
+            <app-icon name="save" /> Speichern unter …
+          </button>
+        </div>
+      </section>
+
+      @if (showOneDrive && !isInOneDrive()) {
+        <section class="card narrow">
+          <h2><app-icon name="cloud" /> In OneDrive ablegen</h2>
+          <p class="muted small">
+            Legt den Datenbestand als neue Datei in OneDrive ab (Ordner „Sitzordnung“). Danach
+            speichert die App dorthin, und jedes Gerät öffnet ihn über
+            <strong>OneDrive</strong> auf der Startseite – mit demselben Passwort. Die Datei bleibt
+            verschlüsselt.
+          </p>
+          <label class="full">
+            Dateiname in OneDrive
+            <input
+              type="text"
+              [ngModel]="oneDriveName()"
+              (ngModelChange)="oneDriveName.set($event)"
+              name="oneDriveName"
+            />
+          </label>
+          <div class="row">
+            <button
+              class="btn primary"
+              type="button"
+              [disabled]="oneDriveName().trim() === ''"
+              (click)="moveToOneDrive()"
+            >
+              <app-icon name="cloud" /> In OneDrive ablegen
+            </button>
+          </div>
+        </section>
+      }
+
+      <section class="card narrow">
+        <h2><app-icon name="key-round" /> Passwort ändern</h2>
         <label class="full">
           Bisheriges Passwort
           <input
@@ -252,11 +433,12 @@
             [ngModel]="newPassword()"
             (ngModelChange)="newPassword.set($event)"
             name="newPassword"
+            placeholder="mindestens 8 Zeichen"
           />
         </label>
         <div class="row">
           <button
-            class="btn"
+            class="btn primary"
             type="button"
             [disabled]="newPassword().length < 8"
             (click)="changePassword()"
@@ -264,11 +446,11 @@
             Passwort ändern und speichern
           </button>
         </div>
-        <p class="muted small">
+        <p class="muted small hint">
           Das neue Passwort gilt ab dem nächsten Speichern. Ältere Sicherungskopien behalten ihr
           altes Passwort.
         </p>
       </section>
-    </div>
+    }
   }
 </div>

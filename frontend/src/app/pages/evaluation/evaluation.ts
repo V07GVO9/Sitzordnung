@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
@@ -11,14 +12,20 @@ import {
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
-import { FilePickerCancelled } from '../../core/store/file-system';
+import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
+import { OneDriveService } from '../../core/store/onedrive.service';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
+
+export type EvaluationTab = 'punkte' | 'noten' | 'einstellungen' | 'datei';
+const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -26,9 +33,26 @@ export class EvaluationPage {
   private readonly api = inject(ApiService);
   readonly mode = inject(ModeService);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly vault = inject(VaultService);
+  private readonly router = inject(Router);
+
+  /** Der Reiter steht in der Adresse (?tab=noten), damit Links direkt dorthin führen. */
+  readonly tab = input<string>();
+  /** Notenschlüssel, Einstellungen und Datei gibt es nur im Bearbeitungsmodus. */
+  readonly isEdit = inject(ModeService).isEdit;
+  readonly activeTab = computed<EvaluationTab>(() => {
+    const tab = this.tab() as EvaluationTab;
+    return TABS.includes(tab) && (tab === 'punkte' || this.isEdit()) ? tab : 'punkte';
+  });
 
   readonly fileName = this.vault.fileName;
+  readonly canWriteInPlace = this.vault.canWriteInPlace;
+  readonly autoSaveToFile = this.vault.autoSaveToFile;
+  readonly isInOneDrive = this.vault.isInOneDrive;
+  readonly rememberedFile = this.vault.rememberedFile;
+  readonly showOneDrive = inject(OneDriveService).isConfigured && !isNativeApp();
+  readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
 
@@ -93,6 +117,16 @@ export class EvaluationPage {
 
   refreshScoreboard(): void {
     this.selectCourse(this.selectedCourseId());
+  }
+
+  clearRange(): void {
+    this.from.set('');
+    this.to.set('');
+    this.refreshScoreboard();
+  }
+
+  setTab(tab: EvaluationTab): void {
+    void this.router.navigate([], { queryParams: { tab }, replaceUrl: true });
   }
 
   // --- Notenschlüssel ---
@@ -163,9 +197,17 @@ export class EvaluationPage {
     });
   }
 
-  deleteCourseScale(): void {
+  async deleteCourseScale(): Promise<void> {
     const courseId = this.selectedCourseId();
-    if (!courseId || !confirm('Eigenen Notenschlüssel dieses Kurses entfernen?')) {
+    if (
+      !courseId ||
+      !(await this.confirm.ask({
+        title: 'Eigenen Notenschlüssel entfernen?',
+        message: 'Für diesen Kurs gilt danach wieder der allgemeine Notenschlüssel.',
+        confirmLabel: 'Entfernen',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -196,6 +238,13 @@ export class EvaluationPage {
 
   // --- Datenbestand ---
 
+  setAutoSave(enabled: boolean): void {
+    this.vault.setAutoSaveToFile(enabled);
+    this.toasts.success(
+      enabled ? 'Automatisches Speichern ist eingeschaltet.' : 'Automatisches Speichern ist aus.',
+    );
+  }
+
   /** Fragt nach einer neuen Datei und speichert dorthin. */
   async saveAs(): Promise<void> {
     try {
@@ -204,6 +253,37 @@ export class EvaluationPage {
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  isRemembered(): boolean {
+    return this.vault.isRemembered();
+  }
+
+  /** Datei und Passwort auf diesem Gerät merken oder vergessen. */
+  async setRemember(enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await this.vault.rememberOnDevice();
+        this.toasts.success('Dieses Gerät öffnet den Bestand ab jetzt ohne Passwort.');
+      } else {
+        await this.vault.forgetOnDevice();
+        this.toasts.success('Datei und Passwort sind auf diesem Gerät vergessen.');
+      }
+    } catch (error) {
+      this.toasts.error(error, 'Die Einstellung konnte nicht gespeichert werden.');
+    }
+  }
+
+  /** Legt den Bestand in OneDrive ab - ab dann arbeiten alle Geräte mit dieser Datei. */
+  async moveToOneDrive(): Promise<void> {
+    try {
+      await this.vault.moveToOneDrive(this.oneDriveName().trim());
+      this.toasts.success('Der Datenbestand liegt jetzt in OneDrive.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht in OneDrive abgelegt werden.');
       }
     }
   }

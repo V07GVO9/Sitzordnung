@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { ConfirmService } from './ui/confirm.service';
 
 /**
  * Die App kennt zwei Arbeitsweisen:
@@ -12,21 +13,29 @@ export type AppMode = 'unterricht' | 'bearbeiten';
 
 const STORAGE_KEY = 'sitzordnung.mode';
 
+/** Seiten, die es nur im Bearbeitungsmodus gibt. */
+const EDIT_ONLY_PATHS = ['/verwaltung', '/stundenplan'];
+
 @Injectable({ providedIn: 'root' })
 export class ModeService {
+  private readonly confirm = inject(ConfirmService);
+  private readonly router = inject(Router);
+
   readonly mode = signal<AppMode>(this.readStored());
   readonly isEdit = computed(() => this.mode() === 'bearbeiten');
 
   /** Wechsel in den Bearbeitungsmodus - nur nach Rückfrage. */
-  requestEdit(): boolean {
+  async requestEdit(): Promise<boolean> {
     if (this.isEdit()) {
       return true;
     }
-    const ok = confirm(
-      'Bearbeitungsmodus starten?\n\n' +
+    const ok = await this.confirm.ask({
+      title: 'Bearbeitungsmodus starten?',
+      message:
         'Darin werden Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen geändert. ' +
-        'Bewerten ist in dieser Zeit nicht möglich.',
-    );
+        'Bewerten ist in dieser Zeit aus.',
+      confirmLabel: 'Bearbeiten',
+    });
     if (ok) {
       this.set('bearbeiten');
     }
@@ -36,6 +45,10 @@ export class ModeService {
   /** Zurück in den Unterricht - jederzeit ohne Rückfrage. */
   finishEdit(): void {
     this.set('unterricht');
+    const path = this.router.url.split('?')[0];
+    if (EDIT_ONLY_PATHS.some((p) => path.startsWith(p))) {
+      void this.router.navigateByUrl('/');
+    }
   }
 
   private set(mode: AppMode): void {
@@ -56,6 +69,13 @@ export class ModeService {
   }
 }
 
-/** Einrichtungsseiten gibt es nur im Bearbeitungsmodus. */
-export const editModeGuard: CanActivateFn = () =>
-  inject(ModeService).isEdit() || inject(Router).createUrlTree(['/']);
+/**
+ * Einrichtungsseiten gibt es nur im Bearbeitungsmodus. Führt ein Link im
+ * Unterricht dorthin, fragt die App, ob in den Bearbeitungsmodus gewechselt
+ * werden soll.
+ */
+export const editModeGuard: CanActivateFn = async () => {
+  const mode = inject(ModeService);
+  const router = inject(Router);
+  return (await mode.requestEdit()) || (router.navigated ? false : router.createUrlTree(['/']));
+};

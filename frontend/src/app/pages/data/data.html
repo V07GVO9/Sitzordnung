@@ -1,10 +1,43 @@
 <div class="stack">
-  <div class="cols">
-    <!-- Klassen -->
-    <section class="card">
-      <h2>Klassen</h2>
-      <p class="muted small">Jeder Schüler gehört zu genau einer Klasse.</p>
+  <div class="page-head">
+    <div>
+      <h1>Klassen &amp; Schüler</h1>
+      <p class="muted small">Klassen, Fächer und Schüler anlegen – daraus entstehen die Kurse.</p>
+    </div>
+  </div>
 
+  <div class="tabs" role="tablist" aria-label="Bereich wählen">
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'klassen'"
+      (click)="setTab('klassen')"
+    >
+      <app-icon name="school" /> Klassen
+      <span class="badge">{{ classes().length }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'schueler'"
+      (click)="setTab('schueler')"
+    >
+      <app-icon name="users" /> Schüler
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'faecher'"
+      (click)="setTab('faecher')"
+    >
+      <app-icon name="book-open" /> Fächer
+      <span class="badge">{{ subjects().length }}</span>
+    </button>
+  </div>
+
+  <!-- Die Klassenwahl gilt für die Reiter „Klassen“ und „Schüler“. -->
+  @if (activeTab() !== 'faecher') {
+    <section class="card">
       <div class="chips">
         @for (schoolClass of classes(); track schoolClass.id) {
           <button
@@ -14,248 +47,313 @@
             (click)="selectClass(schoolClass.id)"
           >
             {{ schoolClass.name }}
-            <span class="badge">{{ schoolClass.studentCount }}</span>
+            <span class="badge" title="Schüler">{{ schoolClass.studentCount }}</span>
           </button>
         } @empty {
           <p class="muted small">Noch keine Klasse angelegt.</p>
         }
       </div>
 
-      <form class="row add" (ngSubmit)="addClass()">
-        <input
-          type="text"
-          placeholder="z. B. 10a"
-          [ngModel]="newClassName()"
-          (ngModelChange)="newClassName.set($event)"
-          name="className"
-          required
-        />
-        <button class="btn primary" type="submit" [disabled]="!newClassName().trim()">
-          Klasse anlegen
-        </button>
-      </form>
+      @if (activeTab() === 'klassen') {
+        <form class="row add" (ngSubmit)="addClass()">
+          <input
+            type="text"
+            placeholder="Neue Klasse, z. B. 10a"
+            [ngModel]="newClassName()"
+            (ngModelChange)="newClassName.set($event)"
+            name="className"
+            aria-label="Name der neuen Klasse"
+            required
+          />
+          <button class="btn primary" type="submit" [disabled]="!newClassName().trim()">
+            <app-icon name="plus" /> Klasse anlegen
+          </button>
+        </form>
+      }
     </section>
+  }
 
-    <!-- Fächer -->
-    <section class="card">
-      <h2>Fächer</h2>
-      <p class="muted small">Das Kürzel erscheint auf den Kacheln der Übersicht.</p>
-
-      <div class="table-wrap">
-        <table>
-          <tbody>
-            @for (subject of subjects(); track subject.id) {
-              <tr>
-                <td><span class="badge">{{ subject.shortName }}</span></td>
-                <td class="grow">{{ subject.name }}</td>
-                <td>
-                  <button class="btn small danger" type="button" (click)="deleteSubject(subject)">
-                    Löschen
-                  </button>
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td class="muted small">Noch kein Fach angelegt.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <form class="row add" (ngSubmit)="addSubject()">
-        <input
-          type="text"
-          placeholder="Fach, z. B. Mathematik"
-          [ngModel]="newSubjectName()"
-          (ngModelChange)="newSubjectName.set($event)"
-          name="subjectName"
-          required
-        />
-        <input
-          class="short"
-          type="text"
-          placeholder="Kürzel"
-          maxlength="10"
-          [ngModel]="newSubjectShort()"
-          (ngModelChange)="newSubjectShort.set($event)"
-          name="subjectShort"
-        />
-        <button class="btn primary" type="submit" [disabled]="!newSubjectName().trim()">
-          Fach anlegen
-        </button>
-      </form>
-    </section>
-  </div>
-
-  @if (selectedClass(); as schoolClass) {
-    <!-- Kurse dieser Klasse -->
-    <section class="card">
-      <div class="row">
-        <h2>Fächer der Klasse {{ schoolClass.name }}</h2>
-        <span class="spacer"></span>
-        <button class="btn small danger" type="button" (click)="deleteClass(schoolClass)">
-          Klasse löschen
-        </button>
-      </div>
-      <p class="muted small">
-        Für jedes Fach, das Sie in dieser Klasse unterrichten, entsteht ein Kurs mit eigener
-        Sitzordnung und eigenen Bewertungen.
-      </p>
-
-      <div class="course-chips">
-        @for (course of classCourses(); track course.id) {
-          <div class="course-chip">
-            <a [routerLink]="['/kurs', course.id]">
-              <strong>{{ course.subjectName }}</strong>
-              <span class="muted small">
-                {{ course.seatingPlanCount }}
-                {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }}
-              </span>
-            </a>
-            <button
-              class="btn small danger"
-              type="button"
-              (click)="deleteCourse(course)"
-              title="Kurs löschen"
-            >
-              ×
+  @switch (activeTab()) {
+    @case ('klassen') {
+      @if (selectedClass(); as schoolClass) {
+        <!-- Kurse dieser Klasse -->
+        <section class="card">
+          <div class="row card-head">
+            <h2>Fächer der Klasse {{ schoolClass.name }}</h2>
+            <span class="spacer"></span>
+            <button class="btn small" type="button" (click)="setTab('schueler')">
+              <app-icon name="users" /> {{ schoolClass.studentCount }} Schüler
+            </button>
+            <button class="btn small danger" type="button" (click)="deleteClass(schoolClass)">
+              <app-icon name="trash-2" /> Klasse löschen
             </button>
           </div>
-        } @empty {
-          <p class="muted small">In dieser Klasse ist noch kein Fach zugeordnet.</p>
-        }
-      </div>
+          <p class="muted small">
+            Für jedes Fach, das Sie in dieser Klasse unterrichten, entsteht ein Kurs mit eigener
+            Sitzordnung und eigenen Bewertungen.
+          </p>
 
-      <form class="row add" (ngSubmit)="addCourse()">
-        <select
-          [ngModel]="courseSubjectId()"
-          (ngModelChange)="courseSubjectId.set($event); courseClassId.set(schoolClass.id)"
-          name="courseSubject"
-        >
-          <option [ngValue]="null">Fach wählen …</option>
-          @for (subject of subjects(); track subject.id) {
-            <option [ngValue]="subject.id">{{ subject.name }}</option>
+          <div class="course-chips">
+            @for (course of classCourses(); track course.id) {
+              <div class="course-chip">
+                <a [routerLink]="['/kurs', course.id]">
+                  <strong>{{ course.subjectName }}</strong>
+                  <span class="muted small">
+                    {{ course.seatingPlanCount }}
+                    {{ course.seatingPlanCount === 1 ? 'Sitzordnung' : 'Sitzordnungen' }}
+                  </span>
+                </a>
+                <button
+                  class="remove"
+                  type="button"
+                  (click)="deleteCourse(course)"
+                  [attr.aria-label]="course.subjectName + ' aus dieser Klasse entfernen'"
+                  title="Kurs löschen"
+                >
+                  <app-icon name="x" />
+                </button>
+              </div>
+            } @empty {
+              <p class="muted small">In dieser Klasse ist noch kein Fach zugeordnet.</p>
+            }
+          </div>
+
+          @if (subjects().length === 0) {
+            <p class="muted small add">
+              Es gibt noch keine Fächer.
+              <button class="btn small" type="button" (click)="setTab('faecher')">
+                Fächer anlegen
+              </button>
+            </p>
+          } @else {
+            <form class="row add" (ngSubmit)="addCourse()">
+              <select
+                [ngModel]="courseSubjectId()"
+                (ngModelChange)="courseSubjectId.set($event); courseClassId.set(schoolClass.id)"
+                name="courseSubject"
+                aria-label="Fach wählen"
+              >
+                <option [ngValue]="null">Fach wählen …</option>
+                @for (subject of subjects(); track subject.id) {
+                  <option [ngValue]="subject.id">{{ subject.name }}</option>
+                }
+              </select>
+              <button class="btn primary" type="submit" [disabled]="!courseSubjectId()">
+                <app-icon name="plus" /> Fach zuordnen
+              </button>
+            </form>
           }
-        </select>
-        <button class="btn primary" type="submit" [disabled]="!courseSubjectId()">
-          Fach zuordnen
-        </button>
-      </form>
-    </section>
+        </section>
+      } @else {
+        <div class="empty">
+          <p>Legen Sie zuerst eine Klasse an.</p>
+        </div>
+      }
+    }
 
-    <!-- Schüler -->
-    <section class="card">
-      <div class="row">
-        <h2>Schüler der Klasse {{ schoolClass.name }}</h2>
-        <span class="spacer"></span>
-        <a class="btn small primary" routerLink="/verwaltung/import">Schüler importieren</a>
-        @if (students().length > 0) {
-          <button
-            class="btn small"
-            type="button"
-            title="Für alle Schüler dieser Klasse Vor- und Nachname tauschen"
-            (click)="swapNames()"
-          >
-            Vor-/Nachname tauschen
-          </button>
-        }
-        <button class="btn small" type="button" (click)="showImport.set(!showImport())">
-          {{ showImport() ? 'Liste schließen' : 'Namensliste einfügen' }}
-        </button>
-      </div>
+    @case ('schueler') {
+      @if (selectedClass(); as schoolClass) {
+        <section class="card">
+          <div class="row card-head">
+            <h2>Schüler der Klasse {{ schoolClass.name }}</h2>
+            <span class="spacer"></span>
+            @if (students().length > 0) {
+              <button
+                class="btn small"
+                type="button"
+                title="Bei allen Schülern dieser Klasse Vor- und Nachname tauschen"
+                (click)="swapNames()"
+              >
+                <app-icon name="refresh-cw" /> Vor-/Nachname tauschen
+              </button>
+            }
+            <button class="btn small" type="button" (click)="showImport.set(!showImport())">
+              <app-icon [name]="showImport() ? 'x' : 'list-plus'" />
+              {{ showImport() ? 'Liste schließen' : 'Namensliste einfügen' }}
+            </button>
+          </div>
 
-      @if (showImport()) {
-        <div class="import">
-          <label>
-            Ein Name je Zeile – „Nachname, Vorname" (mit Komma) oder „Vorname Nachname"
-            <textarea
-              rows="6"
-              [ngModel]="importText()"
-              (ngModelChange)="importText.set($event)"
-              name="importText"
-              placeholder="Berger, Anna&#10;Cordes, Ben&#10;Clara Dorn"
-            ></textarea>
-          </label>
-          <button class="btn primary" type="button" (click)="importStudents()">
-            Schüler übernehmen
+          @if (showImport()) {
+            <div class="import">
+              <label>
+                Ein Name je Zeile – „Nachname, Vorname" (mit Komma) oder „Vorname Nachname"
+                <textarea
+                  rows="6"
+                  [ngModel]="importText()"
+                  (ngModelChange)="importText.set($event)"
+                  name="importText"
+                  placeholder="Berger, Anna&#10;Cordes, Ben&#10;Clara Dorn"
+                ></textarea>
+              </label>
+              <button class="btn primary" type="button" (click)="importStudents()">
+                <app-icon name="users" /> Schüler übernehmen
+              </button>
+            </div>
+          }
+
+          <form class="row add top" (ngSubmit)="addStudent()">
+            <input
+              type="text"
+              placeholder="Vorname"
+              aria-label="Vorname"
+              [ngModel]="newFirstName()"
+              (ngModelChange)="newFirstName.set($event)"
+              name="firstName"
+            />
+            <input
+              type="text"
+              placeholder="Nachname"
+              aria-label="Nachname"
+              [ngModel]="newLastName()"
+              (ngModelChange)="newLastName.set($event)"
+              name="lastName"
+            />
+            <button
+              class="btn primary"
+              type="submit"
+              [disabled]="!newFirstName().trim() && !newLastName().trim()"
+            >
+              <app-icon name="plus" /> Schüler anlegen
+            </button>
+          </form>
+
+          <div class="student-grid">
+            @for (student of students(); track student.id) {
+              <div class="student-card">
+                <!-- Ein Tipp aufs Bild wählt ein neues Foto. -->
+                <label
+                  class="avatar photo"
+                  [title]="student.hasPhoto ? 'Foto tauschen' : 'Foto wählen'"
+                >
+                  @if (student.photoUrl) {
+                    <img [src]="student.photoUrl" [alt]="fullName(student)" />
+                  } @else {
+                    <span>{{ initials(student) }}</span>
+                  }
+                  <span class="photo-hint"><app-icon name="camera" /></span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    [attr.aria-label]="'Foto für ' + fullName(student) + ' wählen'"
+                    (change)="uploadPhoto(student, $event)"
+                  />
+                </label>
+
+                <div class="fields">
+                  <input
+                    type="text"
+                    [value]="student.firstName"
+                    placeholder="Vorname"
+                    aria-label="Vorname"
+                    (change)="renameStudent(student, $any($event.target).value, student.lastName)"
+                  />
+                  <input
+                    type="text"
+                    [value]="student.lastName"
+                    placeholder="Nachname"
+                    aria-label="Nachname"
+                    (change)="renameStudent(student, student.firstName, $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="student-actions">
+                  @if (student.hasPhoto) {
+                    <button
+                      class="remove"
+                      type="button"
+                      (click)="deletePhoto(student)"
+                      title="Foto entfernen"
+                      [attr.aria-label]="'Foto von ' + fullName(student) + ' entfernen'"
+                    >
+                      <app-icon name="image-off" />
+                    </button>
+                  }
+                  <button
+                    class="remove"
+                    type="button"
+                    (click)="deleteStudent(student)"
+                    title="Schüler löschen"
+                    [attr.aria-label]="fullName(student) + ' löschen'"
+                  >
+                    <app-icon name="trash-2" />
+                  </button>
+                </div>
+              </div>
+            } @empty {
+              <p class="muted small">Noch keine Schüler in dieser Klasse.</p>
+            }
+          </div>
+        </section>
+      } @else {
+        <div class="empty">
+          <p>Legen Sie zuerst eine Klasse an.</p>
+          <button class="btn primary" type="button" (click)="setTab('klassen')">
+            <app-icon name="plus" /> Klasse anlegen
           </button>
         </div>
       }
+    }
 
-      <div class="student-grid">
-        @for (student of students(); track student.id) {
-          <div class="student-card">
-            <div class="avatar">
-              @if (student.photoUrl) {
-                <img [src]="student.photoUrl" [alt]="fullName(student)" />
-              } @else {
-                <span>{{ initials(student) }}</span>
+    @case ('faecher') {
+      <section class="card">
+        <h2>Fächer</h2>
+        <p class="muted small">Das Kürzel erscheint auf den Kacheln der Übersicht.</p>
+
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              @for (subject of subjects(); track subject.id) {
+                <tr>
+                  <td>
+                    <span class="badge">{{ subject.shortName }}</span>
+                  </td>
+                  <td class="grow">{{ subject.name }}</td>
+                  <td>
+                    <button
+                      class="remove"
+                      type="button"
+                      (click)="deleteSubject(subject)"
+                      title="Fach löschen"
+                      [attr.aria-label]="subject.name + ' löschen'"
+                    >
+                      <app-icon name="trash-2" />
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td class="muted small">Noch kein Fach angelegt.</td>
+                </tr>
               }
-            </div>
+            </tbody>
+          </table>
+        </div>
 
-            <div class="fields">
-              <input
-                type="text"
-                [value]="student.firstName"
-                placeholder="Vorname"
-                (change)="renameStudent(student, $any($event.target).value, student.lastName)"
-              />
-              <input
-                type="text"
-                [value]="student.lastName"
-                placeholder="Nachname"
-                (change)="renameStudent(student, student.firstName, $any($event.target).value)"
-              />
-            </div>
-
-            <div class="student-actions">
-              <label class="upload btn small">
-                {{ student.hasPhoto ? 'Foto tauschen' : 'Foto wählen' }}
-                <input type="file" accept="image/*" (change)="uploadPhoto(student, $event)" />
-              </label>
-              @if (student.hasPhoto) {
-                <button class="btn small" type="button" (click)="deletePhoto(student)">
-                  Foto entfernen
-                </button>
-              }
-              <button class="btn small danger" type="button" (click)="deleteStudent(student)">
-                Löschen
-              </button>
-            </div>
-          </div>
-        } @empty {
-          <p class="muted small">Noch keine Schüler in dieser Klasse.</p>
-        }
-      </div>
-
-      <form class="row add" (ngSubmit)="addStudent()">
-        <input
-          type="text"
-          placeholder="Vorname"
-          [ngModel]="newFirstName()"
-          (ngModelChange)="newFirstName.set($event)"
-          name="firstName"
-        />
-        <input
-          type="text"
-          placeholder="Nachname"
-          [ngModel]="newLastName()"
-          (ngModelChange)="newLastName.set($event)"
-          name="lastName"
-        />
-        <button
-          class="btn primary"
-          type="submit"
-          [disabled]="!newFirstName().trim() && !newLastName().trim()"
-        >
-          Schüler anlegen
-        </button>
-      </form>
-    </section>
-  } @else {
-    <div class="empty">
-      <p>Legen Sie zuerst eine Klasse an.</p>
-    </div>
+        <form class="row add" (ngSubmit)="addSubject()">
+          <input
+            type="text"
+            placeholder="Fach, z. B. Mathematik"
+            aria-label="Name des Fachs"
+            [ngModel]="newSubjectName()"
+            (ngModelChange)="newSubjectName.set($event)"
+            name="subjectName"
+            required
+          />
+          <input
+            class="short"
+            type="text"
+            placeholder="Kürzel"
+            aria-label="Kürzel"
+            maxlength="10"
+            [ngModel]="newSubjectShort()"
+            (ngModelChange)="newSubjectShort.set($event)"
+            name="subjectShort"
+          />
+          <button class="btn primary" type="submit" [disabled]="!newSubjectName().trim()">
+            <app-icon name="plus" /> Fach anlegen
+          </button>
+        </form>
+      </section>
+    }
   }
 </div>
