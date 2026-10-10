@@ -3,13 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import {
-  Course,
-  DayOfWeek,
-  SCHOOL_DAYS,
-  TimetableEntry,
-  WEEKDAY_NAMES,
-} from '../../core/models';
+import { ModeService } from '../../core/mode.service';
+import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
@@ -22,6 +17,7 @@ import { ToastService } from '../../core/toast.service';
 export class TimetablePage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  readonly mode = inject(ModeService);
 
   readonly entries = signal<TimetableEntry[]>([]);
   readonly courses = signal<Course[]>([]);

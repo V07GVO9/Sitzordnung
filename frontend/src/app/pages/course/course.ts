@@ -10,14 +10,17 @@ import {
   Component,
   OnDestroy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   Course,
   RatingValue,
@@ -77,8 +80,10 @@ export class CoursePage implements OnDestroy {
     return !slot || slot.isCurrent ? null : { date: slot.date, startTime: slot.startTime };
   });
 
-  /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
-  readonly editMode = signal(false);
+  private readonly mode = inject(ModeService);
+
+  /** Folgt dem App-Modus: Unterricht = bewerten, Bearbeiten = Sitzordnung ändern. */
+  readonly editMode = this.mode.isEdit;
 
   /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
   private readonly placement = signal<Map<string, number>>(new Map());
@@ -150,6 +155,17 @@ export class CoursePage implements OnDestroy {
   }, 60_000);
 
   constructor() {
+    // Beim Zurückwechseln in den Unterricht kann inzwischen eine neue Stunde
+    // begonnen haben.
+    let wasEdit = this.editMode();
+    effect(() => {
+      const edit = this.editMode();
+      if (wasEdit && !edit && this.courseId() > 0) {
+        untracked(() => this.refreshScores());
+      }
+      wasEdit = edit;
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('courseId'));
       if (Number.isFinite(id) && id > 0) {
@@ -210,7 +226,12 @@ export class CoursePage implements OnDestroy {
     const to = event.container.data;
     const studentId = event.item.data as number;
 
-    if (from.kind === 'seat' && to.kind === 'seat' && from.row === to.row && from.column === to.column) {
+    if (
+      from.kind === 'seat' &&
+      to.kind === 'seat' &&
+      from.row === to.row &&
+      from.column === to.column
+    ) {
       return;
     }
 
@@ -336,7 +357,6 @@ export class CoursePage implements OnDestroy {
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
-        this.editMode.set(true);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
@@ -467,13 +487,5 @@ export class CoursePage implements OnDestroy {
 
   scoreFor(studentId: number): StudentScore | null {
     return this.scoresById().get(studentId) ?? null;
-  }
-
-  toggleMode(edit: boolean): void {
-    this.editMode.set(edit);
-    if (!edit) {
-      // Beim Zurückwechseln kann inzwischen eine neue Stunde begonnen haben.
-      this.refreshScores();
-    }
   }
 }

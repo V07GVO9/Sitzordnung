@@ -56,7 +56,9 @@
     <div class="row">
       <h2>Meine Kurse</h2>
       <span class="spacer"></span>
-      <a class="btn small" routerLink="/verwaltung">Kurse verwalten</a>
+      @if (mode.isEdit()) {
+        <a class="btn small" routerLink="/verwaltung">Kurse verwalten</a>
+      }
     </div>
 
     @if (loading()) {
@@ -68,13 +70,21 @@
           Legen Sie zuerst Klassen, Fächer und Schüler an – danach können Sie Sitzordnungen
           erstellen.
         </p>
-        <a class="btn primary" routerLink="/verwaltung">Jetzt einrichten</a>
+        @if (mode.isEdit()) {
+          <a class="btn primary" routerLink="/verwaltung">Jetzt einrichten</a>
+        } @else {
+          <button class="btn primary" type="button" (click)="mode.requestEdit()">
+            Bearbeitungsmodus starten
+          </button>
+        }
       </div>
     } @else {
       <div class="course-grid">
         @for (course of courses(); track course.id) {
           <a class="course" [routerLink]="['/kurs', course.id]">
-            <span class="subject-mark">{{ course.subjectShortName || course.subjectName.slice(0, 2) }}</span>
+            <span class="subject-mark">{{
+              course.subjectShortName || course.subjectName.slice(0, 2)
+            }}</span>
             <span class="course-text">
               <strong>{{ course.subjectName }}</strong>
               <span class="muted small">{{ course.schoolClassName }}</span>

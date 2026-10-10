@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
+import { ModeService } from './core/mode.service';
 import { CurrentLesson } from './core/models';
 import { FilePickerCancelled } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
@@ -19,77 +20,99 @@ import { VaultGate } from './vault/vault-gate';
       <app-vault-gate />
       <app-toast-host />
     } @else {
-    <header class="topbar">
-      <a class="brand" routerLink="/">
-        <span class="brand-mark">SO</span>
-        <span>
-          <strong>Sitzordnung</strong>
-          <span class="brand-sub">Mitarbeitsnoten im Unterricht</span>
-        </span>
-      </a>
-
-      <nav>
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Unterricht
+      <header class="topbar" [class.edit]="isEdit()">
+        <a class="brand" routerLink="/">
+          <span class="brand-mark">SO</span>
+          <span>
+            <strong>Sitzordnung</strong>
+            <span class="brand-sub">Mitarbeitsnoten im Unterricht</span>
+          </span>
         </a>
-        <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
-        <a routerLink="/stundenplan" routerLinkActive="active">Stundenplan</a>
-        <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
+
+        <nav>
+          @if (isEdit()) {
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              Stundenplan
+            </a>
+            <a routerLink="/verwaltung" routerLinkActive="active">Klassen &amp; Schüler</a>
+            <a routerLink="/unterricht" routerLinkActive="active">Sitzpläne</a>
+            <a routerLink="/auswertung" routerLinkActive="active">Einstellungen</a>
+          } @else {
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              Unterricht
+            </a>
+            <a routerLink="/unterricht" routerLinkActive="active">Kurse</a>
+            <a routerLink="/auswertung" routerLinkActive="active">Auswertung</a>
+          }
+        </nav>
+
+        <!-- Der Moduswechsel: in den Unterricht sofort, ins Bearbeiten nur nach Rückfrage. -->
+        <div class="modus" role="group" aria-label="Modus">
+          <button type="button" [class.active]="!isEdit()" (click)="finishEdit()">
+            Unterricht
+          </button>
+          <button type="button" class="bearbeiten" [class.active]="isEdit()" (click)="startEdit()">
+            Bearbeiten
+          </button>
+        </div>
 
         <!--
-          Das Abschließen bleibt erreichbar: auf einem Rechner, an dem noch
-          jemand anderes sitzt, ist es der Griff, mit dem die Schülerdaten
-          wieder unter Verschluss kommen.
-        -->
-        <button class="nav-schliessen" type="button" (click)="closeVault()">Abschließen</button>
-      </nav>
-
-      <!--
         Gespeichert wird von allein. Angezeigt wird nur, was der Benutzer wissen
         muss: dass etwas schiefging, oder dass dieser Browser die Datei nicht
         selbst beschreiben kann und sie von Hand gesichert werden will.
       -->
-      @if (saveError(); as fehler) {
-        <button class="vault-hinweis fehler" type="button" [title]="fehler" (click)="save()">
-          Nicht gespeichert - erneut versuchen
-        </button>
-      } @else if (brauchtHandarbeit()) {
-        <button
-          class="vault-hinweis"
-          type="button"
-          [disabled]="isSaving()"
-          [class.dirty]="hasUnsavedChanges()"
-          title="Dieser Browser kann die Datei nicht selbst beschreiben. Hier sicherst du sie."
-          (click)="save()"
-        >
-          @if (isSaving()) {
-            sichert …
-          } @else if (hasUnsavedChanges()) {
-            Datei sichern
-          } @else {
-            Datei gesichert
+        @if (saveError(); as fehler) {
+          <button class="vault-hinweis fehler" type="button" [title]="fehler" (click)="save()">
+            Nicht gespeichert - erneut versuchen
+          </button>
+        } @else if (brauchtHandarbeit()) {
+          <button
+            class="vault-hinweis"
+            type="button"
+            [disabled]="isSaving()"
+            [class.dirty]="hasUnsavedChanges()"
+            title="Dieser Browser kann die Datei nicht selbst beschreiben. Hier sicherst du sie."
+            (click)="save()"
+          >
+            @if (isSaving()) {
+              sichert …
+            } @else if (hasUnsavedChanges()) {
+              Datei sichern
+            } @else {
+              Datei gesichert
+            }
+          </button>
+        }
+
+        <div class="now" [class.live]="lesson()?.hasLesson">
+          @if (lesson(); as l) {
+            @if (l.hasLesson) {
+              <span class="dot"></span>
+              {{ l.subjectName }} · {{ l.schoolClassName }}
+              <span class="muted small">bis {{ l.endTime }}</span>
+            } @else {
+              <span class="muted small">Gerade kein Unterricht</span>
+            }
           }
-        </button>
+        </div>
+      </header>
+
+      @if (isEdit()) {
+        <div class="modus-leiste" role="status">
+          <strong>Bearbeitungsmodus</strong>
+          <span
+            >Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen ändern. Bewerten ist
+            aus.</span
+          >
+          <button type="button" (click)="finishEdit()">Fertig – zurück zum Unterricht</button>
+        </div>
       }
 
-      <div class="now" [class.live]="lesson()?.hasLesson">
-        @if (lesson(); as l) {
-          @if (l.hasLesson) {
-            <span class="dot"></span>
-            {{ l.subjectName }} · {{ l.schoolClassName }}
-            <span class="muted small">bis {{ l.endTime }}</span>
-          } @else {
-            <span class="muted small">Gerade kein Unterricht</span>
-          }
-        }
-      </div>
-    </header>
+      <main>
+        <router-outlet />
+      </main>
 
-    <main>
-      <router-outlet />
-    </main>
-
-    <app-toast-host />
+      <app-toast-host />
     }
   `,
   styles: [
@@ -128,18 +151,58 @@ import { VaultGate } from './vault/vault-gate';
         color: #c0392b;
       }
 
-      .nav-schliessen {
-        border: 0;
-        background: none;
-        color: var(--muted);
-        cursor: pointer;
-        font: inherit;
-        padding: 0.25rem 0.5rem;
+      .topbar.edit {
+        border-bottom: 3px solid #d97706;
       }
 
-      .nav-schliessen:hover {
-        color: var(--text);
-        text-decoration: underline;
+      .modus {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--surface-muted);
+      }
+
+      .modus button {
+        border: 0;
+        background: transparent;
+        padding: 0.4rem 1rem;
+        font: inherit;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+
+      .modus button.active {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .modus button.bearbeiten.active {
+        background: #d97706;
+      }
+
+      .modus-leiste {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.6rem 1.5rem;
+        background: #fef3c7;
+        color: #78350f;
+        border-bottom: 1px solid #f59e0b;
+      }
+
+      .modus-leiste button {
+        margin-left: auto;
+        border: 0;
+        border-radius: 0.45rem;
+        padding: 0.45rem 0.9rem;
+        background: #d97706;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
       }
 
       .brand {
@@ -232,6 +295,7 @@ export class App implements OnDestroy {
   private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
   private readonly toasts = inject(ToastService);
+  private readonly modeService = inject(ModeService);
 
   readonly lesson = signal<CurrentLesson | null>(null);
 
@@ -241,6 +305,7 @@ export class App implements OnDestroy {
   readonly isSaving = this.vault.isSaving;
   readonly saveError = this.vault.saveError;
   readonly brauchtHandarbeit = this.vault.brauchtHandarbeit;
+  readonly isEdit = this.modeService.isEdit;
 
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
   private readonly timer = setInterval(() => this.refresh(), 60_000);
@@ -274,21 +339,17 @@ export class App implements OnDestroy {
     }
   }
 
-  /** Schließt den Bestand - danach fragt die App wieder nach der Datei. */
-  async closeVault(): Promise<void> {
-    // Wo von allein gespeichert wird, ist beim Abschließen normalerweise alles
-    // in der Datei. Nur wenn doch etwas aussteht, wird nachgefragt.
-    if (this.hasUnsavedChanges()) {
-      const confirmed = confirm(
-        'Es gibt noch ungesicherte Änderungen. Wirklich abschließen? Sie gehen dabei verloren.',
-      );
-      if (!confirmed) {
-        return;
-      }
-    }
+  startEdit(): void {
+    this.modeService.requestEdit();
+  }
 
-    await this.vault.closeVault();
-    await this.router.navigateByUrl('/');
+  /** Zurück in den Unterricht; Einrichtungsseiten gibt es dort nicht. */
+  finishEdit(): void {
+    this.modeService.finishEdit();
+    const path = this.router.url.split('?')[0];
+    if (path.startsWith('/verwaltung') || path.startsWith('/stundenplan')) {
+      void this.router.navigateByUrl('/');
+    }
   }
 
   private refresh(): void {

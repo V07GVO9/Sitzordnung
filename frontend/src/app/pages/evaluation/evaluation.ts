@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   AppSettings,
   Course,
@@ -23,6 +24,7 @@ import { ToastService } from '../../core/toast.service';
 })
 export class EvaluationPage {
   private readonly api = inject(ApiService);
+  readonly mode = inject(ModeService);
   private readonly toasts = inject(ToastService);
   private readonly vault = inject(VaultService);
 

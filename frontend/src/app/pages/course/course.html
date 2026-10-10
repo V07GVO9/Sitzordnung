@@ -32,14 +32,9 @@
         </div>
       }
 
-      <div class="mode-switch" role="group" aria-label="Modus wählen">
-        <button type="button" [class.active]="!editMode()" (click)="toggleMode(false)">
-          Bewerten
-        </button>
-        <button type="button" [class.active]="editMode()" (click)="toggleMode(true)">
-          Sitzplan bearbeiten
-        </button>
-      </div>
+      @if (editMode()) {
+        <span class="badge">Sitzplan bearbeiten</span>
+      }
     </section>
 
     <!-- Auf welche Unterrichtsstunde zahlt eine Bewertung gerade ein? -->
@@ -72,8 +67,8 @@
               @if (slot.isCurrent) {
                 Je Stunde eine Bewertung – eine weitere ersetzt sie.
               } @else {
-                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und
-                werden sofort gespeichert.
+                Punktestand wie nach dieser Stunde. Bewertungen zählen auf sie und werden sofort
+                gespeichert.
               }
             </span>
           </div>
@@ -118,7 +113,11 @@
     @if (plans().length === 0) {
       <div class="empty">
         <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
-        <button class="btn primary" type="button" (click)="addPlan()">Sitzordnung anlegen</button>
+        @if (editMode()) {
+          <button class="btn primary" type="button" (click)="addPlan()">Sitzordnung anlegen</button>
+        } @else {
+          <p class="muted small">Sitzordnungen werden im Bearbeitungsmodus angelegt.</p>
+        }
       </div>
     } @else {
       <!-- Werkzeugleiste nur im Einstellungsmodus -->
@@ -342,7 +341,9 @@
           @if (students().length === 0) {
             <div class="empty small">
               <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-              <a class="btn small" routerLink="/verwaltung">Schüler anlegen</a>
+              @if (editMode()) {
+                <a class="btn small" routerLink="/verwaltung">Schüler anlegen</a>
+              }
             </div>
           }
         </aside>

@@ -4,11 +4,7 @@
     <div class="filter">
       <label>
         Kurs
-        <select
-          [ngModel]="selectedCourseId()"
-          (ngModelChange)="selectCourse($event)"
-          name="course"
-        >
+        <select [ngModel]="selectedCourseId()" (ngModelChange)="selectCourse($event)" name="course">
           @for (course of courses(); track course.id) {
             <option [ngValue]="course.id">
               {{ course.subjectName }} · {{ course.schoolClassName }}
@@ -42,8 +38,8 @@
       <button class="btn" type="button" (click)="exportCsv('summary', true)">Alle Kurse</button>
     </div>
     <p class="muted small">
-      Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet. Die CSV-Dateien öffnen sich direkt
-      in Excel oder LibreOffice.
+      Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet. Die CSV-Dateien öffnen sich direkt in
+      Excel oder LibreOffice.
     </p>
   </section>
 
@@ -95,182 +91,184 @@
     </section>
   }
 
-  <div class="cols">
-    <section class="card">
-      <h2>Notenschlüssel</h2>
-      <p class="muted small">
-        Ab wie vielen Mitarbeitspunkten gilt welche Note? Jeder Schüler startet bei 0 Punkten.
-      </p>
+  @if (mode.isEdit()) {
+    <div class="cols">
+      <section class="card">
+        <h2>Notenschlüssel</h2>
+        <p class="muted small">
+          Ab wie vielen Mitarbeitspunkten gilt welche Note? Jeder Schüler startet bei 0 Punkten.
+        </p>
 
-      <div class="scale-target">
-        <button
-          type="button"
-          class="chip"
-          [class.active]="!scaleIsCourseSpecific()"
-          (click)="switchScaleTarget(false)"
-        >
-          Für alle Kurse
-        </button>
-        <button
-          type="button"
-          class="chip"
-          [class.active]="scaleIsCourseSpecific()"
-          [disabled]="!selectedCourse()"
-          (click)="switchScaleTarget(true)"
-        >
-          Nur {{ selectedCourse()?.subjectName ?? 'dieser Kurs' }}
-        </button>
-      </div>
-
-      @if (scaleIsCourseSpecific() && loadedScale()?.isGlobalDefault) {
-        <div class="banner warn small">
-          Dieser Kurs hat noch keinen eigenen Schlüssel. Beim Speichern wird der angezeigte
-          Schlüssel als eigener für diesen Kurs übernommen.
+        <div class="scale-target">
+          <button
+            type="button"
+            class="chip"
+            [class.active]="!scaleIsCourseSpecific()"
+            (click)="switchScaleTarget(false)"
+          >
+            Für alle Kurse
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.active]="scaleIsCourseSpecific()"
+            [disabled]="!selectedCourse()"
+            (click)="switchScaleTarget(true)"
+          >
+            Nur {{ selectedCourse()?.subjectName ?? 'dieser Kurs' }}
+          </button>
         </div>
-      }
 
-      <label class="full">
-        Bezeichnung
-        <input
-          type="text"
-          [ngModel]="scaleName()"
-          (ngModelChange)="scaleName.set($event)"
-          name="scaleName"
-        />
-      </label>
+        @if (scaleIsCourseSpecific() && loadedScale()?.isGlobalDefault) {
+          <div class="banner warn small">
+            Dieser Kurs hat noch keinen eigenen Schlüssel. Beim Speichern wird der angezeigte
+            Schlüssel als eigener für diesen Kurs übernommen.
+          </div>
+        }
 
-      <div class="scale-list">
-        @for (entry of sortedEntries(); track $index) {
-          <div class="scale-row">
-            <span class="muted small">ab</span>
+        <label class="full">
+          Bezeichnung
+          <input
+            type="text"
+            [ngModel]="scaleName()"
+            (ngModelChange)="scaleName.set($event)"
+            name="scaleName"
+          />
+        </label>
+
+        <div class="scale-list">
+          @for (entry of sortedEntries(); track $index) {
+            <div class="scale-row">
+              <span class="muted small">ab</span>
+              <input
+                type="number"
+                [value]="entry.minPoints"
+                (change)="updateScaleEntry($index, { minPoints: +$any($event.target).value })"
+              />
+              <span class="muted small">Punkten →</span>
+              <input
+                type="text"
+                class="grade"
+                placeholder="Note"
+                [value]="entry.grade"
+                (change)="updateScaleEntry($index, { grade: $any($event.target).value })"
+              />
+              <button
+                class="remove"
+                type="button"
+                (click)="removeScaleEntry($index)"
+                title="Stufe entfernen"
+              >
+                ×
+              </button>
+            </div>
+          } @empty {
+            <p class="muted small">Noch keine Stufen festgelegt.</p>
+          }
+        </div>
+
+        <div class="row">
+          <button class="btn" type="button" (click)="addScaleEntry()">Stufe hinzufügen</button>
+          <button class="btn primary" type="button" (click)="saveScale()">Speichern</button>
+          @if (scaleIsCourseSpecific() && loadedScale() && !loadedScale()!.isGlobalDefault) {
+            <button class="btn danger" type="button" (click)="deleteCourseScale()">
+              Eigenen Schlüssel entfernen
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Einstellungen</h2>
+        @if (settings(); as s) {
+          <label class="full">
+            Kulanzzeit vor und nach der Stunde (Minuten)
             <input
               type="number"
-              [value]="entry.minPoints"
-              (change)="updateScaleEntry($index, { minPoints: +$any($event.target).value })"
+              min="0"
+              max="120"
+              [value]="s.toleranceMinutes"
+              (change)="saveSettings({ toleranceMinutes: +$any($event.target).value })"
             />
-            <span class="muted small">Punkten →</span>
+          </label>
+          <p class="muted small">
+            Innerhalb dieser Zeitspanne vor Beginn und nach Ende einer Stunde sind Bewertungen
+            weiterhin möglich.
+          </p>
+
+          <label class="inline">
             <input
-              type="text"
-              class="grade"
-              placeholder="Note"
-              [value]="entry.grade"
-              (change)="updateScaleEntry($index, { grade: $any($event.target).value })"
+              type="checkbox"
+              [checked]="s.allowRatingOutsideLesson"
+              (change)="saveSettings({ allowRatingOutsideLesson: $any($event.target).checked })"
             />
-            <button
-              class="remove"
-              type="button"
-              (click)="removeScaleEntry($index)"
-              title="Stufe entfernen"
-            >
-              ×
-            </button>
-          </div>
-        } @empty {
-          <p class="muted small">Noch keine Stufen festgelegt.</p>
-        }
-      </div>
+            Notfall-Freigabe: Bewerten auch außerhalb des Stundenplans
+          </label>
+          <p class="muted small">
+            Normalerweise sperrt die App Bewertungen außerhalb der eingetragenen Unterrichtszeiten.
+            Diese Freigabe hebt die Sperre auf – etwa, wenn der Stundenplan kurzfristig abweicht.
+          </p>
 
-      <div class="row">
-        <button class="btn" type="button" (click)="addScaleEntry()">Stufe hinzufügen</button>
-        <button class="btn primary" type="button" (click)="saveScale()">Speichern</button>
-        @if (scaleIsCourseSpecific() && loadedScale() && !loadedScale()!.isGlobalDefault) {
-          <button class="btn danger" type="button" (click)="deleteCourseScale()">
-            Eigenen Schlüssel entfernen
-          </button>
-        }
-      </div>
-    </section>
+          @if (s.allowRatingOutsideLesson) {
+            <div class="banner warn">
+              Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
+            </div>
+          }
 
-    <section class="card">
-      <h2>Einstellungen</h2>
-      @if (settings(); as s) {
+          <p class="muted small">
+            Die Sperre ist eine Hilfe für den Unterrichtsalltag, keine Zugriffskontrolle: sie läuft
+            im Browser und lässt sich dort umgehen.
+          </p>
+        }
+      </section>
+
+      <section class="card">
+        <h2>Datenbestand</h2>
+        <p class="muted small">
+          Alle Daten liegen verschlüsselt in der Datei
+          <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
+        </p>
+
+        <div class="row">
+          <button class="btn" type="button" (click)="saveAs()">Speichern unter …</button>
+        </div>
+
+        <h3>Passwort ändern</h3>
         <label class="full">
-          Kulanzzeit vor und nach der Stunde (Minuten)
+          Bisheriges Passwort
           <input
-            type="number"
-            min="0"
-            max="120"
-            [value]="s.toleranceMinutes"
-            (change)="saveSettings({ toleranceMinutes: +$any($event.target).value })"
+            type="password"
+            autocomplete="current-password"
+            [ngModel]="currentPassword()"
+            (ngModelChange)="currentPassword.set($event)"
+            name="currentPassword"
           />
         </label>
-        <p class="muted small">
-          Innerhalb dieser Zeitspanne vor Beginn und nach Ende einer Stunde sind Bewertungen
-          weiterhin möglich.
-        </p>
-
-        <label class="inline">
+        <label class="full">
+          Neues Passwort
           <input
-            type="checkbox"
-            [checked]="s.allowRatingOutsideLesson"
-            (change)="saveSettings({ allowRatingOutsideLesson: $any($event.target).checked })"
+            type="password"
+            autocomplete="new-password"
+            [ngModel]="newPassword()"
+            (ngModelChange)="newPassword.set($event)"
+            name="newPassword"
           />
-          Notfall-Freigabe: Bewerten auch außerhalb des Stundenplans
         </label>
+        <div class="row">
+          <button
+            class="btn"
+            type="button"
+            [disabled]="newPassword().length < 8"
+            (click)="changePassword()"
+          >
+            Passwort ändern und speichern
+          </button>
+        </div>
         <p class="muted small">
-          Normalerweise sperrt die App Bewertungen außerhalb der eingetragenen Unterrichtszeiten.
-          Diese Freigabe hebt die Sperre auf – etwa, wenn der Stundenplan kurzfristig abweicht.
+          Das neue Passwort gilt ab dem nächsten Speichern. Ältere Sicherungskopien behalten ihr
+          altes Passwort.
         </p>
-
-        @if (s.allowRatingOutsideLesson) {
-          <div class="banner warn">
-            Die Sperre ist derzeit aufgehoben. Bewertungen sind jederzeit möglich.
-          </div>
-        }
-
-        <p class="muted small">
-          Die Sperre ist eine Hilfe für den Unterrichtsalltag, keine Zugriffskontrolle: sie
-          läuft im Browser und lässt sich dort umgehen.
-        </p>
-      }
-    </section>
-
-    <section class="card">
-      <h2>Datenbestand</h2>
-      <p class="muted small">
-        Alle Daten liegen verschlüsselt in der Datei
-        <strong>{{ fileName() ?? 'ohne Namen' }}</strong> auf diesem Rechner.
-      </p>
-
-      <div class="row">
-        <button class="btn" type="button" (click)="saveAs()">Speichern unter …</button>
-      </div>
-
-      <h3>Passwort ändern</h3>
-      <label class="full">
-        Bisheriges Passwort
-        <input
-          type="password"
-          autocomplete="current-password"
-          [ngModel]="currentPassword()"
-          (ngModelChange)="currentPassword.set($event)"
-          name="currentPassword"
-        />
-      </label>
-      <label class="full">
-        Neues Passwort
-        <input
-          type="password"
-          autocomplete="new-password"
-          [ngModel]="newPassword()"
-          (ngModelChange)="newPassword.set($event)"
-          name="newPassword"
-        />
-      </label>
-      <div class="row">
-        <button
-          class="btn"
-          type="button"
-          [disabled]="newPassword().length < 8"
-          (click)="changePassword()"
-        >
-          Passwort ändern und speichern
-        </button>
-      </div>
-      <p class="muted small">
-        Das neue Passwort gilt ab dem nächsten Speichern. Ältere Sicherungskopien behalten ihr
-        altes Passwort.
-      </p>
-    </section>
-  </div>
+      </section>
+    </div>
+  }
 </div>

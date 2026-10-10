@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 
@@ -15,6 +16,7 @@ import { ToastService } from '../../core/toast.service';
 export class DashboardPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  readonly mode = inject(ModeService);
 
   readonly loading = signal(true);
   readonly courses = signal<Course[]>([]);

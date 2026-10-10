@@ -3,81 +3,101 @@
     <div class="row">
       <h1>Stundenplan</h1>
       <span class="spacer"></span>
-      <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
+      @if (mode.isEdit()) {
+        <a class="btn primary" routerLink="/stundenplan/import">Aus WebUntis importieren</a>
+      }
     </div>
   </section>
 
   @if (courses().length === 0) {
     <div class="empty">
       <p>Für den Stundenplan werden zuerst Kurse benötigt.</p>
-      <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
+      @if (mode.isEdit()) {
+        <a class="btn primary" routerLink="/verwaltung">Klassen und Fächer anlegen</a>
+      } @else {
+        <button class="btn primary" type="button" (click)="mode.requestEdit()">
+          Bearbeitungsmodus starten
+        </button>
+      }
     </div>
   } @else {
-    <section class="card">
-      <h2>Stunde eintragen</h2>
-      <form class="form-row" (ngSubmit)="add()">
-        <label class="weit">
-          Kurs
-          <select [ngModel]="formCourseId()" (ngModelChange)="formCourseId.set($event)" name="course">
-            @for (course of courses(); track course.id) {
-              <option [ngValue]="course.id">
-                {{ course.subjectName }} · {{ course.schoolClassName }}
-              </option>
-            }
-          </select>
-        </label>
+    @if (mode.isEdit()) {
+      <section class="card">
+        <h2>Stunde eintragen</h2>
+        <form class="form-row" (ngSubmit)="add()">
+          <label class="weit">
+            Kurs
+            <select
+              [ngModel]="formCourseId()"
+              (ngModelChange)="formCourseId.set($event)"
+              name="course"
+            >
+              @for (course of courses(); track course.id) {
+                <option [ngValue]="course.id">
+                  {{ course.subjectName }} · {{ course.schoolClassName }}
+                </option>
+              }
+            </select>
+          </label>
 
-        <label>
-          Tag
-          <select [ngModel]="formDay()" (ngModelChange)="formDay.set($event)" name="day">
-            @for (day of days; track day) {
-              <option [ngValue]="day">{{ weekdayNames[day] }}</option>
-            }
-          </select>
-        </label>
+          <label>
+            Tag
+            <select [ngModel]="formDay()" (ngModelChange)="formDay.set($event)" name="day">
+              @for (day of days; track day) {
+                <option [ngValue]="day">{{ weekdayNames[day] }}</option>
+              }
+            </select>
+          </label>
 
-        <label>
-          Von
-          <input
-            type="time"
-            [ngModel]="formStart()"
-            (ngModelChange)="onStartChange($event)"
-            name="start"
-            required
-          />
-        </label>
+          <label>
+            Von
+            <input
+              type="time"
+              [ngModel]="formStart()"
+              (ngModelChange)="onStartChange($event)"
+              name="start"
+              required
+            />
+          </label>
 
-        <label>
-          Bis
-          <input
-            type="time"
-            [ngModel]="formEnd()"
-            (ngModelChange)="formEnd.set($event)"
-            name="end"
-            required
-          />
-        </label>
+          <label>
+            Bis
+            <input
+              type="time"
+              [ngModel]="formEnd()"
+              (ngModelChange)="formEnd.set($event)"
+              name="end"
+              required
+            />
+          </label>
 
-        <label>
-          Raum
-          <input
-            type="text"
-            placeholder="optional"
-            [ngModel]="formRoom()"
-            (ngModelChange)="formRoom.set($event)"
-            name="room"
-          />
-        </label>
+          <label>
+            Raum
+            <input
+              type="text"
+              placeholder="optional"
+              [ngModel]="formRoom()"
+              (ngModelChange)="formRoom.set($event)"
+              name="room"
+            />
+          </label>
 
-        <button class="btn primary weit" type="submit">Eintragen</button>
-      </form>
-    </section>
+          <button class="btn primary weit" type="submit">Eintragen</button>
+        </form>
+      </section>
+    }
 
     <section class="card">
       @if (zeitschienen().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
-          <p class="muted">Trage die Stunden oben ein oder importiere sie aus WebUntis.</p>
+          <p class="muted">
+            @if (mode.isEdit()) {
+              Trage die Stunden oben ein oder importiere sie aus WebUntis.
+            } @else {
+              Im Bearbeitungsmodus lassen sich Stunden eintragen oder aus WebUntis importieren.
+            }
+          </p>
         </div>
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
 // entschluesselte Datei offen ist, zeigt AppComponent das Schloss statt der
@@ -27,11 +28,13 @@ export const routes: Routes = [
   },
   {
     path: 'verwaltung',
+    canActivate: [editModeGuard],
     title: 'Klassen & Schüler',
     loadComponent: () => import('./pages/data/data').then((m) => m.DataPage),
   },
   {
     path: 'stundenplan/import',
+    canActivate: [editModeGuard],
     title: 'Stundenplan importieren',
     loadComponent: () =>
       import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
