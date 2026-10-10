@@ -251,8 +251,11 @@
   background: transparent;
   color: inherit;
 
+  /* Deaktivierte Knöpfe schlucken Mausereignisse - im Bearbeitungsmodus
+     muss der Griff aber bei der Kachel ankommen, sonst lässt sie sich nicht ziehen. */
   &:disabled {
     cursor: inherit;
+    pointer-events: none;
   }
 }
 
@@ -565,6 +568,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 550;
+
+  /* Wie bei der Kachel: im Bearbeitungsmodus zieht man auch am Namen. */
+  &:disabled {
+    pointer-events: none;
+  }
 }
 
 .mini-actions {
