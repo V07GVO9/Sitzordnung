@@ -118,8 +118,10 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    // Bewusst ohne "accept": Android und manche Systeme erkennen die Datei
-    // nicht als JSON und würden sie sonst ausgrauen.
+    // Alle Dateien zulassen: Android erkennt die Datei nicht als JSON. Ganz
+    // ohne "accept" schickt die Android-WebView einen leeren Dateityp - dann
+    // ist im Dialog alles ausgegraut.
+    input.accept = '*/*';
 
     input.onchange = async () => {
       const file = input.files?.[0];
