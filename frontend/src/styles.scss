@@ -1103,3 +1103,76 @@ button.list-row:hover {
     transform: rotate(360deg);
   }
 }
+
+// --- Modus: Unterricht | Bearbeiten ---
+
+.titlebar.editing {
+  border-bottom: 2px solid var(--warning);
+}
+
+.mode-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &.on {
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+
+    &.edit.on {
+      background: var(--warning);
+      color: #fff;
+    }
+  }
+}
+
+// Auf dem Handy reichen die Symbole.
+@media (max-width: 30rem) {
+  .mode-switch .mode-label {
+    display: none;
+  }
+}
+
+.mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem var(--pad-seite);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  border-bottom: 1px solid var(--warning-border);
+  font-size: 0.9rem;
+
+  span {
+    flex: 1;
+  }
+
+  button {
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    background: var(--warning);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

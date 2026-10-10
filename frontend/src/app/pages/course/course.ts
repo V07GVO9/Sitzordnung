@@ -10,14 +10,17 @@ import {
   Component,
   OnDestroy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   Course,
   CurrentLesson,
@@ -121,8 +124,9 @@ export class CoursePage implements OnDestroy {
   /** Alle Bewertungen dieses Kurses - nur geladen, solange das Blatt offen ist. */
   readonly courseRatings = signal<Rating[]>([]);
 
-  /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
-  readonly editMode = signal(false);
+  private readonly mode = inject(ModeService);
+  /** Folgt dem App-Modus: Unterricht = bewerten, Bearbeiten = Sitzordnung ändern. */
+  readonly editMode = this.mode.isEdit;
 
   /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
   private readonly placement = signal<Map<string, number>>(new Map());
@@ -246,6 +250,22 @@ export class CoursePage implements OnDestroy {
   private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
+    // Im Bearbeitungsmodus zeigt der Kurs den Sitzplan; zurück im Unterricht
+    // kann inzwischen eine neue Stunde begonnen haben.
+    let wasEdit = this.editMode();
+    effect(() => {
+      const edit = this.editMode();
+      untracked(() => {
+        if (edit && this.view() !== 'sitzplan') {
+          this.view.set('sitzplan');
+        }
+        if (wasEdit && !edit && this.courseId() > 0) {
+          this.refreshScores();
+        }
+      });
+      wasEdit = edit;
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('courseId'));
       if (Number.isFinite(id) && id > 0) {
@@ -508,7 +528,6 @@ export class CoursePage implements OnDestroy {
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
-        this.editMode.set(true);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
@@ -559,9 +578,6 @@ export class CoursePage implements OnDestroy {
   setView(view: ParticipationView): void {
     this.view.set(view);
     writeView(view);
-    if (view === 'liste') {
-      this.editMode.set(false);
-    }
   }
 
   // --- Bewerten ---
@@ -571,6 +587,9 @@ export class CoursePage implements OnDestroy {
   }
 
   rate(student: Student, value: RatingValue): void {
+    if (this.editMode()) {
+      return;
+    }
     const courseId = this.courseId();
 
     this.api.rate(courseId, student.id, value).subscribe({
@@ -719,15 +738,5 @@ export class CoursePage implements OnDestroy {
 
   scoreFor(studentId: number): StudentScore | null {
     return this.scoresById().get(studentId) ?? null;
-  }
-
-  toggleMode(edit: boolean): void {
-    this.editMode.set(edit);
-    if (edit) {
-      this.setView('sitzplan');
-      this.editMode.set(true);
-    } else {
-      this.refreshScores();
-    }
   }
 }

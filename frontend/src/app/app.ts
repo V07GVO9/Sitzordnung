@@ -11,6 +11,7 @@ import {
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
+import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson, SchoolClass, TimetableEntry, WEEKDAY_NAMES } from './core/models';
 import { FilePickerCancelled, SaveConflictError } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
@@ -78,6 +79,7 @@ export class App implements OnDestroy {
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
   private readonly confirm = inject(ConfirmService);
+  private readonly mode = inject(ModeService);
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
@@ -85,6 +87,7 @@ export class App implements OnDestroy {
   readonly fileName = this.vault.fileName;
   readonly isInOneDrive = this.vault.isInOneDrive;
   readonly isSaving = this.vault.isSaving;
+  readonly isEdit = this.mode.isEdit;
 
   readonly lesson = signal<CurrentLesson | null>(null);
   readonly classes = signal<SchoolClass[]>([]);
@@ -336,25 +339,14 @@ export class App implements OnDestroy {
     }
   }
 
-  /** Schließt den Bestand - danach fragt die App wieder nach der Datei. */
-  async closeVault(): Promise<void> {
+  startEdit(): void {
     this.menuOpen.set(false);
+    void this.mode.requestEdit();
+  }
 
-    if (this.hasUnsavedChanges()) {
-      const confirmed = await this.confirm.ask({
-        title: 'Ungespeicherte Änderungen verwerfen?',
-        message:
-          'Seit dem letzten Speichern wurde etwas geändert. Beim Schließen gehen diese Änderungen verloren.',
-        confirmLabel: 'Ohne Speichern schließen',
-        danger: true,
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    await this.vault.closeVault();
-    await this.router.navigateByUrl('/');
+  finishEdit(): void {
+    this.menuOpen.set(false);
+    this.mode.finishEdit();
   }
 
   /** Erster Kurs einer Klasse - oder der, der dort zuletzt offen war. */
