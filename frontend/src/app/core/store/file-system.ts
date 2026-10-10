@@ -96,7 +96,9 @@ export async function openFile(): Promise<{
 
   if (show) {
     try {
-      const [handle] = await show(PICKER_OPTIONS);
+      // Ohne Typfilter: Je nach System gilt die Datei als "Binärdatei" und
+      // wäre sonst ausgegraut. Ob es ein Datenbestand ist, prüft das Öffnen.
+      const [handle] = await show();
       const file = await handle.getFile();
       return { content: await file.text(), handle, name: handle.name };
     } catch (error) {
@@ -116,10 +118,10 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    // Android kennt die Dateiendung nicht und würde die Datei sonst ausgrauen.
-    if (!isNativeApp()) {
-      input.accept = VAULT_EXTENSION + ',application/json';
-    }
+    // Alle Dateien zulassen: Android erkennt die Datei nicht als JSON. Ganz
+    // ohne "accept" schickt die Android-WebView einen leeren Dateityp - dann
+    // ist im Dialog alles ausgegraut.
+    input.accept = '*/*';
 
     input.onchange = async () => {
       const file = input.files?.[0];
