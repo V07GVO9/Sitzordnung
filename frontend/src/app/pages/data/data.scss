@@ -1,50 +1,29 @@
-.cols {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
-  gap: 1rem;
-  align-items: start;
-}
-
-.cols .card + .card {
-  margin-top: 0;
+.card-head h2 {
+  margin: 0;
 }
 
 .add {
-  margin-top: 0.9rem;
-  padding-top: 0.9rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border);
+  gap: 0.5rem;
 
-  input {
-    flex: 1 1 8rem;
+  input,
+  select {
+    flex: 1 1 9rem;
     min-width: 0;
   }
 
   input.short {
-    flex: 0 0 6rem;
+    flex: 0 0 6.5rem;
   }
-}
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-weight: 500;
-
-  &.active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-dark);
+  /* Das Anlegen steht über der Liste - die wächst nach unten. */
+  &.top {
+    margin: 0.75rem 0 0;
+    padding: 0 0 1rem;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
   }
 }
 
@@ -56,28 +35,33 @@ td.grow {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .course-chip {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.35rem 0.45rem 0.85rem;
   background: var(--surface);
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--accent);
+  }
 
   a {
     display: flex;
     flex-direction: column;
-    line-height: 1.2;
+    line-height: 1.25;
     text-decoration: none;
     color: var(--text);
   }
 
   a:hover strong {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 }
 
@@ -85,11 +69,12 @@ td.grow {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.6rem;
-  margin: 0.75rem 0;
-  padding: 0.9rem;
+  gap: 0.65rem;
+  margin: 0.85rem 0 0;
+  padding: 1rem;
   border-radius: var(--radius);
   background: var(--surface-muted);
+  border: 1px solid var(--border);
 
   label {
     width: 100%;
@@ -97,7 +82,6 @@ td.grow {
 
   textarea {
     width: 100%;
-    font-family: inherit;
   }
 }
 
@@ -105,64 +89,34 @@ td.grow {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
   gap: 0.6rem;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
 }
 
 .student-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    'avatar fields'
-    'actions actions';
-  gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.65rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-}
+  transition: border-color 0.15s ease;
 
-.avatar {
-  grid-area: avatar;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  &:hover,
+  &:focus-within {
+    border-color: var(--border-strong);
   }
 }
 
-.fields {
-  grid-area: fields;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-
-  input {
-    width: 100%;
-  }
-}
-
-.student-actions {
-  grid-area: actions;
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.upload {
+/* Das Bild ist zugleich der Knopf zum Foto-Wählen. */
+.photo {
   position: relative;
-  overflow: hidden;
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
   cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--accent-text);
 
   input[type='file'] {
     position: absolute;
@@ -170,4 +124,74 @@ td.grow {
     opacity: 0;
     cursor: pointer;
   }
+
+  &:focus-within {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.photo-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 45%);
+  color: #fff;
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.photo:hover .photo-hint,
+.photo:focus-within .photo-hint {
+  opacity: 1;
+}
+
+/* Ohne Maus bleibt das Kamerasymbol klein sichtbar. */
+@media (hover: none) {
+  .photo-hint {
+    inset: auto 0 0 auto;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    background: var(--accent);
+    opacity: 1;
+  }
+}
+
+.fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+
+  input {
+    width: 100%;
+    min-height: 2.2rem;
+    padding: 0.3rem 0.55rem;
+    border-color: transparent;
+    background: transparent;
+    font-size: 0.95rem;
+  }
+
+  input:first-child {
+    font-weight: 600;
+  }
+
+  input:hover {
+    border-color: var(--border);
+  }
+
+  input:focus {
+    background: var(--surface);
+  }
+}
+
+.student-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
