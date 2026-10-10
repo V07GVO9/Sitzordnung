@@ -2,7 +2,13 @@
   <div class="page-head">
     <div>
       <h1>Auswertung</h1>
-      <p class="muted small">Punktestände, Notenschlüssel, Einstellungen und die Datendatei.</p>
+      <p class="muted small">
+        @if (isEdit()) {
+          Punktestände, Notenschlüssel, Einstellungen und die Datendatei.
+        } @else {
+          Punktestände und Export. Notenschlüssel und Einstellungen gibt es im Bearbeitungsmodus.
+        }
+      </p>
     </div>
   </div>
 
@@ -15,30 +21,32 @@
     >
       <app-icon name="chart-column" /> Punkte &amp; Export
     </button>
-    <button
-      type="button"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'noten'"
-      (click)="setTab('noten')"
-    >
-      <app-icon name="graduation-cap" /> Notenschlüssel
-    </button>
-    <button
-      type="button"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'einstellungen'"
-      (click)="setTab('einstellungen')"
-    >
-      <app-icon name="sliders-horizontal" /> Einstellungen
-    </button>
-    <button
-      type="button"
-      role="tab"
-      [attr.aria-selected]="activeTab() === 'datei'"
-      (click)="setTab('datei')"
-    >
-      <app-icon name="lock" /> Datei
-    </button>
+    @if (isEdit()) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'noten'"
+        (click)="setTab('noten')"
+      >
+        <app-icon name="graduation-cap" /> Notenschlüssel
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'einstellungen'"
+        (click)="setTab('einstellungen')"
+      >
+        <app-icon name="sliders-horizontal" /> Einstellungen
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === 'datei'"
+        (click)="setTab('datei')"
+      >
+        <app-icon name="lock" /> Datei
+      </button>
+    }
   </div>
 
   <!-- Kurswahl für Punktestand und kursbezogenen Notenschlüssel -->

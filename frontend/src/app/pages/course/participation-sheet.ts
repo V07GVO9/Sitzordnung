@@ -247,7 +247,7 @@ type Period = 'alles' | 'monat' | 'woche';
 
     .bar {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       overflow: hidden;
       border-radius: 0.4rem;
     }
@@ -267,7 +267,7 @@ type Period = 'alles' | 'monat' | 'woche';
 
     .quick {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 0.4rem;
 
       button {

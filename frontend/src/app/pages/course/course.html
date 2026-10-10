@@ -6,7 +6,7 @@
     <a class="btn" routerLink="/unterricht">Zurück zur Übersicht</a>
   </div>
 } @else {
-  <!-- Die vier Bewertungsknöpfe - auf dem Platz und in der Liste dieselben. -->
+  <!-- Die fünf Bewertungsknöpfe - auf dem Platz und in der Liste dieselben. -->
   <ng-template #rateButtons let-student let-score="score">
     @for (option of ratingOptions; track option.value) {
       <button
@@ -48,7 +48,11 @@
             }
           } @else {
             außerhalb des Stundenplans –
-            <a routerLink="/stundenplan">Stundenplan</a>
+            @if (editMode()) {
+              <a routerLink="/stundenplan">Stundenplan</a>
+            } @else {
+              Stundenplan
+            }
           }
         </span>
       </div>
@@ -58,24 +62,26 @@
           <app-icon name="graduation-cap" /> Noten
         </a>
 
-        <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
-          <button
-            type="button"
-            role="tab"
-            [attr.aria-selected]="view() === 'liste'"
-            (click)="setView('liste')"
-          >
-            <app-icon name="list" /> Liste
-          </button>
-          <button
-            type="button"
-            role="tab"
-            [attr.aria-selected]="view() === 'sitzplan'"
-            (click)="setView('sitzplan')"
-          >
-            <app-icon name="layout-grid" /> Sitzplan
-          </button>
-        </div>
+        @if (!editMode()) {
+          <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
+            <button
+              type="button"
+              role="tab"
+              [attr.aria-selected]="view() === 'liste'"
+              (click)="setView('liste')"
+            >
+              <app-icon name="list" /> Liste
+            </button>
+            <button
+              type="button"
+              role="tab"
+              [attr.aria-selected]="view() === 'sitzplan'"
+              (click)="setView('sitzplan')"
+            >
+              <app-icon name="layout-grid" /> Sitzplan
+            </button>
+          </div>
+        }
 
         @if (view() === 'sitzplan' && plans().length > 1) {
           <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
@@ -91,20 +97,6 @@
             }
           </div>
         }
-
-        @if (view() === 'sitzplan' && plans().length > 0) {
-          <button
-            class="round-btn edit-toggle"
-            type="button"
-            [class.on]="editMode()"
-            (click)="toggleMode(!editMode())"
-            [attr.aria-pressed]="editMode()"
-            [title]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
-            [attr.aria-label]="editMode() ? 'Bearbeiten beenden' : 'Sitzplan bearbeiten'"
-          >
-            <app-icon [name]="editMode() ? 'circle-check' : 'pencil'" />
-          </button>
-        }
       </div>
     </section>
 
@@ -119,11 +111,10 @@
         @if (saving()) {
           <span class="small">Wird übernommen …</span>
         }
-        <button class="btn small" type="button" (click)="toggleMode(false)">Fertig</button>
       </div>
     }
 
-    @if (view() === 'liste') {
+    @if (view() === 'liste' && !editMode()) {
       <app-participation-list
         [students]="students()"
         [scores]="scoresById()"
@@ -141,9 +132,11 @@
             <button class="btn" type="button" (click)="setView('liste')">
               <app-icon name="list" /> Zur Liste
             </button>
-            <button class="btn primary" type="button" (click)="addPlan()">
-              <app-icon name="plus" /> Sitzordnung anlegen
-            </button>
+            @if (editMode()) {
+              <button class="btn primary" type="button" (click)="addPlan()">
+                <app-icon name="plus" /> Sitzordnung anlegen
+              </button>
+            }
           </div>
         </div>
       } @else {

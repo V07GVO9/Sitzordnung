@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import { Course, CourseScoreboard, Student, fullName, initials } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -40,6 +41,8 @@ export class ClassStudentsPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
+  /** Stammdaten ändern geht nur im Bearbeitungsmodus. */
+  readonly isEdit = inject(ModeService).isEdit;
 
   readonly classId = input.required<string>();
   private readonly id = computed(() => Number(this.classId()));
@@ -184,6 +187,9 @@ export class ClassStudentsPage {
   /** Übernimmt geänderte Namen - beim Verlassen des Feldes oder Blättern. */
   saveName(showToast = true): void {
     const student = this.openStudent();
+    if (!this.isEdit()) {
+      return;
+    }
     const first = this.editFirst().trim();
     const last = this.editLast().trim();
     if (!student || !first || (first === student.firstName && last === student.lastName)) {

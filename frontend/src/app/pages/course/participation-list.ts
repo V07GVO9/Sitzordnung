@@ -15,10 +15,11 @@ export interface RateRequest {
   value: RatingValue;
 }
 
-/** Die vier Stufen der Skala - in den Farben der Klassenmappe. */
+/** Die fünf Stufen der Skala - in den Farben der Klassenmappe; 0 ist die Mitte. */
 export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string }[] = [
   { value: 2, symbol: '++', title: 'Sehr gute Mitarbeit (++)' },
   { value: 1, symbol: '+', title: 'Gute Mitarbeit (+)' },
+  { value: 0, symbol: '0', title: 'Durchschnittliche Mitarbeit (0)' },
   { value: -1, symbol: '−', title: 'Schwache Mitarbeit (−)' },
   { value: -2, symbol: '−−', title: 'Keine Mitarbeit / Störung (−−)' },
 ];
@@ -156,7 +157,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 
     .scale {
       display: grid;
-      grid-template-columns: repeat(4, 3rem);
+      grid-template-columns: repeat(5, 3rem);
       gap: 0.25rem;
       flex: none;
 
@@ -183,7 +184,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 
     @media (max-width: 34rem) {
       .scale {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         flex: 1 1 100%;
       }
     }

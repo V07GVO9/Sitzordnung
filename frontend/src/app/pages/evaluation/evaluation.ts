@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   AppSettings,
   Course,
@@ -37,9 +38,11 @@ export class EvaluationPage {
 
   /** Der Reiter steht in der Adresse (?tab=noten), damit Links direkt dorthin führen. */
   readonly tab = input<string>();
+  /** Notenschlüssel, Einstellungen und Datei gibt es nur im Bearbeitungsmodus. */
+  readonly isEdit = inject(ModeService).isEdit;
   readonly activeTab = computed<EvaluationTab>(() => {
     const tab = this.tab() as EvaluationTab;
-    return TABS.includes(tab) ? tab : 'punkte';
+    return TABS.includes(tab) && (tab === 'punkte' || this.isEdit()) ? tab : 'punkte';
   });
 
   readonly fileName = this.vault.fileName;

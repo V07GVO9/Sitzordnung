@@ -157,6 +157,16 @@
           <div class="row card-head">
             <h2>Schüler der Klasse {{ schoolClass.name }}</h2>
             <span class="spacer"></span>
+            @if (students().length > 0) {
+              <button
+                class="btn small"
+                type="button"
+                title="Bei allen Schülern dieser Klasse Vor- und Nachname tauschen"
+                (click)="swapNames()"
+              >
+                <app-icon name="refresh-cw" /> Vor-/Nachname tauschen
+              </button>
+            }
             <button class="btn small" type="button" (click)="showImport.set(!showImport())">
               <app-icon [name]="showImport() ? 'x' : 'list-plus'" />
               {{ showImport() ? 'Liste schließen' : 'Namensliste einfügen' }}
@@ -166,7 +176,7 @@
           @if (showImport()) {
             <div class="import">
               <label>
-                Ein Name je Zeile – „Nachname, Vorname" oder „Vorname Nachname"
+                Ein Name je Zeile – „Nachname, Vorname" (mit Komma) oder „Vorname Nachname"
                 <textarea
                   rows="6"
                   [ngModel]="importText()"
