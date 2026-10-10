@@ -283,6 +283,28 @@ export class DataPage {
     });
   }
 
+  /** Tauscht Vor- und Nachname aller Schüler der Klasse - z. B. nach einem Import „Nachname Vorname". */
+  swapNames(): void {
+    const list = this.students();
+    if (
+      list.length === 0 ||
+      !confirm(
+        `Bei allen ${list.length} Schülern dieser Klasse Vor- und Nachname tauschen?\n\n` +
+          `Beispiel: aus „${fullName(list[0])}" wird „${fullName({ firstName: list[0].lastName, lastName: list[0].firstName })}".`,
+      )
+    ) {
+      return;
+    }
+
+    forkJoin(list.map((s) => this.api.updateStudent(s.id, s.lastName, s.firstName))).subscribe({
+      next: () => {
+        this.reloadStudents();
+        this.toasts.success('Vor- und Nachnamen getauscht.');
+      },
+      error: (err) => this.toasts.error(err, 'Die Namen konnten nicht getauscht werden.'),
+    });
+  }
+
   deleteStudent(student: Student): void {
     if (!confirm(`${fullName(student)} wirklich löschen?`)) {
       return;
