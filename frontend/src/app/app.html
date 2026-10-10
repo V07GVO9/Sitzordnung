@@ -73,9 +73,11 @@
             }
           </nav>
 
-          <a class="side-link" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
-            <app-icon name="plus" /> Klasse anlegen
-          </a>
+          @if (isEdit()) {
+            <a class="side-link" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+              <app-icon name="plus" /> Klasse anlegen
+            </a>
+          }
         } @else {
           <div class="date-bar">
             <button type="button" aria-label="Vorheriger Tag" (click)="shiftDay(-1)">
@@ -112,32 +114,36 @@
             }
           </div>
 
-          <a class="side-link" routerLink="/stundenplan">
-            <app-icon name="calendar-days" /> Stundenplan bearbeiten
-          </a>
+          @if (isEdit()) {
+            <a class="side-link" routerLink="/stundenplan">
+              <app-icon name="calendar-days" /> Stundenplan bearbeiten
+            </a>
+          }
         }
       </div>
 
       <!-- Kurzbefehle unten, wie die Symbolleiste der Klassenmappe -->
       <div class="side-bottom">
-        <a
-          class="btn ghost icon"
-          routerLink="/stundenplan"
-          routerLinkActive="on"
-          aria-label="Stundenplan"
-          title="Stundenplan"
-        >
-          <app-icon name="calendar-days" />
-        </a>
-        <a
-          class="btn ghost icon"
-          routerLink="/verwaltung"
-          routerLinkActive="on"
-          aria-label="Klassen, Fächer und Schüler verwalten"
-          title="Klassen, Fächer & Schüler"
-        >
-          <app-icon name="users" />
-        </a>
+        @if (isEdit()) {
+          <a
+            class="btn ghost icon"
+            routerLink="/stundenplan"
+            routerLinkActive="on"
+            aria-label="Stundenplan"
+            title="Stundenplan"
+          >
+            <app-icon name="calendar-days" />
+          </a>
+          <a
+            class="btn ghost icon"
+            routerLink="/verwaltung"
+            routerLinkActive="on"
+            aria-label="Klassen, Fächer und Schüler verwalten"
+            title="Klassen, Fächer & Schüler"
+          >
+            <app-icon name="users" />
+          </a>
+        }
         <a
           class="btn ghost icon"
           routerLink="/auswertung"
@@ -172,7 +178,7 @@
     <div class="side-scrim" (click)="sidebarOpen.set(false)" aria-hidden="true"></div>
 
     <div class="main-col">
-      <header class="titlebar">
+      <header class="titlebar" [class.editing]="isEdit()">
         <div class="title-left">
           @if (!sidebarOpen()) {
             <button
@@ -190,6 +196,26 @@
         <h1 class="title">{{ title() || 'Sitzordnung' }}</h1>
 
         <div class="title-right">
+          <!-- Moduswechsel: in den Unterricht sofort, ins Bearbeiten nur nach Rückfrage. -->
+          <div class="mode-switch" role="group" aria-label="Modus">
+            <button
+              type="button"
+              [class.on]="!isEdit()"
+              [attr.aria-pressed]="!isEdit()"
+              (click)="finishEdit()"
+            >
+              <app-icon name="school" /> <span class="mode-label">Unterricht</span>
+            </button>
+            <button
+              type="button"
+              class="edit"
+              [class.on]="isEdit()"
+              [attr.aria-pressed]="isEdit()"
+              (click)="startEdit()"
+            >
+              <app-icon name="pencil" /> <span class="mode-label">Bearbeiten</span>
+            </button>
+          </div>
           @if (lesson()?.hasLesson) {
             <a
               class="live-pill"
@@ -204,6 +230,17 @@
           }
         </div>
       </header>
+
+      @if (isEdit()) {
+        <div class="mode-bar" role="status">
+          <app-icon name="pencil" />
+          <span>
+            <strong>Bearbeitungsmodus</strong> – Klassen, Schüler, Stundenplan, Sitzpläne und
+            Einstellungen ändern. Bewerten ist aus.
+          </span>
+          <button type="button" (click)="finishEdit()">Fertig</button>
+        </div>
+      }
 
       <main [class.with-tabs]="activeClassId() !== null">
         <router-outlet />
@@ -244,25 +281,40 @@
           </button>
         </div>
 
-        <p class="menu-label">Klassen & Daten</p>
-        <a routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
-          <app-icon name="plus" /> Klassen & Fächer verwalten
-        </a>
-        <a routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
-          <app-icon name="users" /> Schüler anlegen & importieren
-        </a>
-        <a routerLink="/stundenplan"><app-icon name="calendar-days" /> Stundenplan</a>
+        <p class="menu-label">Modus</p>
+        @if (isEdit()) {
+          <button type="button" (click)="finishEdit()">
+            <app-icon name="school" /> Zurück zum Unterricht
+          </button>
+        } @else {
+          <button type="button" (click)="startEdit()">
+            <app-icon name="pencil" /> Bearbeitungsmodus starten
+          </button>
+        }
+
+        @if (isEdit()) {
+          <p class="menu-label">Klassen & Daten</p>
+          <a routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
+            <app-icon name="plus" /> Klassen & Fächer verwalten
+          </a>
+          <a routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+            <app-icon name="users" /> Schüler anlegen & importieren
+          </a>
+          <a routerLink="/stundenplan"><app-icon name="calendar-days" /> Stundenplan</a>
+        }
         <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
           <app-icon name="file-down" /> Auswertung & Export
         </a>
 
         <p class="menu-label">Einstellungen</p>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
-          <app-icon name="graduation-cap" /> Notenschlüssel
-        </a>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
-          <app-icon name="settings" /> App-Einstellungen
-        </a>
+        @if (isEdit()) {
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
+            <app-icon name="graduation-cap" /> Notenschlüssel
+          </a>
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
+            <app-icon name="settings" /> App-Einstellungen
+          </a>
+        }
         <button type="button" (click)="cycleTheme()">
           <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
         </button>
@@ -286,17 +338,16 @@
         <button type="button" [disabled]="isSaving()" (click)="save()">
           <app-icon name="save" /> Jetzt speichern
         </button>
-        <a routerLink="/auswertung" [queryParams]="{ tab: 'datei' }">
-          <app-icon name="key-round" /> Datei & Passwort
-        </a>
+        @if (isEdit()) {
+          <a routerLink="/auswertung" [queryParams]="{ tab: 'datei' }">
+            <app-icon name="key-round" /> Datei & Passwort
+          </a>
+        }
         @if (canInstall()) {
           <button type="button" (click)="install()">
             <app-icon name="monitor-down" /> Als App installieren
           </button>
         }
-        <button type="button" class="danger" (click)="closeVault()">
-          <app-icon name="log-out" /> Datenbestand schließen
-        </button>
       </div>
     }
   </div>
