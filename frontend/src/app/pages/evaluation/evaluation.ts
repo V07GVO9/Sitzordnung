@@ -31,7 +31,6 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 })
 export class EvaluationPage {
   private readonly api = inject(ApiService);
-  readonly mode = inject(ModeService);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly vault = inject(VaultService);
