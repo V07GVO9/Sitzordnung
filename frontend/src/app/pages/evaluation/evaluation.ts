@@ -14,10 +14,12 @@ import {
 } from '../../core/models';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
 import { OneDriveService } from '../../core/store/onedrive.service';
+import { isStrongPassword } from '../../core/store/password-policy';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
+import { PasswordRules } from '../../vault/password-rules';
 
 export type EvaluationTab = 'punkte' | 'noten' | 'einstellungen' | 'datei';
 const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
@@ -25,7 +27,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, Icon, PasswordRules],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -54,6 +56,7 @@ export class EvaluationPage {
   readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
+  readonly isStrongPassword = isStrongPassword;
 
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);

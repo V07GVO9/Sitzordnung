@@ -25,6 +25,7 @@ import { IconName } from './core/ui/icons';
 import { PwaService } from './core/ui/pwa.service';
 import { subjectHue } from './core/ui/subject-hue';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
+import { ChangePasswordDialog } from './vault/change-password-dialog';
 import { VaultGate } from './vault/vault-gate';
 
 /** Ein Reiter der Leiste unten - wie die Bereiche der Klassenmappe. */
@@ -62,7 +63,16 @@ const WIDE_QUERY = '(min-width: 56rem)';
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost, ConfirmHost, VaultGate, Icon],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ToastHost,
+    ConfirmHost,
+    VaultGate,
+    ChangePasswordDialog,
+    Icon,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
@@ -107,6 +117,7 @@ export class App implements OnDestroy {
   /** Auf breiten Bildschirmen: steht die Seitenleiste? Auf schmalen: ist sie aufgeklappt? */
   readonly sidebarOpen = signal(this.isWide());
   readonly menuOpen = signal(false);
+  readonly passwordDialogOpen = signal(false);
 
   /** Der Tag, den die Tagesansicht zeigt. */
   readonly dayOffset = signal(0);
@@ -309,6 +320,11 @@ export class App implements OnDestroy {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
       }
     }
+  }
+
+  openPasswordDialog(): void {
+    this.menuOpen.set(false);
+    this.passwordDialogOpen.set(true);
   }
 
   /** Fragt, welcher Stand gilt, wenn zwei Geräte dieselbe Datei geändert haben. */

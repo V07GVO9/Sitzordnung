@@ -31,6 +31,7 @@ import {
 } from './file-system';
 import { LocalStore } from './local-store';
 import { OneDriveFile, OneDriveService } from './onedrive.service';
+import { unmetPasswordRules } from './password-policy';
 import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-crypto';
 
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
@@ -468,7 +469,13 @@ export class VaultService {
       throw new AppError('Das bisherige Passwort stimmt nicht.');
     }
 
-    this.requirePassword(next);
+    const unmet = unmetPasswordRules(next);
+    if (unmet.length > 0) {
+      throw new AppError(
+        `Das neue Passwort braucht noch: ${unmet.map((rule) => rule.label).join(', ')}.`,
+      );
+    }
+
     this.password = next;
     await this.save();
 
