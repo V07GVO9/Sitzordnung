@@ -16,6 +16,9 @@ vollständig im Browser.
 
 ## Was die App kann
 
+Die ausführliche Anleitung für Lehrkräfte steht im
+[Benutzerhandbuch](docs/BENUTZERHANDBUCH.md).
+
 | Bereich | Beschreibung |
 | --- | --- |
 | Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hinterlegen |
