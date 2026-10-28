@@ -433,14 +433,14 @@
             [ngModel]="newPassword()"
             (ngModelChange)="newPassword.set($event)"
             name="newPassword"
-            placeholder="mindestens 8 Zeichen"
           />
         </label>
+        <app-password-rules [password]="newPassword()" />
         <div class="row">
           <button
             class="btn primary"
             type="button"
-            [disabled]="newPassword().length < 8"
+            [disabled]="!isStrongPassword(newPassword())"
             (click)="changePassword()"
           >
             Passwort ändern und speichern
