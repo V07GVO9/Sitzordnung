@@ -389,16 +389,37 @@
   }
 }
 
-.actions {
+/* Die Bewertungsknöpfe der angetippten Kachel als schwebendes Overlay:
+   Kachel und Sitzplan behalten ihre Größe. Breite passt zu POPOVER_WIDTH in course.ts. */
+.rate-pop {
+  position: fixed;
+  z-index: 50;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.15rem;
-  width: 100%;
-  margin-top: auto;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+  width: min(15rem, calc(100vw - 0.75rem));
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.12s ease-out;
 
-  // Auf schmalen Plätzen liegt die 0 als Mitte zwischen + und −.
-  .rate-o {
-    grid-column: 1 / -1;
+  .rate {
+    min-height: 2.4rem;
+    font-size: 0.95rem;
+  }
+
+  .history {
+    min-height: 2rem;
+    font-size: 0.75rem;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
 }
 
@@ -443,7 +464,7 @@
 
 /* --- Je breiter der Platz, desto mehr zeigt die Kachel --- */
 
-/* Ganz enge Plätze zeigen nur noch Name und die vier Knöpfe. */
+/* Ganz enge Plätze zeigen nur noch den Namen. */
 @container platz (max-width: 3rem) {
   .name {
     font-size: 0.55rem;
@@ -451,12 +472,6 @@
 
   .score {
     display: none;
-  }
-
-  .rate {
-    min-height: 1.4rem;
-    padding: 0.15rem 0;
-    font-size: 0.6rem;
   }
 }
 
@@ -496,11 +511,6 @@
     right: 0.3rem;
     font-size: 0.7rem;
   }
-
-  .rate {
-    min-height: 2rem;
-    font-size: 0.82rem;
-  }
 }
 
 @container platz (min-width: 7.5rem) {
@@ -521,20 +531,6 @@
 
   .score {
     font-size: 0.75rem;
-  }
-
-  .actions {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.2rem;
-
-    .rate-o {
-      grid-column: auto;
-    }
-  }
-
-  .rate {
-    min-height: 2.2rem;
-    font-size: 0.85rem;
   }
 }
 

@@ -268,7 +268,7 @@
                           class="tile-who"
                           type="button"
                           [disabled]="editMode()"
-                          (click)="toggleSelect(student)"
+                          (click)="toggleSelect(student, $event)"
                           [attr.aria-expanded]="selectedId() === student.id"
                           [title]="fullName(student) + ' bewerten'"
                         >
@@ -290,25 +290,6 @@
                             <span>{{ student.lastName }}</span>
                           </span>
                         </button>
-
-                        @if (!editMode() && selectedId() === student.id) {
-                          <div class="actions">
-                            <ng-container
-                              *ngTemplateOutlet="
-                                rateButtons;
-                                context: { $implicit: student, score: cell.score }
-                              "
-                            />
-                            <button
-                              type="button"
-                              class="history"
-                              (click)="openSheet(student)"
-                              [attr.aria-label]="'Verlauf von ' + fullName(student)"
-                            >
-                              <app-icon name="clock" /> Verlauf
-                            </button>
-                          </div>
-                        }
                       </div>
                     } @else {
                       <span class="free">{{ editMode() ? 'frei' : '' }}</span>
@@ -406,6 +387,34 @@
           }
         </div>
       }
+    }
+
+    <!-- Die Bewertungsknöpfe der angetippten Kachel schweben über dem Raum,
+         statt die Kachel - und damit den Sitzplan - aufzuziehen. -->
+    @if (selectedStudent(); as student) {
+      <div
+        class="rate-pop"
+        role="group"
+        [attr.aria-label]="fullName(student) + ' bewerten'"
+        [style.left.px]="popover()!.left"
+        [style.top.px]="popover()!.top"
+        [style.bottom.px]="popover()!.bottom"
+      >
+        <ng-container
+          *ngTemplateOutlet="
+            rateButtons;
+            context: { $implicit: student, score: scoreFor(student.id) }
+          "
+        />
+        <button
+          type="button"
+          class="history"
+          (click)="openSheet(student)"
+          [attr.aria-label]="'Verlauf von ' + fullName(student)"
+        >
+          <app-icon name="clock" /> Verlauf
+        </button>
+      </div>
     }
 
     @if (sheetStudent(); as student) {
