@@ -57,6 +57,33 @@ function readView(): ParticipationView {
   }
 }
 
+/** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
+const POPOVER_WIDTH = 240;
+/** Ungefähre Höhe: eine Knopfreihe plus „Verlauf“. */
+const POPOVER_HEIGHT = 100;
+const POPOVER_GAP = 6;
+
+/**
+ * Legt das Overlay unter die Kachel, mittig und im Fenster gehalten.
+ * Reicht der Platz darunter nicht, öffnet es nach oben.
+ */
+function placePopover(rect: DOMRect): {
+  left: number;
+  top: number | null;
+  bottom: number | null;
+} {
+  const width = Math.min(POPOVER_WIDTH, window.innerWidth - 2 * POPOVER_GAP);
+  const left = Math.min(
+    Math.max(rect.left + rect.width / 2 - width / 2, POPOVER_GAP),
+    window.innerWidth - width - POPOVER_GAP,
+  );
+  const below = window.innerHeight - rect.bottom;
+  if (below < POPOVER_HEIGHT + POPOVER_GAP && rect.top > below) {
+    return { left, top: null, bottom: window.innerHeight - rect.top + POPOVER_GAP };
+  }
+  return { left, top: rect.bottom + POPOVER_GAP, bottom: null };
+}
+
 function writeView(view: ParticipationView): void {
   try {
     localStorage.setItem(VIEW_KEY, view);
@@ -125,6 +152,16 @@ export class CoursePage implements OnDestroy {
    * so bleiben alle anderen Kacheln klein und Fotos und Namen bekommen Platz.
    */
   readonly selectedId = signal<number | null>(null);
+  /** Wo die Bewertungsknöpfe der angetippten Kachel schweben (Bildschirmkoordinaten). */
+  readonly popover = signal<{ left: number; top: number | null; bottom: number | null } | null>(
+    null,
+  );
+  readonly selectedStudent = computed(() => {
+    const id = this.selectedId();
+    return id === null || !this.popover()
+      ? null
+      : (this.students().find((s) => s.id === id) ?? null);
+  });
 
   /** Der Schüler, dessen Verlauf als Blatt offen ist. */
   readonly sheetStudentId = signal<number | null>(null);
@@ -678,17 +715,37 @@ export class CoursePage implements OnDestroy {
 
   // --- Kachel auswählen ---
 
-  /** Erster Tipp klappt die Knöpfe auf, zweiter Tipp wieder zu. */
-  toggleSelect(student: Student): void {
+  /** Erster Tipp öffnet die Knöpfe als Overlay an der Kachel, zweiter Tipp schließt sie. */
+  toggleSelect(student: Student, event: Event): void {
     if (this.editMode()) {
       return;
     }
-    this.selectedId.update((id) => (id === student.id ? null : student.id));
+    if (this.selectedId() === student.id) {
+      this.selectedId.set(null);
+      return;
+    }
+    const tile = (event.currentTarget as HTMLElement).closest('.student') ?? event.currentTarget;
+    this.popover.set(placePopover((tile as HTMLElement).getBoundingClientRect()));
+    this.selectedId.set(student.id);
   }
 
   @HostListener('document:keydown.escape')
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
   clearSelection(): void {
     this.selectedId.set(null);
+  }
+
+  /** Tippen neben das Overlay schließt es - die eigene Kachel schaltet selbst um. */
+  @HostListener('document:pointerdown', ['$event'])
+  onPointerDown(event: PointerEvent): void {
+    if (this.selectedId() === null) {
+      return;
+    }
+    const target = event.target as Element | null;
+    if (!target?.closest('.rate-pop, .student.selected')) {
+      this.selectedId.set(null);
+    }
   }
 
   // --- Verlauf als Blatt ---
