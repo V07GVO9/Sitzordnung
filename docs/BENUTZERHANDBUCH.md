@@ -218,6 +218,11 @@ Tagesansicht, den Hinweis „läuft gerade“ oder **Klasse → Mitarbeit**.
 Oben stehen die Fächer der Klasse als Reiter, darunter Datum und Stunde.
 Bewertet wird wahlweise in der **Liste** oder auf dem **Sitzplan**.
 
+**Auf dem Sitzplan** zeigen die Kacheln nur Foto, Name und Punktestand. Erst
+ein **Tipp auf einen Schüler** klappt die Bewertungsknöpfe und den Knopf
+**Verlauf** auf. Erneut tippen oder <kbd>Esc</kbd> klappt sie wieder zu; nach
+einer Bewertung schließen sie von selbst.
+
 ### Die Bewertungsskala
 
 | Knopf | Bedeutung | Punkte |
@@ -239,7 +244,8 @@ Bewertet wird wahlweise in der **Liste** oder auf dem **Sitzplan**.
 
 ### Verlauf eines Schülers
 
-Ein Tipp auf Foto oder Namen öffnet das Blatt **Mitarbeit**:
+In der Liste öffnet ein Tipp auf Foto oder Namen das Blatt **Mitarbeit**, auf
+dem Sitzplan der Knopf **Verlauf** unter den Bewertungsknöpfen:
 
 - Punktestand und ggf. Note im Fach,
 - Verteilung der Bewertungen für **7 Tage**, **30 Tage** oder **Gesamt**,
@@ -440,9 +446,21 @@ Siehe [Abschnitt 11](#11-speichern-datei-und-passwort).
 - **Speichern unter …** – Kopie an anderem Ort/mit anderem Namen.
 - **In OneDrive ablegen** – lokalen Bestand nach OneDrive verschieben;
   danach öffnet jedes Gerät denselben Stand.
-- **Passwort ändern:** bisheriges und neues Passwort (mind. 8 Zeichen) →
+- **Passwort ändern:** bisheriges und neues Passwort →
   **Passwort ändern und speichern**. Ältere Sicherungskopien behalten ihr altes
   Passwort.
+
+### Passwort ändern
+
+Schneller geht es über **Menü → Passwort ändern** (unter „Jetzt speichern“).
+Ein neues Passwort braucht:
+
+- mehr als 10 Zeichen,
+- einen Großbuchstaben,
+- eine Zahl,
+- ein Sonderzeichen.
+
+Beim Tippen hakt die App ab, welche Regel erfüllt ist.
 
 ### Was in der Datei steht
 
@@ -493,10 +511,12 @@ der Lehrkraft.
 
 ## 14. Änderungsverzeichnis
 
-Wird bei jeder automatischen Prüfung (donnerstags) ergänzt.
+Wird bei jeder automatischen Prüfung (donnerstags) ergänzt. Alle Neuerungen
+der App im Detail stehen im [Changelog](CHANGELOG.md).
 
 | Datum | Änderung |
 | --- | --- |
+| 29.10.2026 | Sitzplan: Bewertungsknöpfe erst nach Antippen (Abschnitt 7); Passwort ändern über das Menü mit neuen Regeln (Abschnitt 11). |
 | 28.10.2026 | Erste Fassung des Benutzerhandbuchs mit allen Funktionen. |
 
 <!-- doku-stand: 17b7746 -->

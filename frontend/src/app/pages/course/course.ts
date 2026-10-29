@@ -8,6 +8,7 @@ import {
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnDestroy,
   computed,
   effect,
@@ -118,6 +119,12 @@ export class CoursePage implements OnDestroy {
 
   /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
   readonly view = signal<ParticipationView>(readView());
+
+  /**
+   * Die angetippte Kachel im Sitzplan. Nur sie zeigt die Bewertungsknöpfe -
+   * so bleiben alle anderen Kacheln klein und Fotos und Namen bekommen Platz.
+   */
+  readonly selectedId = signal<number | null>(null);
 
   /** Der Schüler, dessen Verlauf als Blatt offen ist. */
   readonly sheetStudentId = signal<number | null>(null);
@@ -256,6 +263,9 @@ export class CoursePage implements OnDestroy {
     effect(() => {
       const edit = this.editMode();
       untracked(() => {
+        if (edit) {
+          this.selectedId.set(null);
+        }
         if (edit && this.view() !== 'sitzplan') {
           this.view.set('sitzplan');
         }
@@ -285,6 +295,7 @@ export class CoursePage implements OnDestroy {
   private load(courseId: number): void {
     this.loading.set(true);
     this.sheetStudentId.set(null);
+    this.selectedId.set(null);
 
     forkJoin({
       course: this.api.getCourse(courseId),
@@ -590,6 +601,8 @@ export class CoursePage implements OnDestroy {
     if (this.editMode()) {
       return;
     }
+    // Nach dem Bewerten klappt die Kachel wieder zusammen.
+    this.selectedId.set(null);
     const courseId = this.courseId();
 
     this.api.rate(courseId, student.id, value).subscribe({
@@ -663,12 +676,28 @@ export class CoursePage implements OnDestroy {
     return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
   }
 
+  // --- Kachel auswählen ---
+
+  /** Erster Tipp klappt die Knöpfe auf, zweiter Tipp wieder zu. */
+  toggleSelect(student: Student): void {
+    if (this.editMode()) {
+      return;
+    }
+    this.selectedId.update((id) => (id === student.id ? null : student.id));
+  }
+
+  @HostListener('document:keydown.escape')
+  clearSelection(): void {
+    this.selectedId.set(null);
+  }
+
   // --- Verlauf als Blatt ---
 
   openSheet(student: Student): void {
     if (this.editMode()) {
       return;
     }
+    this.selectedId.set(null);
     this.sheetStudentId.set(student.id);
     this.loadCourseRatings();
   }
