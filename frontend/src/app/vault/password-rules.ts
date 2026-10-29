@@ -20,6 +20,10 @@ import { PASSWORD_RULES } from '../core/store/password-policy';
   `,
   styles: [
     `
+      :host {
+        display: block;
+      }
+
       ul {
         display: grid;
         gap: 0.2rem;
