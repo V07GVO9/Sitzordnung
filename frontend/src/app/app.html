@@ -338,6 +338,9 @@
         <button type="button" [disabled]="isSaving()" (click)="save()">
           <app-icon name="save" /> Jetzt speichern
         </button>
+        <button type="button" [disabled]="isSaving()" (click)="openPasswordDialog()">
+          <app-icon name="key-round" /> Passwort ändern
+        </button>
         @if (isEdit()) {
           <a routerLink="/auswertung" [queryParams]="{ tab: 'datei' }">
             <app-icon name="key-round" /> Datei & Passwort
@@ -353,5 +356,9 @@
   </div>
 }
 
+<app-change-password-dialog
+  [open]="passwordDialogOpen()"
+  (closed)="passwordDialogOpen.set(false)"
+/>
 <app-toast-host />
 <app-confirm-host />

@@ -238,6 +238,7 @@
                         cdkDrag
                         [cdkDragData]="student.id"
                         [cdkDragDisabled]="!editMode()"
+                        [class.selected]="selectedId() === student.id"
                         [class.rated]="!editMode() && lastToday().has(student.id)"
                         [style.--rated]="ratedColor(lastToday().get(student.id))"
                         [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
@@ -267,8 +268,9 @@
                           class="tile-who"
                           type="button"
                           [disabled]="editMode()"
-                          (click)="openSheet(student)"
-                          [title]="'Verlauf von ' + fullName(student)"
+                          (click)="toggleSelect(student)"
+                          [attr.aria-expanded]="selectedId() === student.id"
+                          [title]="fullName(student) + ' bewerten'"
                         >
                           <span class="avatar">
                             @if (student.photoUrl) {
@@ -289,7 +291,7 @@
                           </span>
                         </button>
 
-                        @if (!editMode()) {
+                        @if (!editMode() && selectedId() === student.id) {
                           <div class="actions">
                             <ng-container
                               *ngTemplateOutlet="
@@ -297,6 +299,14 @@
                                 context: { $implicit: student, score: cell.score }
                               "
                             />
+                            <button
+                              type="button"
+                              class="history"
+                              (click)="openSheet(student)"
+                              [attr.aria-label]="'Verlauf von ' + fullName(student)"
+                            >
+                              <app-icon name="clock" /> Verlauf
+                            </button>
                           </div>
                         }
                       </div>

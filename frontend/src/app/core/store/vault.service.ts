@@ -31,6 +31,7 @@ import {
 } from './file-system';
 import { LocalStore } from './local-store';
 import { OneDriveFile, OneDriveService } from './onedrive.service';
+import { unmetPasswordRules } from './password-policy';
 import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-crypto';
 
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
@@ -487,9 +488,13 @@ export class VaultService {
     await clearAutosave();
   }
 
+  /** Ein neues Passwort muss die Regeln aus password-policy erfüllen. */
   private requirePassword(password: string): void {
-    if (password.length < 8) {
-      throw new AppError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+    const unmet = unmetPasswordRules(password);
+    if (unmet.length > 0) {
+      throw new AppError(
+        `Das Passwort braucht noch: ${unmet.map((rule) => rule.label).join(', ')}.`,
+      );
     }
   }
 }

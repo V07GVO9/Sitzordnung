@@ -4,10 +4,12 @@ import { AutosaveEntry } from '../core/store/browser-storage';
 import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
 import { LocalStore } from '../core/store/local-store';
 import { OneDriveFile, OneDriveService } from '../core/store/onedrive.service';
+import { isStrongPassword } from '../core/store/password-policy';
 import { VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
 import { Icon } from '../core/ui/icon';
 import { ConfirmService } from '../core/ui/confirm.service';
+import { PasswordRules } from './password-rules';
 
 /**
  * Der Startbildschirm. Solange kein Datenbestand geöffnet ist, zeigt die App
@@ -16,7 +18,7 @@ import { ConfirmService } from '../core/ui/confirm.service';
 @Component({
   selector: 'app-vault-gate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, Icon, PasswordRules],
   templateUrl: './vault-gate.html',
   styleUrl: './vault-gate.scss',
 })
@@ -69,7 +71,11 @@ export class VaultGate {
   );
 
   readonly canSubmit = computed(() => {
-    if (this.busy() || this.password().length < 8 || !this.passwordsMatch()) {
+    if (this.busy() || !this.passwordsMatch()) {
+      return false;
+    }
+    // Neue Bestände brauchen ein starkes Passwort; ältere Dateien öffnen weiter mit ihrem.
+    if (this.isCreating() ? !isStrongPassword(this.password()) : this.password().length < 8) {
       return false;
     }
     if (this.mode() !== 'onedrive') {

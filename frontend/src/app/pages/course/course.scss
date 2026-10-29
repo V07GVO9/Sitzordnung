@@ -231,6 +231,14 @@
     border-color 0.2s ease,
     background 0.2s ease;
 
+  /* Die angetippte Kachel: hier liegen die Bewertungsknöpfe. */
+  &.selected {
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 2px var(--accent),
+      var(--shadow);
+  }
+
   /* Wer heute bewertet wurde, bekommt die Farbe der Bewertung - wie in der Klassenmappe. */
   &.rated {
     border-color: var(--rated);
@@ -392,6 +400,23 @@
   .rate-o {
     grid-column: 1 / -1;
   }
+}
+
+/* Der Verlauf liegt als eigene Zeile unter den Bewertungsknöpfen. */
+.history {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 1.6rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.65rem;
+  font-weight: 600;
 }
 
 .rate {

@@ -157,15 +157,16 @@
           <span>Passwort</span>
           <input
             type="password"
-            autocomplete="current-password"
+            [attr.autocomplete]="isCreating() ? 'new-password' : 'current-password'"
             [ngModel]="password()"
             (ngModelChange)="password.set($event)"
             name="password"
-            placeholder="mindestens 8 Zeichen"
           />
         </label>
 
         @if (isCreating()) {
+          <app-password-rules [password]="password()" />
+
           <label>
             <span>Passwort wiederholen</span>
             <input
