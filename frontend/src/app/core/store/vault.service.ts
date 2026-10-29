@@ -469,13 +469,7 @@ export class VaultService {
       throw new AppError('Das bisherige Passwort stimmt nicht.');
     }
 
-    const unmet = unmetPasswordRules(next);
-    if (unmet.length > 0) {
-      throw new AppError(
-        `Das neue Passwort braucht noch: ${unmet.map((rule) => rule.label).join(', ')}.`,
-      );
-    }
-
+    this.requirePassword(next);
     this.password = next;
     await this.save();
 
@@ -494,9 +488,13 @@ export class VaultService {
     await clearAutosave();
   }
 
+  /** Ein neues Passwort muss die Regeln aus password-policy erfüllen. */
   private requirePassword(password: string): void {
-    if (password.length < 8) {
-      throw new AppError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+    const unmet = unmetPasswordRules(password);
+    if (unmet.length > 0) {
+      throw new AppError(
+        `Das Passwort braucht noch: ${unmet.map((rule) => rule.label).join(', ')}.`,
+      );
     }
   }
 }
