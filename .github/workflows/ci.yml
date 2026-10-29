@@ -52,9 +52,8 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       PR: ${{ github.event.pull_request.number }}
     steps:
-      # Genehmigen klappt nur, wenn in den Repo-Einstellungen
-      # "Allow GitHub Actions to create and approve pull requests" aktiv ist.
-      # Fehlt die Einstellung, wird trotzdem gemerged.
+      # Die Genehmigung ist nur ein Vermerk. Erlaubt die Repo-Einstellung
+      # Actions das Genehmigen nicht, wird trotzdem gemerged.
       - name: Pull Request genehmigen
         continue-on-error: true
         run: gh pr review "$PR" --repo "$GITHUB_REPOSITORY" --approve --body "Alle Tests erfolgreich – automatisch genehmigt."

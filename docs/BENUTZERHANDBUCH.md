@@ -519,4 +519,4 @@ der App im Detail stehen im [Changelog](CHANGELOG.md).
 | 29.10.2026 | Sitzplan: Bewertungsknöpfe erst nach Antippen (Abschnitt 7); Passwort ändern über das Menü mit neuen Regeln (Abschnitt 11). |
 | 28.10.2026 | Erste Fassung des Benutzerhandbuchs mit allen Funktionen. |
 
-<!-- doku-stand: 17b7746 -->
+<!-- doku-stand: b76d278 -->
