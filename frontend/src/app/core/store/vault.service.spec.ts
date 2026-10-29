@@ -12,7 +12,7 @@ import { OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
 import { VaultService } from './vault.service';
 
-const PASSWORT = 'TestPasswort123';
+const PASSWORT = 'TestPasswort#123';
 
 /** Ein Dateigriff, der das Geschriebene behält, statt es auf die Platte zu legen. */
 class FakeHandle implements FileHandle {
@@ -348,6 +348,33 @@ describe('VaultService', () => {
       // Der Bestand bleibt offen ungespeichert - die Datei sichert der Benutzer.
       expect(store.hasUnsavedChanges()).toBeTrue();
       expect(vault.autoSaveError()).toBeNull();
+    });
+  });
+
+  describe('VaultService - Passwortregeln', () => {
+    let vault: VaultService;
+
+    beforeEach(() => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+    });
+
+    it('legt keinen Bestand mit schwachem Passwort an', async () => {
+      await expectAsync(vault.createNew('nurkleinbuchstaben')).toBeRejectedWithError(
+        /Großbuchstabe/,
+      );
+    });
+
+    it('lehnt ein schwaches neues Passwort beim Ändern ab', async () => {
+      await oeffne(vault, null);
+
+      await expectAsync(vault.changePassword(PASSWORT, 'Kurz#1')).toBeRejectedWithError(
+        /mehr als 10 Zeichen/,
+      );
     });
   });
 
