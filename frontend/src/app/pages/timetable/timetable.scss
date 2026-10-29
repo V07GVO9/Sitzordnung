@@ -49,10 +49,11 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.4rem;
+  padding: 0.45rem 0.35rem 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
   background: var(--accent-soft);
   border: 1px solid transparent;
+  box-shadow: inset 3px 0 0 var(--accent);
 
   & + .stunde {
     margin-top: 0.3rem;
@@ -60,7 +61,14 @@
 
   &.jetzt {
     background: var(--positive-soft);
-    border-color: var(--positive);
+    border-color: var(--positive-border);
+    box-shadow: inset 3px 0 0 var(--positive-solid);
+  }
+
+  .remove {
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 0.85rem;
   }
 }
 
@@ -85,22 +93,7 @@
   }
 
   &:hover strong {
-    color: var(--accent);
-  }
-}
-
-.remove {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 1.2rem;
-  line-height: 1;
-
-  /* Auf dem Touchscreen gibt es kein Hover – der Knopf bleibt sichtbar. */
-  padding: 0.25rem 0.4rem;
-
-  &:hover {
-    color: var(--negative);
+    color: var(--accent-text);
   }
 }
 
@@ -123,8 +116,14 @@
   }
 
   &.heute h3 {
-    color: var(--accent-dark);
+    color: var(--accent-text);
     border-color: var(--accent);
+  }
+
+  .badge.today {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
   }
 }
 
@@ -172,7 +171,7 @@
     td {
       border: 1px solid var(--border);
       vertical-align: top;
-      padding: 0.3rem;
+      padding: 0.35rem;
       white-space: normal;
     }
 
@@ -184,7 +183,7 @@
 
     thead th.heute {
       background: var(--accent-soft);
-      color: var(--accent-dark);
+      color: var(--accent-text);
     }
 
     tbody tr:hover {
@@ -192,7 +191,7 @@
     }
 
     td.heute {
-      background: rgb(47 91 215 / 3%);
+      background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
     }
 
     .stunde {
@@ -236,8 +235,7 @@
 
 /* Mit Maus darf der Löschknopf dezent bleiben. */
 @media (min-width: 48rem) and (hover: hover) {
-  .remove {
-    padding: 0 0.15rem;
+  .stunde .remove {
     opacity: 0;
   }
 

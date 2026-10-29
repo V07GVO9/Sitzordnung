@@ -245,6 +245,11 @@ export class ApiService {
     return this.run(() => this.store.rate(courseId, studentId, value, comment));
   }
 
+  /** Nimmt genau diese Bewertung zurück - etwa nach einem Vertipper. */
+  deleteRating(id: number): Observable<void> {
+    return this.run(() => this.store.deleteRating(id));
+  }
+
   undoLastRating(courseId: number, studentId: number): Observable<void> {
     return this.run(() => this.store.undoLastRating(courseId, studentId));
   }
@@ -375,9 +380,9 @@ export class ApiService {
   }
 
   exportGradeBook(courseId: number, range?: DateRange): Observable<void> {
-    return this.run(() => {
+    return this.fromPromise(() => {
       const result = this.store.exportGradeBook(courseId, range);
-      download(result.blob, result.fileName);
+      return download(result.blob, result.fileName, { share: true });
     });
   }
 
@@ -402,13 +407,13 @@ export class ApiService {
     courseId?: number | null,
     range?: DateRange,
   ): Observable<void> {
-    return this.run(() => {
+    return this.fromPromise(() => {
       const result =
         kind === 'ratings'
           ? this.store.exportRatings(courseId ?? null, range)
           : this.store.exportSummary(courseId ?? null, range);
 
-      download(result.blob, result.fileName);
+      return download(result.blob, result.fileName, { share: true });
     });
   }
 

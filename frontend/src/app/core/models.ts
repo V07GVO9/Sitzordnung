@@ -105,8 +105,8 @@ export interface LessonRef {
   startTime: string;
 }
 
-/** Die vier möglichen Bewertungen. */
-export type RatingValue = -2 | -1 | 1 | 2;
+/** Die fünf möglichen Bewertungen; 0 ist die Mitte. */
+export type RatingValue = -2 | -1 | 0 | 1 | 2;
 
 export interface Rating {
   id: number;
@@ -188,6 +188,8 @@ export function ratingSymbol(value: number): string {
       return '++';
     case 1:
       return '+';
+    case 0:
+      return '0';
     case -1:
       return '−';
     case -2:
@@ -462,4 +464,22 @@ export interface StudentReport {
   oral: number | null;
   overall: number | null;
   partial: boolean;
+}
+
+/** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */
+export function ratingClass(value: number | null | undefined): string {
+  switch (value) {
+    case 2:
+      return 'rate-pp';
+    case 1:
+      return 'rate-p';
+    case 0:
+      return 'rate-o';
+    case -1:
+      return 'rate-m';
+    case -2:
+      return 'rate-mm';
+    default:
+      return '';
+  }
 }
