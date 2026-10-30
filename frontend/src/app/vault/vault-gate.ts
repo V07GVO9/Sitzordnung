@@ -34,6 +34,9 @@ export class VaultGate {
 
   readonly canWriteInPlace = this.vault.canWriteInPlace;
 
+  /** Die zuletzt benutzte Datei - dann genügt das Passwort. */
+  readonly rememberedFile = this.vault.rememberedFile;
+
   readonly passwordsMatch = computed(
     () => this.mode() === 'open' || this.password() === this.passwordRepeat(),
   );
@@ -67,6 +70,9 @@ export class VaultGate {
       if (this.mode() === 'create') {
         await this.vault.createNew(this.password());
         this.toasts.success('Neuer Datenbestand angelegt.');
+      } else if (this.rememberedFile()) {
+        await this.vault.openRemembered(this.password());
+        this.toasts.success('Datenbestand geöffnet.');
       } else {
         await this.vault.open(this.password());
         this.toasts.success('Datenbestand geöffnet.');
@@ -81,6 +87,11 @@ export class VaultGate {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** Lässt die vorgemerkte Datei fallen, damit wieder der Dateidialog kommt. */
+  async chooseOtherFile(): Promise<void> {
+    await this.vault.forgetRemembered();
   }
 
   /** Setzt auf dem Zwischenstand im Browser auf. */

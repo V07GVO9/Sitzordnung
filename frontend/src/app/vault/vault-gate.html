@@ -21,6 +21,16 @@
     </div>
 
     <form (ngSubmit)="submit()">
+      @if (mode() === 'open' && rememberedFile(); as file) {
+        <div class="remembered">
+          <span class="muted small">Datei</span>
+          <strong>{{ file.name }}</strong>
+          <button class="link small" type="button" (click)="chooseOtherFile()">
+            Andere Datei wählen
+          </button>
+        </div>
+      }
+
       <label>
         <span>Passwort</span>
         <input
@@ -30,6 +40,7 @@
           (ngModelChange)="password.set($event)"
           name="password"
           placeholder="mindestens 8 Zeichen"
+          autofocus
         />
       </label>
 
@@ -60,6 +71,8 @@
           Einen Moment …
         } @else if (mode() === 'create') {
           Neuen Datenbestand anlegen
+        } @else if (rememberedFile()) {
+          Öffnen
         } @else {
           Datei auswählen und öffnen
         }

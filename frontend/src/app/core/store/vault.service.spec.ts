@@ -161,3 +161,46 @@ describe('VaultService - ohne Dateizugriff', () => {
     expect(vault.saveError()).toBeNull();
   });
 });
+
+describe('VaultService - vorgemerkte Datei', () => {
+  let vault: VaultService;
+  let store: LocalStore;
+  let handle: FakeHandle;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({});
+    vault = TestBed.inject(VaultService);
+    store = TestBed.inject(LocalStore);
+    handle = new FakeHandle();
+
+    await vault.startWith(PASSWORT, handle);
+    store.createClass('10a');
+    await vault.save();
+    await vault.closeVault();
+  });
+
+  afterEach(async () => {
+    await vault.closeVault();
+    await vault.forgetRemembered();
+  });
+
+  it('merkt sich die Datei und oeffnet sie nur mit dem Passwort', async () => {
+    expect(vault.rememberedFile()).toBe(handle);
+
+    await vault.openRemembered(PASSWORT);
+
+    expect(store.isOpen()).toBeTrue();
+    expect(vault.fileName()).toBe(handle.name);
+    expect(vault.speichertVonAllein()).toBeTrue();
+  });
+
+  it('lehnt ein falsches Passwort ab', async () => {
+    await expectAsync(vault.openRemembered('FalschesPasswort')).toBeRejected();
+    expect(store.isOpen()).toBeFalse();
+  });
+
+  it('vergisst die Datei auf Wunsch', async () => {
+    await vault.forgetRemembered();
+    expect(vault.rememberedFile()).toBeNull();
+  });
+});

@@ -122,3 +122,29 @@ label input {
 .autosave p {
   margin: 0.25rem 0 0.65rem;
 }
+
+.remembered {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.9rem;
+  background: var(--surface-muted);
+  border-radius: 0.5rem;
+}
+
+.remembered strong {
+  flex: 1;
+  word-break: break-all;
+}
+
+.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}

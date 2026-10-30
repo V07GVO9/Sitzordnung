@@ -67,7 +67,11 @@ Kopfzeile zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim
 Schließen des Fensters warnt der Browser davor.
 
 In Chrome und Edge merkt sich die Anwendung die gewählte Datei und schreibt beim
-Speichern direkt dorthin zurück. Firefox und Safari unterstützen das nicht – dort
+Speichern direkt dorthin zurück. Beim nächsten Start ist diese Datei schon
+vorgewählt: Passwort eingeben, Enter – fertig, ohne Dateidialog. Über
+„Andere Datei wählen“ lässt sich eine andere Datei öffnen. Der Browser fragt
+dabei unter Umständen einmal nach, ob die App die Datei bearbeiten darf; mit
+„Bei jedem Besuch zulassen“ entfällt auch diese Rückfrage. Firefox und Safari unterstützen das nicht – dort
 landet beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 ### Was in der Datei steht

@@ -11,6 +11,7 @@ const DB_NAME = 'sitzordnung';
 const DB_VERSION = 1;
 const STORE = 'vault';
 const KEY = 'autosave';
+const HANDLE_KEY = 'lastFile';
 
 export interface AutosaveEntry {
   /** Der verschlüsselte Inhalt - dasselbe Format wie in der Datei. */
@@ -70,6 +71,34 @@ export async function writeAutosave(entry: AutosaveEntry): Promise<void> {
 export async function clearAutosave(): Promise<void> {
   try {
     await run('readwrite', (s) => s.delete(KEY));
+  } catch {
+    // Nichts zu tun.
+  }
+}
+
+/**
+ * Der Griff auf die zuletzt benutzte Datei (nur Chrome/Edge). Er enthält keine
+ * Daten, nur den Verweis - der Inhalt bleibt verschlüsselt in der Datei.
+ */
+export async function readFileHandle<T>(): Promise<T | null> {
+  try {
+    return (await run<T | undefined>('readonly', (s) => s.get(HANDLE_KEY))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeFileHandle(handle: unknown): Promise<void> {
+  try {
+    await run('readwrite', (s) => s.put(handle, HANDLE_KEY));
+  } catch {
+    // Lässt sich der Griff nicht ablegen, wird beim nächsten Mal wieder gesucht.
+  }
+}
+
+export async function clearFileHandle(): Promise<void> {
+  try {
+    await run('readwrite', (s) => s.delete(HANDLE_KEY));
   } catch {
     // Nichts zu tun.
   }

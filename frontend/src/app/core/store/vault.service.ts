@@ -8,14 +8,24 @@
 
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AppError } from './app-error';
-import { AutosaveEntry, clearAutosave, readAutosave, writeAutosave } from './browser-storage';
+import {
+  AutosaveEntry,
+  clearAutosave,
+  clearFileHandle,
+  readAutosave,
+  readFileHandle,
+  writeAutosave,
+  writeFileHandle,
+} from './browser-storage';
 import { createEmptyDatabase } from './database';
 import {
   FileHandle,
+  FilePickerCancelled,
   VAULT_EXTENSION,
   chooseSaveFile,
   download,
   openFile,
+  readHandle,
   supportsFileHandles,
   writeFile,
 } from './file-system';
@@ -65,7 +75,17 @@ export class VaultService {
   /** Der Dateigriff auch als Signal, damit die Oberfläche darauf reagieren kann. */
   private readonly handleSignal = signal<FileHandle | null>(null);
 
+  /**
+   * Die zuletzt benutzte Datei (nur Chrome/Edge). Liegt sie vor, genügt beim
+   * Start das Passwort - ohne Suchen im Dateidialog.
+   */
+  readonly rememberedFile = signal<FileHandle | null>(null);
+
   constructor() {
+    if (this.canWriteInPlace) {
+      void readFileHandle<FileHandle>().then((handle) => this.rememberedFile.set(handle));
+    }
+
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
     this.watchChanges();
 
@@ -169,6 +189,7 @@ export class VaultService {
     if (handle) {
       this.fileName.set(handle.name);
       await this.save();
+      await this.remember(handle);
       return;
     }
 
@@ -201,6 +222,44 @@ export class VaultService {
   async open(password: string): Promise<void> {
     const file = await openFile();
     await this.loadContent(file.content, password, file.name, file.handle);
+    await this.remember(file.handle);
+  }
+
+  /** Öffnet die zuletzt benutzte Datei ohne Dateidialog. */
+  async openRemembered(password: string): Promise<void> {
+    const handle = this.rememberedFile();
+    if (!handle) {
+      throw new AppError('Es ist keine Datei vorgemerkt.');
+    }
+
+    let content: string;
+    try {
+      content = await readHandle(handle);
+    } catch (error) {
+      if (error instanceof FilePickerCancelled) {
+        throw error;
+      }
+      throw new AppError(
+        `Die Datei „${handle.name}" wurde nicht gefunden. Bitte über „Andere Datei wählen" neu auswählen.`,
+      );
+    }
+
+    await this.loadContent(content, password, handle.name, handle);
+  }
+
+  /** Merkt sich die Datei für den nächsten Start. */
+  private async remember(handle: FileHandle | null): Promise<void> {
+    if (!handle) {
+      return;
+    }
+    this.rememberedFile.set(handle);
+    await writeFileHandle(handle);
+  }
+
+  /** Vergisst die vorgemerkte Datei - die Datei selbst bleibt unberührt. */
+  async forgetRemembered(): Promise<void> {
+    this.rememberedFile.set(null);
+    await clearFileHandle();
   }
 
   /** Setzt auf dem Zwischenstand aus dem Browser auf. */
@@ -261,12 +320,13 @@ export class VaultService {
       const handle = await chooseSaveFile(this.fileName() ?? DEFAULT_FILE_NAME);
       if (handle) {
         this.handle = handle;
-    this.handleSignal.set(handle);
+        this.handleSignal.set(handle);
         this.fileName.set(handle.name);
       }
     }
 
     await this.save();
+    await this.remember(this.handle);
   }
 
   /** Vergibt ein neues Passwort. Wirksam wird es mit dem nächsten Speichern. */

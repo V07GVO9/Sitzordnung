@@ -12,6 +12,8 @@ export interface FileHandle {
   readonly name: string;
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
+  queryPermission?(options: { mode: 'readwrite' }): Promise<PermissionState>;
+  requestPermission?(options: { mode: 'readwrite' }): Promise<PermissionState>;
 }
 
 interface FilePickerWindow {
@@ -89,6 +91,25 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
     // Dialog bleibt dann einfach ohne Folge, was hier ausreicht.
     input.click();
   });
+}
+
+/**
+ * Liest eine gemerkte Datei ohne Dateidialog. Der Browser fragt dabei
+ * gegebenenfalls einmal nach, ob die App die Datei bearbeiten darf - das muss
+ * direkt auf einen Klick folgen, deshalb steht die Abfrage hier ganz vorn.
+ */
+export async function readHandle(handle: FileHandle): Promise<string> {
+  const options = { mode: 'readwrite' as const };
+  let state = (await handle.queryPermission?.(options)) ?? 'granted';
+  if (state !== 'granted' && handle.requestPermission) {
+    state = await handle.requestPermission(options);
+  }
+  if (state !== 'granted') {
+    throw new FilePickerCancelled();
+  }
+
+  const file = await handle.getFile();
+  return file.text();
 }
 
 /** Fragt nach einem Speicherort für eine neue Datei. */
