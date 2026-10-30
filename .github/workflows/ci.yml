@@ -32,3 +32,38 @@ jobs:
 
       - name: Docker-Image bauen
         run: docker build -t sitzordnung:ci .
+
+  # Pull Requests in den Branch "test" werden automatisch genehmigt und gemerged,
+  # sobald alle Tests grün sind. Nach "master" wird weiterhin von Hand freigegeben.
+  # Nur für Branches aus diesem Repository (keine Forks, keine Entwürfe).
+  automatisch-mergen-test:
+    needs: build-und-test
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'test' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      # Die Genehmigung ist nur ein Vermerk. Erlaubt die Repo-Einstellung
+      # Actions das Genehmigen nicht, wird trotzdem gemerged.
+      - name: Pull Request genehmigen
+        continue-on-error: true
+        run: gh pr review "$PR" --repo "$GITHUB_REPOSITORY" --approve --body "Alle Tests erfolgreich – automatisch genehmigt."
+
+      - name: Pull Request mergen
+        run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge
+
+      # Merges mit dem GITHUB_TOKEN lösen keine push-Workflows aus,
+      # daher Ausrollen und Android-App hier ausdrücklich starten.
+      - name: Ausrollen und Android-App starten
+        run: |
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref test
+          gh workflow run android.yml --repo "$GITHUB_REPOSITORY" --ref test

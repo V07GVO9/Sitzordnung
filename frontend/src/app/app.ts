@@ -11,8 +11,9 @@ import {
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './core/api.service';
+import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson, SchoolClass, TimetableEntry, WEEKDAY_NAMES } from './core/models';
-import { FilePickerCancelled } from './core/store/file-system';
+import { FilePickerCancelled, SaveConflictError } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/store/vault.service';
 import { ToastHost } from './core/toast-host';
@@ -24,7 +25,7 @@ import { IconName } from './core/ui/icons';
 import { PwaService } from './core/ui/pwa.service';
 import { subjectHue } from './core/ui/subject-hue';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
-import { ModeService } from './core/ui/mode.service';
+import { ChangePasswordDialog } from './vault/change-password-dialog';
 import { VaultGate } from './vault/vault-gate';
 
 /** Ein Reiter der Leiste unten - wie die Bereiche der Klassenmappe. */
@@ -62,7 +63,16 @@ const WIDE_QUERY = '(min-width: 56rem)';
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHost, ConfirmHost, VaultGate, Icon],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ToastHost,
+    ConfirmHost,
+    VaultGate,
+    ChangePasswordDialog,
+    Icon,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
@@ -79,16 +89,15 @@ export class App implements OnDestroy {
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
   private readonly confirm = inject(ConfirmService);
-  private readonly modeService = inject(ModeService);
-
-  /** Einrichten (Klassen, Schüler, Stundenplan …) oder Unterricht (Wochenplan, Bewerten). */
-  readonly isSetup = this.modeService.isSetup;
+  private readonly mode = inject(ModeService);
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
   readonly hasUnsavedChanges = this.store.hasUnsavedChanges;
   readonly fileName = this.vault.fileName;
+  readonly isInOneDrive = this.vault.isInOneDrive;
   readonly isSaving = this.vault.isSaving;
+  readonly isEdit = this.mode.isEdit;
 
   readonly lesson = signal<CurrentLesson | null>(null);
   readonly classes = signal<SchoolClass[]>([]);
@@ -108,6 +117,7 @@ export class App implements OnDestroy {
   /** Auf breiten Bildschirmen: steht die Seitenleiste? Auf schmalen: ist sie aufgeklappt? */
   readonly sidebarOpen = signal(this.isWide());
   readonly menuOpen = signal(false);
+  readonly passwordDialogOpen = signal(false);
 
   /** Der Tag, den die Tagesansicht zeigt. */
   readonly dayOffset = signal(0);
@@ -218,6 +228,13 @@ export class App implements OnDestroy {
       }
     });
 
+    // Hat ein anderes Gerät inzwischen gespeichert, entscheidet die Lehrkraft.
+    effect(() => {
+      if (this.vault.saveConflict()) {
+        untracked(() => void this.resolveConflict());
+      }
+    });
+
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
       this.menuOpen.set(false);
       // Auf schmalen Geräten verschwindet die Seitenleiste nach der Auswahl.
@@ -278,16 +295,6 @@ export class App implements OnDestroy {
     void this.pwa.install();
   }
 
-  /**
-   * Wechselt zwischen Unterricht und Einrichten. Danach geht es zur Startseite
-   * des Modus - im Unterricht ist das der Wochenplan.
-   */
-  setSetup(setup: boolean): void {
-    this.menuOpen.set(false);
-    this.modeService.set(setup ? 'einrichten' : 'unterricht');
-    void this.router.navigateByUrl('/', { onSameUrlNavigation: 'reload' });
-  }
-
   cycleTheme(): void {
     this.theme.cycle();
   }
@@ -309,31 +316,61 @@ export class App implements OnDestroy {
       await this.vault.save();
       this.toasts.success('Gespeichert.');
     } catch (error) {
-      if (!(error instanceof FilePickerCancelled)) {
+      if (!(error instanceof FilePickerCancelled || error instanceof SaveConflictError)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
       }
     }
   }
 
-  /** Schließt den Bestand - danach fragt die App wieder nach der Datei. */
-  async closeVault(): Promise<void> {
+  openPasswordDialog(): void {
     this.menuOpen.set(false);
+    this.passwordDialogOpen.set(true);
+  }
 
-    if (this.hasUnsavedChanges()) {
-      const confirmed = await this.confirm.ask({
-        title: 'Ungespeicherte Änderungen verwerfen?',
-        message:
-          'Seit dem letzten Speichern wurde etwas geändert. Beim Schließen gehen diese Änderungen verloren.',
-        confirmLabel: 'Ohne Speichern schließen',
-        danger: true,
-      });
-      if (!confirmed) {
-        return;
+  /** Fragt, welcher Stand gilt, wenn zwei Geräte dieselbe Datei geändert haben. */
+  private async resolveConflict(): Promise<void> {
+    const keepMine = await this.confirm.ask({
+      title: 'Auf einem anderen Gerät wurde gespeichert',
+      message:
+        'Die Datei in OneDrive wurde geändert, seit sie hier geöffnet wurde. ' +
+        '„Meinen Stand behalten“ überschreibt die Änderungen des anderen Geräts. ' +
+        '„Anderen Stand laden“ verwirft die Änderungen auf diesem Gerät.',
+      confirmLabel: 'Meinen Stand behalten',
+      cancelLabel: 'Anderen Stand laden',
+      danger: true,
+    });
+
+    try {
+      if (keepMine) {
+        await this.vault.keepMineAfterConflict();
+        this.toasts.success('Gespeichert. Der Stand dieses Geräts gilt.');
+      } else {
+        await this.vault.takeTheirsAfterConflict();
+        this.toasts.success('Der Stand des anderen Geräts ist geladen.');
+      }
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Konflikt konnte nicht aufgelöst werden.');
       }
     }
+  }
 
-    await this.vault.closeVault();
-    await this.router.navigateByUrl('/');
+  startEdit(): void {
+    this.menuOpen.set(false);
+    void this.mode.requestEdit().then((ok) => ok && this.reloadStart());
+  }
+
+  finishEdit(): void {
+    this.menuOpen.set(false);
+    this.mode.finishEdit();
+    this.reloadStart();
+  }
+
+  /** Die Startseite hängt vom Modus ab: im Unterricht ist es der Wochenplan. */
+  private reloadStart(): void {
+    if (this.router.url.split('?')[0] === '/') {
+      void this.router.navigateByUrl('/', { onSameUrlNavigation: 'reload' });
+    }
   }
 
   /** Erster Kurs einer Klasse - oder der, der dort zuletzt offen war. */
@@ -375,7 +412,7 @@ export class App implements OnDestroy {
     }
 
     this.activeClassId.set(null);
-    if (path.length === 0 && !this.isSetup()) {
+    if (path.length === 0 && !this.isEdit()) {
       this.pageTitle.set('Wochenplan');
       return;
     }

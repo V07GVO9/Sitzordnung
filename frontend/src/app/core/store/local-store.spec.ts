@@ -317,6 +317,13 @@ describe('LocalStore - Bewertungen', () => {
     );
   });
 
+  it('nimmt die 0 als mittlere Bewertung an', () => {
+    const store = setup();
+    const { course, student } = withCourse(store);
+
+    expect(store.rate(course.id, student.id, 0).value).toBe(0);
+  });
+
   it('lehnt einen unzulässigen Wert ab', () => {
     const store = setup();
     const { course, student } = withCourse(store);

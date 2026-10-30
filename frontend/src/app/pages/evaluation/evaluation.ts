@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   AppSettings,
   Course,
@@ -11,11 +12,14 @@ import {
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
-import { FilePickerCancelled } from '../../core/store/file-system';
+import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
+import { OneDriveService } from '../../core/store/onedrive.service';
+import { isStrongPassword } from '../../core/store/password-policy';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
+import { PasswordRules } from '../../vault/password-rules';
 
 export type EvaluationTab = 'punkte' | 'noten' | 'einstellungen' | 'datei';
 const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
@@ -23,7 +27,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, Icon, PasswordRules],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -36,16 +40,23 @@ export class EvaluationPage {
 
   /** Der Reiter steht in der Adresse (?tab=noten), damit Links direkt dorthin führen. */
   readonly tab = input<string>();
+  /** Notenschlüssel, Einstellungen und Datei gibt es nur im Bearbeitungsmodus. */
+  readonly isEdit = inject(ModeService).isEdit;
   readonly activeTab = computed<EvaluationTab>(() => {
     const tab = this.tab() as EvaluationTab;
-    return TABS.includes(tab) ? tab : 'punkte';
+    return TABS.includes(tab) && (tab === 'punkte' || this.isEdit()) ? tab : 'punkte';
   });
 
   readonly fileName = this.vault.fileName;
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly autoSaveToFile = this.vault.autoSaveToFile;
+  readonly isInOneDrive = this.vault.isInOneDrive;
+  readonly rememberedFile = this.vault.rememberedFile;
+  readonly showOneDrive = inject(OneDriveService).isConfigured && !isNativeApp();
+  readonly oneDriveName = signal('sitzordnung');
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
+  readonly isStrongPassword = isStrongPassword;
 
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);
@@ -244,6 +255,37 @@ export class EvaluationPage {
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Der Datenbestand konnte nicht gespeichert werden.');
+      }
+    }
+  }
+
+  isRemembered(): boolean {
+    return this.vault.isRemembered();
+  }
+
+  /** Datei und Passwort auf diesem Gerät merken oder vergessen. */
+  async setRemember(enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await this.vault.rememberOnDevice();
+        this.toasts.success('Dieses Gerät öffnet den Bestand ab jetzt ohne Passwort.');
+      } else {
+        await this.vault.forgetOnDevice();
+        this.toasts.success('Datei und Passwort sind auf diesem Gerät vergessen.');
+      }
+    } catch (error) {
+      this.toasts.error(error, 'Die Einstellung konnte nicht gespeichert werden.');
+    }
+  }
+
+  /** Legt den Bestand in OneDrive ab - ab dann arbeiten alle Geräte mit dieser Datei. */
+  async moveToOneDrive(): Promise<void> {
+    try {
+      await this.vault.moveToOneDrive(this.oneDriveName().trim());
+      this.toasts.success('Der Datenbestand liegt jetzt in OneDrive.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Der Datenbestand konnte nicht in OneDrive abgelegt werden.');
       }
     }
   }

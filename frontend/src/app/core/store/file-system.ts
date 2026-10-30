@@ -20,6 +20,30 @@ export interface FileHandle {
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+  /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
+  readonly location?: 'onedrive';
+  /** Die Kennung der Datei in OneDrive. */
+  readonly remoteId?: string;
+  /**
+   * Wird vor dem Speichern aufgerufen, noch bevor verschlüsselt wird. Die
+   * OneDrive-Datei holt sich hier ihre Anmeldung - mit `interactive` darf
+   * sie dafür ein Anmeldefenster öffnen.
+   */
+  prepare?(interactive: boolean): Promise<void>;
+  /** Überschreibt beim nächsten Speichern, auch wenn ein anderes Gerät gespeichert hat. */
+  allowOverwrite?(): void;
+}
+
+/**
+ * Wird beim Speichern geworfen, wenn ein anderes Gerät die Datei seit dem
+ * Öffnen geändert hat. Ohne diese Prüfung würde dessen Stand stillschweigend
+ * überschrieben.
+ */
+export class SaveConflictError extends Error {
+  constructor() {
+    super('Die Datei wurde inzwischen auf einem anderen Gerät gespeichert.');
+    this.name = 'SaveConflictError';
+  }
 }
 
 interface FilePickerWindow {
@@ -72,7 +96,9 @@ export async function openFile(): Promise<{
 
   if (show) {
     try {
-      const [handle] = await show(PICKER_OPTIONS);
+      // Ohne Typfilter: Je nach System gilt die Datei als "Binärdatei" und
+      // wäre sonst ausgegraut. Ob es ein Datenbestand ist, prüft das Öffnen.
+      const [handle] = await show();
       const file = await handle.getFile();
       return { content: await file.text(), handle, name: handle.name };
     } catch (error) {
@@ -92,10 +118,10 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    // Android kennt die Dateiendung nicht und würde die Datei sonst ausgrauen.
-    if (!isNativeApp()) {
-      input.accept = VAULT_EXTENSION + ',application/json';
-    }
+    // Alle Dateien zulassen: Android erkennt die Datei nicht als JSON. Ganz
+    // ohne "accept" schickt die Android-WebView einen leeren Dateityp - dann
+    // ist im Dialog alles ausgegraut.
+    input.accept = '*/*';
 
     input.onchange = async () => {
       const file = input.files?.[0];

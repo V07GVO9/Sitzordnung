@@ -32,7 +32,7 @@ interface Distribution {
   css: string;
 }
 
-const VALUES = [2, 1, -1, -2];
+const VALUES = [2, 1, 0, -1, -2];
 
 /**
  * Noten einer Klasse je Fach: Foto, Name, Punktestand und Note, dazu ein

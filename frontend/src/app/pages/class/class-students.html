@@ -1,18 +1,20 @@
 <div class="page-bar">
   <span class="muted small">{{ students().length }} Schüler:innen</span>
   <span class="spacer"></span>
-  <a class="btn small ghost" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
-    <app-icon name="list-plus" /> Liste importieren
-  </a>
-  <button
-    class="round-btn"
-    type="button"
-    (click)="openNew()"
-    aria-label="Schüler anlegen"
-    title="Schüler anlegen"
-  >
-    <app-icon name="plus" />
-  </button>
+  @if (isEdit()) {
+    <a class="btn small ghost" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+      <app-icon name="list-plus" /> Liste importieren
+    </a>
+    <button
+      class="round-btn"
+      type="button"
+      (click)="openNew()"
+      aria-label="Schüler anlegen"
+      title="Schüler anlegen"
+    >
+      <app-icon name="plus" />
+    </button>
+  }
 </div>
 
 @if (loading()) {
@@ -20,9 +22,11 @@
 } @else if (students().length === 0) {
   <div class="empty">
     <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-    <button class="btn primary" type="button" (click)="openNew()">
-      <app-icon name="plus" /> Ersten Schüler anlegen
-    </button>
+    @if (isEdit()) {
+      <button class="btn primary" type="button" (click)="openNew()">
+        <app-icon name="plus" /> Ersten Schüler anlegen
+      </button>
+    }
   </div>
 } @else {
   <div class="list-wrap">
@@ -82,7 +86,7 @@
             >
               <app-icon name="chevron-left" />
             </button>
-            <label class="photo" title="Foto ändern">
+            <label class="photo" [title]="isEdit() ? 'Foto ändern' : ''">
               <span class="avatar big">
                 @if (student.photoUrl) {
                   <img [src]="student.photoUrl" [alt]="fullName(student)" />
@@ -90,8 +94,10 @@
                   <span>{{ initials(student) }}</span>
                 }
               </span>
-              <span class="photo-badge"><app-icon name="camera" /></span>
-              <input type="file" accept="image/*" (change)="photoChosen($event)" hidden />
+              @if (isEdit()) {
+                <span class="photo-badge"><app-icon name="camera" /></span>
+                <input type="file" accept="image/*" (change)="photoChosen($event)" hidden />
+              }
             </label>
             <span class="person-name">
               <strong>{{ student.firstName }}</strong>
@@ -116,6 +122,7 @@
               <span>Vorname</span>
               <input
                 type="text"
+                [readonly]="!isEdit()"
                 [ngModel]="editFirst()"
                 (ngModelChange)="editFirst.set($event)"
                 (blur)="openId() !== 'neu' && saveName()"
@@ -127,6 +134,7 @@
               <span>Nachname</span>
               <input
                 type="text"
+                [readonly]="!isEdit()"
                 [ngModel]="editLast()"
                 (ngModelChange)="editLast.set($event)"
                 (blur)="openId() !== 'neu' && saveName()"
@@ -186,18 +194,20 @@
             </div>
           </div>
 
-          <div class="list-group">
-            @if (openStudent()?.photoUrl) {
-              <button class="list-row" type="button" (click)="removePhoto()">
-                <app-icon name="image-off" />
-                <span class="row-text"><span class="title">Foto entfernen</span></span>
+          @if (isEdit()) {
+            <div class="list-group">
+              @if (openStudent()?.photoUrl) {
+                <button class="list-row" type="button" (click)="removePhoto()">
+                  <app-icon name="image-off" />
+                  <span class="row-text"><span class="title">Foto entfernen</span></span>
+                </button>
+              }
+              <button class="list-row danger" type="button" (click)="remove()">
+                <app-icon name="trash-2" />
+                <span class="row-text"><span class="title">Schüler löschen</span></span>
               </button>
-            }
-            <button class="list-row danger" type="button" (click)="remove()">
-              <app-icon name="trash-2" />
-              <span class="row-text"><span class="title">Schüler löschen</span></span>
-            </button>
-          </div>
+            </div>
+          }
         }
       </div>
     </div>

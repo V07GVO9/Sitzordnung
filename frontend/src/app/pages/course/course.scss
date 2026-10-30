@@ -231,6 +231,14 @@
     border-color 0.2s ease,
     background 0.2s ease;
 
+  /* Die angetippte Kachel: hier liegen die Bewertungsknöpfe. */
+  &.selected {
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 2px var(--accent),
+      var(--shadow);
+  }
+
   /* Wer heute bewertet wurde, bekommt die Farbe der Bewertung - wie in der Klassenmappe. */
   &.rated {
     border-color: var(--rated);
@@ -251,8 +259,11 @@
   background: transparent;
   color: inherit;
 
+  /* Deaktivierte Knöpfe schlucken Mausereignisse - im Bearbeitungsmodus
+     muss der Griff aber bei der Kachel ankommen, sonst lässt sie sich nicht ziehen. */
   &:disabled {
     cursor: inherit;
+    pointer-events: none;
   }
 }
 
@@ -372,18 +383,66 @@
     white-space: nowrap;
   }
 
+  /* Vorname hervorgehoben: 4 pt größer als der Nachname. */
+  span:first-child {
+    font-size: calc(0.6rem + 4pt);
+  }
+
   span + span {
     color: var(--text-muted);
     font-weight: 450;
   }
 }
 
-.actions {
+/* Die Bewertungsknöpfe der angetippten Kachel als schwebendes Overlay:
+   Kachel und Sitzplan behalten ihre Größe. Breite passt zu POPOVER_WIDTH in course.ts. */
+.rate-pop {
+  position: fixed;
+  z-index: 50;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.15rem;
-  width: 100%;
-  margin-top: auto;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+  width: min(15rem, calc(100vw - 0.75rem));
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.12s ease-out;
+
+  .rate {
+    min-height: 2.4rem;
+    font-size: 0.95rem;
+  }
+
+  .history {
+    min-height: 2rem;
+    font-size: 0.75rem;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* Der Verlauf liegt als eigene Zeile unter den Bewertungsknöpfen. */
+.history {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 1.6rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.65rem;
+  font-weight: 600;
 }
 
 .rate {
@@ -410,7 +469,7 @@
 
 /* --- Je breiter der Platz, desto mehr zeigt die Kachel --- */
 
-/* Ganz enge Plätze zeigen nur noch Name und die vier Knöpfe. */
+/* Ganz enge Plätze zeigen nur noch den Namen. */
 @container platz (max-width: 3rem) {
   .name {
     font-size: 0.55rem;
@@ -418,12 +477,6 @@
 
   .score {
     display: none;
-  }
-
-  .rate {
-    min-height: 1.4rem;
-    padding: 0.15rem 0;
-    font-size: 0.6rem;
   }
 }
 
@@ -463,11 +516,6 @@
     right: 0.3rem;
     font-size: 0.7rem;
   }
-
-  .rate {
-    min-height: 2rem;
-    font-size: 0.82rem;
-  }
 }
 
 @container platz (min-width: 7.5rem) {
@@ -488,16 +536,6 @@
 
   .score {
     font-size: 0.75rem;
-  }
-
-  .actions {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.2rem;
-  }
-
-  .rate {
-    min-height: 2.2rem;
-    font-size: 0.85rem;
   }
 }
 
@@ -556,11 +594,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 550;
+
+  /* Wie bei der Kachel: im Bearbeitungsmodus zieht man auch am Namen. */
+  &:disabled {
+    pointer-events: none;
+  }
 }
 
 .mini-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.2rem;
   flex: 1 1 100%;
 

@@ -8,16 +8,20 @@ import {
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnDestroy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   Course,
   CurrentLesson,
@@ -33,7 +37,6 @@ import {
   ratingSymbol,
 } from '../../core/models';
 import { isValidDateKey, toDateKey } from '../../core/store/time';
-import { ModeService } from '../../core/ui/mode.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -52,6 +55,33 @@ function readView(): ParticipationView {
   } catch {
     return 'sitzplan';
   }
+}
+
+/** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
+const POPOVER_WIDTH = 240;
+/** Ungefähre Höhe: eine Knopfreihe plus „Verlauf“. */
+const POPOVER_HEIGHT = 100;
+const POPOVER_GAP = 6;
+
+/**
+ * Legt das Overlay unter die Kachel, mittig und im Fenster gehalten.
+ * Reicht der Platz darunter nicht, öffnet es nach oben.
+ */
+function placePopover(rect: DOMRect): {
+  left: number;
+  top: number | null;
+  bottom: number | null;
+} {
+  const width = Math.min(POPOVER_WIDTH, window.innerWidth - 2 * POPOVER_GAP);
+  const left = Math.min(
+    Math.max(rect.left + rect.width / 2 - width / 2, POPOVER_GAP),
+    window.innerWidth - width - POPOVER_GAP,
+  );
+  const below = window.innerHeight - rect.bottom;
+  if (below < POPOVER_HEIGHT + POPOVER_GAP && rect.top > below) {
+    return { left, top: null, bottom: window.innerHeight - rect.top + POPOVER_GAP };
+  }
+  return { left, top: rect.bottom + POPOVER_GAP, bottom: null };
 }
 
 function writeView(view: ParticipationView): void {
@@ -97,11 +127,6 @@ export class CoursePage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
-  private readonly modeService = inject(ModeService);
-
-  /** Unterricht oder Einrichten - bestimmt, wohin die Rückwege führen. */
-  readonly isSetup = this.modeService.isSetup;
-
   /** Der Tag, für den bewertet wird - aus dem Wochenplan gewählt, sonst heute. */
   readonly lessonDate = signal(toDateKey(new Date()));
   /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
@@ -137,13 +162,34 @@ export class CoursePage implements OnDestroy {
   /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
   readonly view = signal<ParticipationView>(readView());
 
+  /**
+   * Die angetippte Kachel im Sitzplan. Nur sie zeigt die Bewertungsknöpfe -
+   * so bleiben alle anderen Kacheln klein und Fotos und Namen bekommen Platz.
+   */
+  readonly selectedId = signal<number | null>(null);
+  /** Wo die Bewertungsknöpfe der angetippten Kachel schweben (Bildschirmkoordinaten). */
+  readonly popover = signal<{ left: number; top: number | null; bottom: number | null } | null>(
+    null,
+  );
+  readonly selectedStudent = computed(() => {
+    const id = this.selectedId();
+    return id === null || !this.popover()
+      ? null
+      : (this.students().find((s) => s.id === id) ?? null);
+  });
+
   /** Der Schüler, dessen Verlauf als Blatt offen ist. */
   readonly sheetStudentId = signal<number | null>(null);
   /** Alle Bewertungen dieses Kurses - nur geladen, solange das Blatt offen ist. */
   readonly courseRatings = signal<Rating[]>([]);
 
-  /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
-  readonly editMode = signal(false);
+  private readonly mode = inject(ModeService);
+  /** Der App-Modus: Bearbeiten statt Unterricht. */
+  readonly appEdit = this.mode.isEdit;
+  /** Das Schloss am Sitzplan: im Unterricht kurz entsperrt, um Plätze zu tauschen. */
+  readonly seatUnlocked = signal(false);
+  /** Sitzordnung ändern statt bewerten - im Bearbeitungsmodus oder bei offenem Schloss. */
+  readonly editMode = computed(() => this.appEdit() || this.seatUnlocked());
 
   /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
   private readonly placement = signal<Map<string, number>>(new Map());
@@ -278,6 +324,25 @@ export class CoursePage implements OnDestroy {
       }
     });
 
+    // Im Bearbeitungsmodus zeigt der Kurs den Sitzplan; zurück im Unterricht
+    // kann inzwischen eine neue Stunde begonnen haben.
+    let wasEdit = this.editMode();
+    effect(() => {
+      const edit = this.editMode();
+      untracked(() => {
+        if (edit) {
+          this.selectedId.set(null);
+        }
+        if (edit && this.view() !== 'sitzplan') {
+          this.view.set('sitzplan');
+        }
+        if (wasEdit && !edit && this.courseId() > 0) {
+          this.refreshScores();
+        }
+      });
+      wasEdit = edit;
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('courseId'));
       if (Number.isFinite(id) && id > 0) {
@@ -297,6 +362,7 @@ export class CoursePage implements OnDestroy {
   private load(courseId: number): void {
     this.loading.set(true);
     this.sheetStudentId.set(null);
+    this.selectedId.set(null);
 
     forkJoin({
       course: this.api.getCourse(courseId),
@@ -540,7 +606,6 @@ export class CoursePage implements OnDestroy {
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
-        this.editMode.set(true);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
@@ -588,12 +653,14 @@ export class CoursePage implements OnDestroy {
 
   // --- Ansicht ---
 
+  /** Öffnet oder schließt das Schloss; den Rest erledigt der Effekt im Konstruktor. */
+  toggleMode(unlocked: boolean): void {
+    this.seatUnlocked.set(unlocked);
+  }
+
   setView(view: ParticipationView): void {
     this.view.set(view);
     writeView(view);
-    if (view === 'liste') {
-      this.editMode.set(false);
-    }
   }
 
   // --- Bewerten ---
@@ -603,6 +670,11 @@ export class CoursePage implements OnDestroy {
   }
 
   rate(student: Student, value: RatingValue): void {
+    if (this.editMode()) {
+      return;
+    }
+    // Nach dem Bewerten klappt die Kachel wieder zusammen.
+    this.selectedId.set(null);
     const courseId = this.courseId();
 
     this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
@@ -676,12 +748,48 @@ export class CoursePage implements OnDestroy {
     return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
   }
 
+  // --- Kachel auswählen ---
+
+  /** Erster Tipp öffnet die Knöpfe als Overlay an der Kachel, zweiter Tipp schließt sie. */
+  toggleSelect(student: Student, event: Event): void {
+    if (this.editMode()) {
+      return;
+    }
+    if (this.selectedId() === student.id) {
+      this.selectedId.set(null);
+      return;
+    }
+    const tile = (event.currentTarget as HTMLElement).closest('.student') ?? event.currentTarget;
+    this.popover.set(placePopover((tile as HTMLElement).getBoundingClientRect()));
+    this.selectedId.set(student.id);
+  }
+
+  @HostListener('document:keydown.escape')
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  clearSelection(): void {
+    this.selectedId.set(null);
+  }
+
+  /** Tippen neben das Overlay schließt es - die eigene Kachel schaltet selbst um. */
+  @HostListener('document:pointerdown', ['$event'])
+  onPointerDown(event: PointerEvent): void {
+    if (this.selectedId() === null) {
+      return;
+    }
+    const target = event.target as Element | null;
+    if (!target?.closest('.rate-pop, .student.selected')) {
+      this.selectedId.set(null);
+    }
+  }
+
   // --- Verlauf als Blatt ---
 
   openSheet(student: Student): void {
     if (this.editMode()) {
       return;
     }
+    this.selectedId.set(null);
     this.sheetStudentId.set(student.id);
     this.loadCourseRatings();
   }
@@ -751,15 +859,5 @@ export class CoursePage implements OnDestroy {
 
   scoreFor(studentId: number): StudentScore | null {
     return this.scoresById().get(studentId) ?? null;
-  }
-
-  toggleMode(edit: boolean): void {
-    this.editMode.set(edit);
-    if (edit) {
-      this.setView('sitzplan');
-      this.editMode.set(true);
-    } else {
-      this.refreshScores();
-    }
   }
 }
