@@ -28,6 +28,7 @@
       @for (sibling of siblings(); track sibling.id) {
         <a
           [routerLink]="['/kurs', sibling.id]"
+          [queryParams]="isToday() ? {} : { datum: lessonDate() }"
           [class.active]="sibling.id === courseId()"
           [attr.aria-current]="sibling.id === courseId() ? 'page' : null"
         >
@@ -46,6 +47,11 @@
             @if (lesson()!.room) {
               · Raum {{ lesson()!.room }}
             }
+          } @else if (lessonTime(); as time) {
+            {{ time.from }}–{{ time.to }} Uhr
+            @if (!isToday()) {
+              · <span class="nachtrag">Bewertungen für diesen Tag</span>
+            }
           } @else {
             außerhalb des Stundenplans –
             @if (editMode()) {
@@ -58,6 +64,9 @@
       </div>
 
       <div class="kb-controls">
+        @if (!appEdit()) {
+          <a class="btn small" routerLink="/"> <app-icon name="calendar-days" /> Wochenplan </a>
+        }
         <a class="btn small" [routerLink]="['/kurs', courseId(), 'noten']">
           <app-icon name="graduation-cap" /> Noten
         </a>
@@ -97,19 +106,41 @@
             }
           </div>
         }
+
+        @if (view() === 'sitzplan' && plans().length > 0 && !appEdit()) {
+          <!-- Das Schloss: zu = Sitzplan fixiert, auf = Plätze lassen sich verschieben. -->
+          <button
+            class="round-btn edit-toggle"
+            type="button"
+            [class.on]="editMode()"
+            (click)="toggleMode(!editMode())"
+            [attr.aria-pressed]="editMode()"
+            [title]="editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'"
+            [attr.aria-label]="
+              editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'
+            "
+          >
+            <app-icon [name]="editMode() ? 'lock-open' : 'lock'" />
+          </button>
+        }
       </div>
     </section>
 
     @if (editMode()) {
       <div class="banner warn">
-        <app-icon name="pencil" />
+        <app-icon name="lock-open" />
         <span>
-          <strong>Sitzplan bearbeiten:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
+          <strong>Sitzplan entsperrt:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
           Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
         @if (saving()) {
           <span class="small">Wird übernommen …</span>
+        }
+        @if (seatUnlocked()) {
+          <button class="btn small" type="button" (click)="toggleMode(false)">
+            <app-icon name="lock" /> Sperren
+          </button>
         }
       </div>
     }
@@ -120,6 +151,7 @@
         [scores]="scoresById()"
         [today]="todayRatings()"
         [flashId]="flash()?.studentId ?? null"
+        [dayLabel]="dayWord()"
         (rate)="onRate($event)"
         (openStudent)="openSheet($event)"
       />

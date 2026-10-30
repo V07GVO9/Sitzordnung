@@ -53,7 +53,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
               <strong>{{ fullName(row.student) }}</strong>
               @if (row.today.length) {
                 <span class="today">
-                  heute
+                  {{ dayLabel() }}
                   @for (rating of row.today; track rating.id) {
                     <span class="chip" [class]="ratingClass(rating.value)">{{
                       ratingSymbol(rating.value)
@@ -61,7 +61,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
                   }
                 </span>
               } @else {
-                <span class="sub muted">keine Bewertung heute</span>
+                <span class="sub muted">keine Bewertung {{ dayLabel() }}</span>
               }
             </span>
           </button>
@@ -195,6 +195,8 @@ export class ParticipationList {
   readonly scores = input.required<Map<number, StudentScore>>();
   readonly today = input.required<Map<number, Rating[]>>();
   readonly flashId = input<number | null>(null);
+  /** „heute“ oder - beim Nachtragen aus dem Wochenplan - „am 05.10.“. */
+  readonly dayLabel = input('heute');
 
   readonly rate = output<RateRequest>();
   readonly openStudent = output<Student>();
