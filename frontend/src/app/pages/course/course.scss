@@ -383,6 +383,11 @@
     white-space: nowrap;
   }
 
+  /* Vorname hervorgehoben: 4 pt größer als der Nachname. */
+  span:first-child {
+    font-size: calc(0.6rem + 4pt);
+  }
+
   span + span {
     color: var(--text-muted);
     font-weight: 450;
