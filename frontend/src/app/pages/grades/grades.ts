@@ -25,7 +25,7 @@ import {
   ratingSymbol,
 } from '../../core/models';
 import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
-import { download } from '../../core/store/file-system';
+import { download, isNativeApp } from '../../core/store/file-system';
 import { renderReports } from '../../core/store/report';
 import { formatDateGerman, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
@@ -608,6 +608,17 @@ export class GradesPage {
   /** Erzeugt die Bögen und öffnet den Druckdialog - dort lässt sich auch ein PDF speichern. */
   printReports(): void {
     this.issue((reports) => {
+      // Die Android-App kann nicht drucken. Sie gibt die Bögen deshalb als Datei
+      // weiter - in Chrome geöffnet, lassen sie sich dort drucken oder als PDF sichern.
+      if (isNativeApp()) {
+        void download(
+          new Blob([renderReports(reports)], { type: 'text/html;charset=utf-8' }),
+          `notenboegen-${toDateKey(new Date())}.html`,
+          { share: true },
+        );
+        return;
+      }
+
       const frame = document.createElement('iframe');
       frame.style.position = 'fixed';
       frame.style.width = '0';

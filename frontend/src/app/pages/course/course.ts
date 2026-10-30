@@ -8,28 +8,89 @@ import {
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   OnDestroy,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { ModeService } from '../../core/mode.service';
 import {
   Course,
+  CurrentLesson,
+  Rating,
   RatingValue,
-  LessonRef,
-  LessonSlot,
   SeatingPlan,
   Student,
   StudentScore,
+  WEEKDAY_NAMES,
   fullName,
   initials,
+  ratingClass,
+  ratingSymbol,
 } from '../../core/models';
+import { isValidDateKey, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
+import { ConfirmService } from '../../core/ui/confirm.service';
+import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
+import { ParticipationSheet } from './participation-sheet';
+
+/** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
+export type ParticipationView = 'liste' | 'sitzplan';
+
+const VIEW_KEY = 'sitzordnung.mitarbeit-ansicht';
+
+/** Die gewählte Ansicht merken - ohne dass ein gesperrter Speicher stört. */
+function readView(): ParticipationView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
+  } catch {
+    return 'sitzplan';
+  }
+}
+
+/** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
+const POPOVER_WIDTH = 240;
+/** Ungefähre Höhe: eine Knopfreihe plus „Verlauf“. */
+const POPOVER_HEIGHT = 100;
+const POPOVER_GAP = 6;
+
+/**
+ * Legt das Overlay unter die Kachel, mittig und im Fenster gehalten.
+ * Reicht der Platz darunter nicht, öffnet es nach oben.
+ */
+function placePopover(rect: DOMRect): {
+  left: number;
+  top: number | null;
+  bottom: number | null;
+} {
+  const width = Math.min(POPOVER_WIDTH, window.innerWidth - 2 * POPOVER_GAP);
+  const left = Math.min(
+    Math.max(rect.left + rect.width / 2 - width / 2, POPOVER_GAP),
+    window.innerWidth - width - POPOVER_GAP,
+  );
+  const below = window.innerHeight - rect.bottom;
+  if (below < POPOVER_HEIGHT + POPOVER_GAP && rect.top > below) {
+    return { left, top: null, bottom: window.innerHeight - rect.top + POPOVER_GAP };
+  }
+  return { left, top: rect.bottom + POPOVER_GAP, bottom: null };
+}
+
+function writeView(view: ParticipationView): void {
+  try {
+    localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // Dann gilt die Wahl eben nur bis zum Neuladen.
+  }
+}
 
 /** Woher ein gezogener Schüler kommt bzw. wohin er fällt. */
 type DropTarget = { kind: 'pool' } | { kind: 'seat'; row: number; column: number };
@@ -46,7 +107,18 @@ export interface SeatCell {
 @Component({
   selector: 'app-course',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, CdkDrag, CdkDragPreview, CdkDropList, CdkDropListGroup],
+  imports: [
+    FormsModule,
+    NgTemplateOutlet,
+    RouterLink,
+    CdkDrag,
+    CdkDragPreview,
+    CdkDropList,
+    CdkDropListGroup,
+    Icon,
+    ParticipationList,
+    ParticipationSheet,
+  ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
 })
@@ -54,6 +126,22 @@ export class CoursePage implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
+  /** Der Tag, für den bewertet wird - aus dem Wochenplan gewählt, sonst heute. */
+  readonly lessonDate = signal(toDateKey(new Date()));
+  /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
+  readonly lessonTime = signal<{ from: string; to: string } | null>(null);
+  readonly isToday = computed(() => this.lessonDate() === toDateKey(new Date()));
+  /** Für Hinweise wie „keine Bewertung heute“ bzw. „… am 05.10.“. */
+  readonly dayWord = computed(() =>
+    this.isToday()
+      ? 'heute'
+      : 'am ' +
+        new Date(`${this.lessonDate()}T12:00:00`).toLocaleDateString('de-DE', {
+          day: '2-digit',
+          month: '2-digit',
+        }),
+  );
 
   readonly courseId = signal(0);
   readonly loading = signal(true);
@@ -62,23 +150,46 @@ export class CoursePage implements OnDestroy {
   readonly plans = signal<SeatingPlan[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
-  readonly lessonSlot = signal<LessonSlot | null>(null);
   readonly saving = signal(false);
 
-  /** Solange geblättert wird, bleiben die Pfeile gesperrt. */
-  readonly switchingLesson = signal(false);
+  /** Die anderen Fächer derselben Klasse - als Reiter oben. */
+  readonly siblings = signal<Course[]>([]);
+  /** Was laut Stundenplan gerade läuft. */
+  readonly lesson = signal<CurrentLesson | null>(null);
+  /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
+  readonly todayRatings = signal<Map<number, Rating[]>>(new Map());
+
+  /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
+  readonly view = signal<ParticipationView>(readView());
 
   /**
-   * Die angezeigte Stunde als Angabe für die API - null, solange die aktuelle
-   * Stunde zu sehen ist. Dann entscheidet der Server, welche das gerade ist.
+   * Die angetippte Kachel im Sitzplan. Nur sie zeigt die Bewertungsknöpfe -
+   * so bleiben alle anderen Kacheln klein und Fotos und Namen bekommen Platz.
    */
-  private readonly lessonRef = computed<LessonRef | null>(() => {
-    const slot = this.lessonSlot();
-    return !slot || slot.isCurrent ? null : { date: slot.date, startTime: slot.startTime };
+  readonly selectedId = signal<number | null>(null);
+  /** Wo die Bewertungsknöpfe der angetippten Kachel schweben (Bildschirmkoordinaten). */
+  readonly popover = signal<{ left: number; top: number | null; bottom: number | null } | null>(
+    null,
+  );
+  readonly selectedStudent = computed(() => {
+    const id = this.selectedId();
+    return id === null || !this.popover()
+      ? null
+      : (this.students().find((s) => s.id === id) ?? null);
   });
 
-  /** false = Unterricht (bewerten), true = Einstellungen (Sitzordnung ändern). */
-  readonly editMode = signal(false);
+  /** Der Schüler, dessen Verlauf als Blatt offen ist. */
+  readonly sheetStudentId = signal<number | null>(null);
+  /** Alle Bewertungen dieses Kurses - nur geladen, solange das Blatt offen ist. */
+  readonly courseRatings = signal<Rating[]>([]);
+
+  private readonly mode = inject(ModeService);
+  /** Der App-Modus: Bearbeiten statt Unterricht. */
+  readonly appEdit = this.mode.isEdit;
+  /** Das Schloss am Sitzplan: im Unterricht kurz entsperrt, um Plätze zu tauschen. */
+  readonly seatUnlocked = signal(false);
+  /** Sitzordnung ändern statt bewerten - im Bearbeitungsmodus oder bei offenem Schloss. */
+  readonly editMode = computed(() => this.appEdit() || this.seatUnlocked());
 
   /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
   private readonly placement = signal<Map<string, number>>(new Map());
@@ -90,6 +201,16 @@ export class CoursePage implements OnDestroy {
   readonly fullName = fullName;
   readonly initials = initials;
 
+  readonly ratingOptions = RATING_OPTIONS;
+  readonly ratingClass = ratingClass;
+
+  /** Die zuletzt bewertete Kachel leuchtet kurz auf. */
+  readonly flash = signal<{ studentId: number; value: number } | null>(null);
+  private flashTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Die Meldung mit „Rückgängig“ zur letzten Bewertung. */
+  private undoToastId: number | null = null;
+
   readonly activePlan = computed(
     () => this.plans().find((p) => p.id === this.activePlanId()) ?? null,
   );
@@ -98,7 +219,7 @@ export class CoursePage implements OnDestroy {
     () => new Map(this.students().map((s) => [s.id, s] as const)),
   );
 
-  private readonly scoresById = computed(
+  readonly scoresById = computed(
     () => new Map(this.scores().map((s) => [s.studentId, s] as const)),
   );
 
@@ -135,21 +256,93 @@ export class CoursePage implements OnDestroy {
 
   readonly poolTarget: DropTarget = { kind: 'pool' };
 
-  /** Bewertet werden darf immer - begrenzt ist nur eine Bewertung je Stunde. */
-  readonly canRate = computed(() => this.students().length > 0);
+  /** Die Liste „Ohne Platz“ wird beim Bewerten nur gebraucht, wenn jemand darin steht. */
+  readonly showPool = computed(
+    () => this.editMode() || this.unseated().length > 0 || this.students().length === 0,
+  );
 
-  /**
-   * Die angezeigte Stunde wechselt mit der Zeit. Statt eines Knopfes zum
-   * Nachprüfen holt die Seite sie selbst nach - aber nur, solange die aktuelle
-   * Stunde zu sehen ist und nicht am Sitzplan gearbeitet wird.
-   */
-  private readonly timer = setInterval(() => {
-    if (!this.editMode() && this.lessonSlot()?.isCurrent && !this.switchingLesson()) {
-      this.refreshSlot();
+  /** Läuft dieser Kurs gerade laut Stundenplan? */
+  readonly isRunning = computed(() => {
+    const lesson = this.lesson();
+    return this.isToday() && !!lesson?.hasLesson && lesson.courseId === this.courseId();
+  });
+
+  /** „Mittwoch, 08.10.2025“ für die Datumszeile. */
+  readonly todayLabel = computed(() => {
+    const date = new Date(`${this.lessonDate()}T12:00:00`);
+    return `${WEEKDAY_NAMES[date.getDay()]}, ${date.toLocaleDateString('de-DE')}`;
+  });
+
+  /** Die zuletzt heute vergebene Bewertung je Schüler - färbt die Kachel. */
+  readonly lastToday = computed(() => {
+    const map = new Map<number, number>();
+    for (const [studentId, ratings] of this.todayRatings()) {
+      if (ratings.length) {
+        map.set(studentId, ratings[ratings.length - 1].value);
+      }
     }
-  }, 60_000);
+    return map;
+  });
+
+  readonly sheetStudent = computed(
+    () => this.students().find((s) => s.id === this.sheetStudentId()) ?? null,
+  );
+
+  readonly sheetRatings = computed(() =>
+    this.courseRatings().filter((r) => r.studentId === this.sheetStudentId()),
+  );
+
+  /** Reihenfolge zum Blättern im Blatt - wie die Liste, nach Vorname. */
+  private readonly sheetOrder = computed(() =>
+    [...this.students()].sort(
+      (a, b) =>
+        a.firstName.localeCompare(b.firstName, 'de') || a.lastName.localeCompare(b.lastName, 'de'),
+    ),
+  );
+
+  readonly sheetIndex = computed(() =>
+    this.sheetOrder().findIndex((s) => s.id === this.sheetStudentId()),
+  );
+
+  readonly sheetHasNext = computed(() => {
+    const index = this.sheetIndex();
+    return index >= 0 && index < this.sheetOrder().length - 1;
+  });
+
+  /** Die laufende Stunde wechselt mit der Zeit - die Anzeige zieht nach. */
+  private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
+    this.route.queryParamMap.subscribe((query) => {
+      const datum = query.get('datum');
+      this.lessonDate.set(datum && isValidDateKey(datum) ? datum : toDateKey(new Date()));
+      const from = query.get('von');
+      const to = query.get('bis');
+      this.lessonTime.set(from && to ? { from, to } : null);
+      if (this.courseId() > 0 && !this.loading()) {
+        this.refreshToday();
+      }
+    });
+
+    // Im Bearbeitungsmodus zeigt der Kurs den Sitzplan; zurück im Unterricht
+    // kann inzwischen eine neue Stunde begonnen haben.
+    let wasEdit = this.editMode();
+    effect(() => {
+      const edit = this.editMode();
+      untracked(() => {
+        if (edit) {
+          this.selectedId.set(null);
+        }
+        if (edit && this.view() !== 'sitzplan') {
+          this.view.set('sitzplan');
+        }
+        if (wasEdit && !edit && this.courseId() > 0) {
+          this.refreshScores();
+        }
+      });
+      wasEdit = edit;
+    });
+
     this.route.paramMap.subscribe((params) => {
       const id = Number(params.get('courseId'));
       if (Number.isFinite(id) && id > 0) {
@@ -161,25 +354,32 @@ export class CoursePage implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.timer);
+    if (this.flashTimer) {
+      clearTimeout(this.flashTimer);
+    }
   }
 
   private load(courseId: number): void {
     this.loading.set(true);
+    this.sheetStudentId.set(null);
+    this.selectedId.set(null);
 
     forkJoin({
       course: this.api.getCourse(courseId),
+      courses: this.api.getCourses(),
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
-      // Der Punktestand bringt die aktuelle Unterrichtsstunde gleich mit.
       scoreboard: this.api.getScoreboard(courseId),
     }).subscribe({
-      next: ({ course, students, plans, scoreboard }) => {
+      next: ({ course, courses, students, plans, scoreboard }) => {
         this.course.set(course);
+        this.siblings.set(courses.filter((c) => c.schoolClassId === course.schoolClassId));
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
-        this.lessonSlot.set(scoreboard.currentLesson ?? null);
         this.selectPlan(plans[0]?.id ?? null);
+        this.refreshToday();
+        this.refreshLesson();
         this.loading.set(false);
       },
       error: (err) => {
@@ -210,7 +410,12 @@ export class CoursePage implements OnDestroy {
     const to = event.container.data;
     const studentId = event.item.data as number;
 
-    if (from.kind === 'seat' && to.kind === 'seat' && from.row === to.row && from.column === to.column) {
+    if (
+      from.kind === 'seat' &&
+      to.kind === 'seat' &&
+      from.row === to.row &&
+      from.column === to.column
+    ) {
       return;
     }
 
@@ -267,8 +472,73 @@ export class CoursePage implements OnDestroy {
     this.persistLayout();
   }
 
-  clearSeats(): void {
+  async clearSeats(): Promise<void> {
+    if (this.placement().size === 0) {
+      return;
+    }
+
+    const confirmed = await this.confirm.ask({
+      title: 'Alle Plätze leeren?',
+      message: 'Alle Schüler wandern zurück in die Liste „Ohne Platz“.',
+      confirmLabel: 'Plätze leeren',
+      danger: true,
+    });
+    if (!confirmed) {
+      return;
+    }
+
     this.placement.set(new Map());
+    this.persistLayout();
+  }
+
+  /**
+   * Setzt alle Schüler neu - alphabetisch nach Nachnamen oder zufällig - und
+   * füllt das Raster Reihe für Reihe von vorn.
+   */
+  async arrange(order: 'alpha' | 'random'): Promise<void> {
+    if (this.placement().size > 0) {
+      const confirmed = await this.confirm.ask({
+        title: order === 'alpha' ? 'Alphabetisch neu setzen?' : 'Zufällig neu mischen?',
+        message: 'Die bisherige Sitzordnung wird dabei ersetzt.',
+        confirmLabel: order === 'alpha' ? 'Alphabetisch setzen' : 'Mischen',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const students = [...this.students()];
+    if (order === 'alpha') {
+      students.sort(
+        (a, b) =>
+          a.lastName.localeCompare(b.lastName, 'de') ||
+          a.firstName.localeCompare(b.firstName, 'de'),
+      );
+    } else {
+      // Fisher-Yates: jede Reihenfolge ist gleich wahrscheinlich.
+      for (let i = students.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [students[i], students[j]] = [students[j], students[i]];
+      }
+    }
+
+    const next = new Map<string, number>();
+    let index = 0;
+    for (let row = 0; row < this.rows() && index < students.length; row++) {
+      for (let column = 0; column < this.columns() && index < students.length; column++) {
+        next.set(`${row}:${column}`, students[index++].id);
+      }
+    }
+
+    const left = students.length - index;
+    if (left > 0) {
+      this.toasts.show(
+        `${left} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
+        'error',
+      );
+    }
+
+    this.placement.set(next);
     this.persistLayout();
   }
 
@@ -336,7 +606,6 @@ export class CoursePage implements OnDestroy {
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
-        this.editMode.set(true);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
@@ -357,9 +626,17 @@ export class CoursePage implements OnDestroy {
     });
   }
 
-  deletePlan(): void {
+  async deletePlan(): Promise<void> {
     const plan = this.activePlan();
-    if (!plan || !confirm(`Sitzordnung „${plan.name}" wirklich löschen?`)) {
+    if (
+      !plan ||
+      !(await this.confirm.ask({
+        title: `Sitzordnung „${plan.name}" löschen?`,
+        message: 'Die Plätze dieser Sitzordnung gehen verloren. Bewertungen bleiben erhalten.',
+        confirmLabel: 'Löschen',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -374,106 +651,213 @@ export class CoursePage implements OnDestroy {
     });
   }
 
+  // --- Ansicht ---
+
+  /** Öffnet oder schließt das Schloss; den Rest erledigt der Effekt im Konstruktor. */
+  toggleMode(unlocked: boolean): void {
+    this.seatUnlocked.set(unlocked);
+  }
+
+  setView(view: ParticipationView): void {
+    this.view.set(view);
+    writeView(view);
+  }
+
   // --- Bewerten ---
 
-  rate(studentId: number, value: RatingValue): void {
+  onRate(request: RateRequest): void {
+    this.rate(request.student, request.value);
+  }
+
+  rate(student: Student, value: RatingValue): void {
+    if (this.editMode()) {
+      return;
+    }
+    // Nach dem Bewerten klappt die Kachel wieder zusammen.
+    this.selectedId.set(null);
     const courseId = this.courseId();
 
-    // Wird gerade eine frühere Stunde angesehen, zählt die Bewertung auf sie.
-    this.api.rate(courseId, studentId, value).subscribe({
-      next: () => this.refreshScores(),
+    this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
+      next: (rating) => {
+        this.refreshScores();
+        this.flashTile(student.id, value);
+
+        // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
+        // im Unterricht nichts stapelt.
+        if (this.undoToastId !== null) {
+          this.toasts.dismiss(this.undoToastId);
+        }
+        this.undoToastId = this.toasts.show(
+          `${fullName(student)}: ${ratingSymbol(value)}`,
+          'success',
+          6000,
+          { label: 'Rückgängig', run: () => this.undoRating(rating.id) },
+        );
+      },
       error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
-  undo(studentId: number): void {
-    this.api.undoLastRating(this.courseId(), studentId).subscribe({
+  /** Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. */
+  private undoRating(ratingId: number): void {
+    this.undoToastId = null;
+    this.api.deleteRating(ratingId).subscribe({
       next: () => {
-        this.toasts.show('Die Bewertung dieser Stunde wurde zurückgenommen.');
+        this.toasts.show('Die Bewertung wurde zurückgenommen.');
         this.refreshScores();
       },
       error: (err) => this.toasts.error(err, 'Es gab nichts zurückzunehmen.'),
     });
   }
 
-  /**
-   * Blättert zur vorherigen oder nächsten Unterrichtsstunde dieses Kurses und
-   * lädt den Punktestand dieser Stunde nach.
-   */
-  gotoLesson(direction: 'prev' | 'next'): void {
-    const slot = this.lessonSlot();
-    if (!slot || this.switchingLesson()) {
+  /** Löscht eine Bewertung aus dem Verlauf im Blatt - nach Rückfrage. */
+  async removeRating(rating: Rating): Promise<void> {
+    const date = new Date(`${rating.lessonDate}T12:00:00`).toLocaleDateString('de-DE');
+    const confirmed = await this.confirm.ask({
+      title: `Bewertung ${ratingSymbol(rating.value)} vom ${date} löschen?`,
+      message: 'Der Punktestand wird sofort neu berechnet.',
+      confirmLabel: 'Löschen',
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 
-    this.switchingLesson.set(true);
-
-    // Blätter-Funktionalität: Vorübergehend deaktiviert
-    // this.api
-    //   .getNeighbourLessonSlot(
-    //     this.courseId(),
-    //     { date: slot.date, startTime: slot.startTime },
-    //     direction,
-    //   )
-    //   .subscribe({
-    //     next: (naechste) => {
-    //       this.lessonSlot.set(naechste);
-    //       this.refreshScores(naechste.isCurrent ? null : naechste);
-    //       this.switchingLesson.set(false);
-    //     },
-    //     error: (err) => {
-    //       this.switchingLesson.set(false);
-    //       this.toasts.error(
-    //         err,
-    //         direction === 'prev'
-    //           ? 'Davor gibt es keine Unterrichtsstunde dieses Kurses.'
-    //           : 'Danach gibt es keine weitere Unterrichtsstunde dieses Kurses.',
-    //       );
-    //     },
-    //   });
-
-    this.switchingLesson.set(false);
-    this.toasts.show('Navigation zwischen Stunden ist momentan nicht verfügbar.', 'info');
-  }
-
-  /** Zurück zu der Stunde, der eine Bewertung ohne Blättern zugerechnet wird. */
-  gotoCurrentLesson(): void {
-    this.refreshSlot();
-    this.refreshScores(null);
-  }
-
-  private refreshScores(lesson: LessonRef | null = this.lessonRef()): void {
-    this.api.getScoreboard(this.courseId()).subscribe({
-      next: (board) => {
-        this.scores.set(board.students);
-        this.lessonSlot.set(board.currentLesson ?? null);
-      },
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    this.api.deleteRating(rating.id).subscribe({
+      next: () => this.refreshScores(),
+      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gelöscht werden.'),
     });
   }
 
-  /** Holt die aktuelle Unterrichtsstunde neu - sie wechselt mit der Zeit. */
-  private refreshSlot(): void {
-    // getCurrentLessonSlot ist momentan nicht implementiert
-    // this.api
-    //   .getCurrentLessonSlot(this.courseId())
-    //   .pipe(catchError(() => of(null)))
-    //   .subscribe((slot) => {
-    //     if (slot) {
-    //       this.lessonSlot.set(slot);
-    //     }
-    //   });
+  private flashTile(studentId: number, value: number): void {
+    if (this.flashTimer) {
+      clearTimeout(this.flashTimer);
+    }
+
+    // Erst abschalten, dann im nächsten Bild wieder an - so startet die
+    // Animation auch beim zweiten Tippen auf dieselbe Kachel neu.
+    this.flash.set(null);
+    requestAnimationFrame(() => {
+      this.flash.set({ studentId, value });
+      this.flashTimer = setTimeout(() => this.flash.set(null), 700);
+    });
+  }
+
+  /** Punkte mit Vorzeichen: +3, 0, −2. */
+  signed(points: number): string {
+    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  }
+
+  // --- Kachel auswählen ---
+
+  /** Erster Tipp öffnet die Knöpfe als Overlay an der Kachel, zweiter Tipp schließt sie. */
+  toggleSelect(student: Student, event: Event): void {
+    if (this.editMode()) {
+      return;
+    }
+    if (this.selectedId() === student.id) {
+      this.selectedId.set(null);
+      return;
+    }
+    const tile = (event.currentTarget as HTMLElement).closest('.student') ?? event.currentTarget;
+    this.popover.set(placePopover((tile as HTMLElement).getBoundingClientRect()));
+    this.selectedId.set(student.id);
+  }
+
+  @HostListener('document:keydown.escape')
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  clearSelection(): void {
+    this.selectedId.set(null);
+  }
+
+  /** Tippen neben das Overlay schließt es - die eigene Kachel schaltet selbst um. */
+  @HostListener('document:pointerdown', ['$event'])
+  onPointerDown(event: PointerEvent): void {
+    if (this.selectedId() === null) {
+      return;
+    }
+    const target = event.target as Element | null;
+    if (!target?.closest('.rate-pop, .student.selected')) {
+      this.selectedId.set(null);
+    }
+  }
+
+  // --- Verlauf als Blatt ---
+
+  openSheet(student: Student): void {
+    if (this.editMode()) {
+      return;
+    }
+    this.selectedId.set(null);
+    this.sheetStudentId.set(student.id);
+    this.loadCourseRatings();
+  }
+
+  closeSheet(): void {
+    this.sheetStudentId.set(null);
+    this.courseRatings.set([]);
+  }
+
+  stepSheet(direction: -1 | 1): void {
+    const next = this.sheetOrder()[this.sheetIndex() + direction];
+    if (next) {
+      this.sheetStudentId.set(next.id);
+    }
+  }
+
+  private loadCourseRatings(): void {
+    this.api.getRatings(this.courseId()).subscribe({
+      next: (ratings) => this.courseRatings.set(ratings),
+      error: (err) => this.toasts.error(err, 'Der Verlauf konnte nicht geladen werden.'),
+    });
+  }
+
+  // --- Nachladen ---
+
+  /** Punktestand, heutige Bewertungen und - falls offen - der Verlauf. */
+  private refreshScores(): void {
+    this.api.getScoreboard(this.courseId()).subscribe({
+      next: (board) => this.scores.set(board.students),
+      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    });
+    this.refreshToday();
+    if (this.sheetStudentId() !== null) {
+      this.loadCourseRatings();
+    }
+  }
+
+  private refreshToday(): void {
+    const day = this.lessonDate();
+    this.api.getRatings(this.courseId(), { from: day, to: day }).subscribe({
+      next: (ratings) => {
+        const map = new Map<number, Rating[]>();
+        for (const rating of [...ratings].sort((a, b) => a.id - b.id)) {
+          map.set(rating.studentId, [...(map.get(rating.studentId) ?? []), rating]);
+        }
+        this.todayRatings.set(map);
+      },
+    });
+  }
+
+  private refreshLesson(): void {
+    this.api.getCurrentLesson().subscribe({
+      next: (lesson) => this.lesson.set(lesson),
+      error: () => this.lesson.set(null),
+    });
+  }
+
+  /** Die Farbe der heutigen Bewertung als CSS-Variable für die Kachel. */
+  ratedColor(value: number | undefined): string | null {
+    const css = ratingClass(value);
+    return css ? `var(--${css})` : null;
+  }
+
+  ratingSymbolOf(value: number): string {
+    return ratingSymbol(value);
   }
 
   scoreFor(studentId: number): StudentScore | null {
     return this.scoresById().get(studentId) ?? null;
-  }
-
-  toggleMode(edit: boolean): void {
-    this.editMode.set(edit);
-    if (!edit) {
-      // Beim Zurückwechseln kann inzwischen eine neue Stunde begonnen haben.
-      this.refreshScores();
-    }
   }
 }

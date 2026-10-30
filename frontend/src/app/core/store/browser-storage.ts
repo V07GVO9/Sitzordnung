@@ -20,6 +20,8 @@ export interface AutosaveEntry {
   savedAt: string;
   /** Name der zugehörigen Datei, nur zur Anzeige. */
   fileName: string | null;
+  /** Stand der Zwischenstand Änderungen, die noch in keiner Datei stehen? */
+  dirty?: boolean;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -37,7 +39,10 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest): Promise<T> {
+function run<T>(
+  mode: IDBTransactionMode,
+  action: (store: IDBObjectStore) => IDBRequest,
+): Promise<T> {
   return openDatabase().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
@@ -76,29 +81,44 @@ export async function clearAutosave(): Promise<void> {
   }
 }
 
+// --- Gemerkter Bestand ------------------------------------------------------
+
+const REMEMBERED_KEY = 'remembered';
+
 /**
- * Der Griff auf die zuletzt benutzte Datei (nur Chrome/Edge). Er enthält keine
- * Daten, nur den Verweis - der Inhalt bleibt verschlüsselt in der Datei.
+ * Der OneDrive-Bestand, den dieses Gerät beim Start von selbst öffnet.
+ *
+ * Das Passwort liegt nicht im Klartext hier, sondern mit einem Schlüssel
+ * verschlüsselt, den der Browser nicht herausgibt (WebCrypto, nicht
+ * exportierbar). Kopiert jemand den Speicher auf ein anderes Gerät, nützt
+ * ihm das nichts. Wer dagegen an diesem entsperrten Gerät sitzt, kommt an
+ * die Daten - deshalb nur auf eigenen Geräten verwenden.
  */
-export async function readFileHandle<T>(): Promise<T | null> {
+export interface RememberedEntry {
+  fileId: string;
+  fileName: string;
+  key: CryptoKey;
+  iv: Uint8Array;
+  password: ArrayBuffer;
+}
+
+export async function readRemembered(): Promise<RememberedEntry | null> {
   try {
-    return (await run<T | undefined>('readonly', (s) => s.get(HANDLE_KEY))) ?? null;
+    return (
+      (await run<RememberedEntry | undefined>('readonly', (s) => s.get(REMEMBERED_KEY))) ?? null
+    );
   } catch {
     return null;
   }
 }
 
-export async function writeFileHandle(handle: unknown): Promise<void> {
-  try {
-    await run('readwrite', (s) => s.put(handle, HANDLE_KEY));
-  } catch {
-    // Lässt sich der Griff nicht ablegen, wird beim nächsten Mal wieder gesucht.
-  }
+export async function writeRemembered(entry: RememberedEntry): Promise<void> {
+  await run('readwrite', (s) => s.put(entry, REMEMBERED_KEY));
 }
 
-export async function clearFileHandle(): Promise<void> {
+export async function clearRemembered(): Promise<void> {
   try {
-    await run('readwrite', (s) => s.delete(HANDLE_KEY));
+    await run('readwrite', (s) => s.delete(REMEMBERED_KEY));
   } catch {
     // Nichts zu tun.
   }

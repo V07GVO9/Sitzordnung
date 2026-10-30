@@ -5,6 +5,7 @@ name: Ausrollen
 on:
   push:
     branches: [master, test]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref_name }}

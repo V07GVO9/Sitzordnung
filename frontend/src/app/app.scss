@@ -1,0 +1,555 @@
+/* Der Rahmen der App nach dem Vorbild der iPad-App „Meine Klassenmappe“:
+   links die Klassen, rechts der Inhalt mit Titelleiste oben und den
+   Bereichen einer Klasse als Reiterleiste unten.
+   Ab 56rem steht die Seitenleiste neben dem Inhalt, darunter liegt sie
+   als Schublade darüber. */
+
+$wide: 56rem;
+$sidebar-width: 19.5rem;
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* --- Seitenleiste --- */
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: min($sidebar-width, 88vw);
+  padding-top: env(safe-area-inset-top);
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  transform: translateX(-102%);
+  transition: transform 0.22s ease;
+}
+
+.sidebar-open .sidebar {
+  transform: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.side-scrim {
+  display: none;
+}
+
+.sidebar-open .side-scrim {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: var(--backdrop);
+}
+
+@media (min-width: $wide) {
+  .sidebar-open .sidebar {
+    box-shadow: none;
+  }
+
+  .sidebar-open .side-scrim {
+    display: none;
+  }
+
+  .sidebar-open .main-col {
+    margin-left: $sidebar-width;
+  }
+
+  .sidebar {
+    width: $sidebar-width;
+  }
+}
+
+.side-top {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.5rem 0.4rem;
+
+  .btn.icon {
+    flex: none;
+    color: var(--accent-text);
+    font-size: 1.15rem;
+  }
+}
+
+.side-switch {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+
+  button {
+    flex: 1 1 0;
+    min-height: 1.9rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.82rem;
+  }
+}
+
+.side-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0.6rem 0.6rem 1rem;
+}
+
+.class-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.class-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.65rem;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--surface-hover);
+  }
+
+  &.active {
+    background: var(--segment-bg);
+  }
+
+  .folder {
+    flex: none;
+    font-size: 1.6rem;
+    color: hsl(var(--hue) 62% 55%);
+
+    // Gefüllter Ordner wie in der Klassenmappe.
+    ::ng-deep svg {
+      fill: hsl(var(--hue) 70% 62%);
+      stroke: hsl(var(--hue) 55% 45%);
+      stroke-width: 1.5;
+    }
+  }
+
+  .row-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+
+    strong {
+      font-size: 0.98rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sub {
+      font-size: 0.76rem;
+      color: var(--accent-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.side-empty {
+  padding: 0.5rem 0.65rem;
+}
+
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-top: 1px solid var(--separator);
+  color: var(--accent-text);
+  font-size: 0.9rem;
+  font-weight: 550;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.day-long {
+  margin: 0.5rem 0 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Ein Stundenblock in der Fachfarbe - mit Streifen links wie im Wochenplan. */
+.lesson-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.45rem 0.65rem;
+  border-left: 4px solid hsl(var(--hue) 55% 45%);
+  border-radius: 0.3rem;
+  background: hsl(var(--hue) 60% 50% / 14%);
+  color: hsl(var(--hue) 55% var(--subject-l));
+  text-decoration: none;
+  font-size: 0.82rem;
+  line-height: 1.3;
+
+  strong {
+    font-size: 0.86rem;
+  }
+
+  &:hover {
+    background: hsl(var(--hue) 60% 50% / 22%);
+  }
+
+  &.running {
+    box-shadow: inset 0 0 0 2px hsl(var(--hue) 55% 45%);
+  }
+}
+
+.lesson-time,
+.lesson-room {
+  opacity: 0.85;
+}
+
+.lesson-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--positive);
+}
+
+.side-bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--separator);
+
+  .btn.icon {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+
+    &.on {
+      color: var(--accent-text);
+      background: var(--accent-soft);
+    }
+  }
+}
+
+.save-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface);
+  color: var(--positive);
+  font-size: 1.05rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
+
+  &[data-state='dirty'] {
+    color: var(--warning-text);
+    background: var(--warning-soft);
+  }
+
+  &[data-state='saving'] {
+    color: var(--text-muted);
+  }
+}
+
+/* --- Inhalt --- */
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  transition: margin-left 0.22s ease;
+}
+
+.titlebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(2.6rem, 1fr) auto minmax(2.6rem, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem var(--pad-seite);
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px);
+  border-bottom: 1px solid var(--separator);
+
+  .title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 650;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.title-left,
+.title-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.title-right {
+  justify-content: flex-end;
+}
+
+.live-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 15rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--positive-soft);
+  border: 1px solid var(--positive-border);
+  color: var(--positive-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.live-pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 30rem) {
+  .live-pill-text {
+    display: none;
+  }
+}
+
+main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: var(--pad-seite);
+  padding-bottom: calc(var(--pad-seite) + env(safe-area-inset-bottom));
+
+  &.with-tabs {
+    padding-bottom: calc(var(--bottom-nav) + var(--pad-seite) + env(safe-area-inset-bottom));
+  }
+}
+
+/* Die Bereiche einer Klasse - Reiterleiste unten wie auf dem iPad. */
+.class-tabs {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  height: calc(var(--bottom-nav) + env(safe-area-inset-bottom));
+  padding: 0.3rem 0.5rem env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px);
+  border-top: 1px solid var(--separator);
+  transition: left 0.22s ease;
+
+  a {
+    flex: 1 1 0;
+    max-width: 8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 550;
+    text-decoration: none;
+
+    app-icon {
+      font-size: 1.35rem;
+    }
+
+    &.active {
+      color: var(--accent-text);
+    }
+
+    &:hover:not(.active) {
+      color: var(--text);
+    }
+  }
+}
+
+@media (min-width: $wide) {
+  .sidebar-open .class-tabs {
+    left: $sidebar-width;
+  }
+
+  .class-tabs a {
+    flex-direction: row;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+
+    app-icon {
+      font-size: 1.15rem;
+    }
+  }
+}
+
+/* --- Menü hinter den drei Balken --- */
+
+.menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--backdrop);
+}
+
+.app-menu {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  width: min(19.5rem, 88vw);
+  padding: calc(0.75rem + env(safe-area-inset-top)) 0.6rem 1rem;
+  overflow-y: auto;
+  background: #2c2c2e;
+  color: #f2f2f7;
+  box-shadow: var(--shadow-lg);
+  animation: slide-in 0.2s ease;
+
+  a,
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    min-height: 2.6rem;
+    padding: 0.45rem 0.6rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: inherit;
+    font-size: 0.93rem;
+    text-align: left;
+    text-decoration: none;
+
+    app-icon {
+      font-size: 1.05rem;
+      color: #a1a1a8;
+    }
+
+    &:hover:not(:disabled) {
+      background: rgb(255 255 255 / 8%);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+
+    &.danger {
+      color: #ff8a80;
+
+      app-icon {
+        color: inherit;
+      }
+    }
+  }
+}
+
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.4rem 0.6rem;
+  font-size: 1.05rem;
+
+  .menu-close {
+    width: 2.4rem;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(160deg, #5b8fd0, #2f5f9f);
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.menu-label {
+  margin: 0.9rem 0 0.2rem;
+  padding: 0 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8e8e93;
+}
+
+.menu-file {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.35rem 0.6rem 0.5rem;
+  font-size: 0.82rem;
+
+  app-icon {
+    color: #a1a1a8;
+  }
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    span {
+      color: #a1a1a8;
+    }
+  }
+
+  &[data-state='dirty'] > span span {
+    color: #ffd27a;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
