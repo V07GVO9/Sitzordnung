@@ -153,6 +153,16 @@
 
     @if (mode() !== 'onedrive' || driveFiles() !== null) {
       <form (ngSubmit)="submit()">
+        @if (mode() === 'open' && lastLocalFile(); as file) {
+          <div class="last-file">
+            <app-icon name="folder-open" />
+            <strong>{{ file.name }}</strong>
+            <button class="link small" type="button" (click)="chooseOtherFile()">
+              Andere Datei wählen
+            </button>
+          </div>
+        }
+
         <label>
           <span>Passwort</span>
           <input
@@ -161,6 +171,7 @@
             [ngModel]="password()"
             (ngModelChange)="password.set($event)"
             name="password"
+            autofocus
           />
         </label>
 
@@ -215,6 +226,8 @@
             <app-icon name="cloud" /> Aus OneDrive öffnen
           } @else if (mode() === 'create') {
             <app-icon name="file-plus" /> Neuen Datenbestand anlegen
+          } @else if (lastLocalFile()) {
+            <app-icon name="folder-open" /> Öffnen
           } @else {
             <app-icon name="folder-open" /> Datei auswählen und öffnen
           }

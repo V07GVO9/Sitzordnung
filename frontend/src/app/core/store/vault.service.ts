@@ -11,20 +11,25 @@ import { AppError } from './app-error';
 import {
   AutosaveEntry,
   clearAutosave,
+  clearLastFileHandle,
   clearRemembered,
   readAutosave,
+  readLastFileHandle,
   readRemembered,
   writeAutosave,
+  writeLastFileHandle,
   writeRemembered,
 } from './browser-storage';
 import { createEmptyDatabase } from './database';
 import {
   FileHandle,
+  FilePickerCancelled,
   SaveConflictError,
   VAULT_EXTENSION,
   canWriteSilently,
   chooseSaveFile,
   download,
+  isNativeApp,
   openFile,
   readHandle,
   supportsFileHandles,
@@ -88,24 +93,23 @@ export class VaultService {
   /** Name des OneDrive-Bestands, den dieses Gerät sich gemerkt hat. */
   readonly rememberedFile = signal<string | null>(null);
 
+  /**
+   * Die zuletzt benutzte Datei auf diesem Rechner (nur Chrome/Edge). Liegt sie
+   * vor, genügt beim Start das Passwort - ohne Suchen im Dateidialog.
+   */
+  readonly lastLocalFile = signal<FileHandle | null>(null);
+
   /** Von selbst geöffnet wird nur einmal je Seitenaufruf - nicht nach dem Schließen. */
   private autoOpenDone = false;
 
-  /**
-   * Die zuletzt benutzte Datei (nur Chrome/Edge). Liegt sie vor, genügt beim
-   * Start das Passwort - ohne Suchen im Dateidialog.
-   */
-  readonly rememberedFile = signal<FileHandle | null>(null);
-
   constructor() {
-    if (this.canWriteInPlace) {
-      void readFileHandle<FileHandle>().then((handle) => this.rememberedFile.set(handle));
-    }
-
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
     this.watchChanges();
 
     void readRemembered().then((entry) => this.rememberedFile.set(entry?.fileName ?? null));
+    if (canRememberLocalFiles()) {
+      void readLastFileHandle<FileHandle>().then((handle) => this.lastLocalFile.set(handle));
+    }
 
     window.addEventListener('beforeunload', (event) => {
       if (this.store.isOpen() && this.store.hasUnsavedChanges()) {
@@ -211,6 +215,7 @@ export class VaultService {
         this.setHandle(await chooseSaveFile(DEFAULT_FILE_NAME));
         this.fileName.set(this.handle?.name ?? DEFAULT_FILE_NAME);
         await this.save();
+        await this.rememberLocalFile(this.handle);
         return;
       } catch {
         // Der Bestand steht bereits - wählt die Lehrkraft jetzt keine Datei,
@@ -230,6 +235,45 @@ export class VaultService {
   async open(password: string): Promise<void> {
     const file = await openFile();
     await this.loadContent(file.content, password, file.name, file.handle);
+    await this.rememberLocalFile(file.handle);
+  }
+
+  /** Öffnet die zuletzt benutzte Datei ohne Dateidialog. */
+  async openLastLocalFile(password: string): Promise<void> {
+    const handle = this.lastLocalFile();
+    if (!handle) {
+      throw new AppError('Es ist keine Datei vorgemerkt.');
+    }
+
+    let content: string;
+    try {
+      content = await readHandle(handle);
+    } catch (error) {
+      if (error instanceof FilePickerCancelled) {
+        throw error;
+      }
+      throw new AppError(
+        `Die Datei „${handle.name}“ wurde nicht gefunden. Bitte über „Andere Datei wählen“ neu auswählen.`,
+      );
+    }
+
+    await this.loadContent(content, password, handle.name, handle);
+  }
+
+  /** Vergisst die vorgemerkte Datei - die Datei selbst bleibt unberührt. */
+  async forgetLastLocalFile(): Promise<void> {
+    this.lastLocalFile.set(null);
+    await clearLastFileHandle();
+  }
+
+  /** Merkt sich eine Datei auf diesem Rechner für den nächsten Start. */
+  private async rememberLocalFile(handle: FileHandle | null): Promise<void> {
+    // OneDrive und die Android-App haben ihren eigenen Weg.
+    if (!handle || handle.location || !canRememberLocalFiles()) {
+      return;
+    }
+    this.lastLocalFile.set(handle);
+    await writeLastFileHandle(handle);
   }
 
   /** Öffnet einen Bestand aus OneDrive. */
@@ -468,7 +512,7 @@ export class VaultService {
     }
 
     await this.save();
-    await this.remember(this.handle);
+    await this.rememberLocalFile(this.handle);
   }
 
   /** Vergibt ein neues Passwort. Wirksam wird es mit dem nächsten Speichern. */
@@ -518,4 +562,9 @@ function readAutoSavePref(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Lässt sich ein Dateigriff im Browser ablegen? Nur mit File System Access API. */
+function canRememberLocalFiles(): boolean {
+  return !isNativeApp() && supportsFileHandles();
 }

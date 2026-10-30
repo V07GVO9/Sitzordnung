@@ -249,9 +249,9 @@ label.remember {
   }
 }
 
-.remembered {
+.last-file {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   padding: 0.6rem 0.75rem;
@@ -260,7 +260,7 @@ label.remember {
   border-radius: 0.5rem;
 }
 
-.remembered strong {
+.last-file strong {
   flex: 1;
   word-break: break-all;
 }

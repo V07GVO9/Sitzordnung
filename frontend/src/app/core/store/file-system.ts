@@ -20,6 +20,7 @@ export interface FileHandle {
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+  requestPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
   readonly location?: 'onedrive';
   /** Die Kennung der Datei in OneDrive. */

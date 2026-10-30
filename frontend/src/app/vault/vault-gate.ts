@@ -51,6 +51,9 @@ export class VaultGate {
   /** Warum das Öffnen des gemerkten Bestands zuletzt nicht geklappt hat. */
   readonly rememberedError = signal<string | null>(null);
 
+  /** Die zuletzt benutzte Datei auf diesem Rechner - dann genügt das Passwort. */
+  readonly lastLocalFile = this.vault.lastLocalFile;
+
   readonly password = signal('');
   readonly passwordRepeat = signal('');
   readonly busy = signal(false);
@@ -65,9 +68,6 @@ export class VaultGate {
   readonly isCreating = computed(
     () => this.mode() === 'create' || (this.mode() === 'onedrive' && this.driveCreate()),
   );
-
-  /** Die zuletzt benutzte Datei - dann genügt das Passwort. */
-  readonly rememberedFile = this.vault.rememberedFile;
 
   readonly passwordsMatch = computed(
     () => !this.isCreating() || this.password() === this.passwordRepeat(),
@@ -244,8 +244,8 @@ export class VaultGate {
       } else if (this.mode() === 'create') {
         await this.vault.createNew(this.password());
         this.toasts.success('Neuer Datenbestand angelegt.');
-      } else if (this.rememberedFile()) {
-        await this.vault.openRemembered(this.password());
+      } else if (this.lastLocalFile()) {
+        await this.vault.openLastLocalFile(this.password());
         this.toasts.success('Datenbestand geöffnet.');
       } else {
         await this.vault.open(this.password());
@@ -265,7 +265,7 @@ export class VaultGate {
 
   /** Lässt die vorgemerkte Datei fallen, damit wieder der Dateidialog kommt. */
   async chooseOtherFile(): Promise<void> {
-    await this.vault.forgetRemembered();
+    await this.vault.forgetLastLocalFile();
   }
 
   /** Setzt auf dem Zwischenstand im Browser auf. */

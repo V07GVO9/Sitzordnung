@@ -105,12 +105,18 @@ App zeigt jederzeit an, ob es ungespeicherte Änderungen gibt; beim Schließen d
 Fensters warnt der Browser davor.
 
 In Chrome und Edge merkt sich die Anwendung die gewählte Datei und schreibt beim
-
 Speichern direkt dorthin zurück. Dort speichert sie auch **automatisch** wenige
 Sekunden nach jeder Änderung – sobald einmal von Hand gespeichert und dem
 Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
 *Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
+
+Beim nächsten Start ist die zuletzt benutzte Datei schon vorgewählt (Chrome und
+Edge): Passwort eingeben, Enter – fertig, ohne Dateidialog. Über „Andere Datei
+wählen“ geht es zum Dateidialog. Der Browser fragt dabei unter Umständen einmal
+nach, ob die App die Datei bearbeiten darf; mit „Bei jedem Besuch zulassen“
+entfällt auch diese Rückfrage. Gemerkt wird nur der Verweis auf die Datei, kein
+Passwort.
 
 ### Auf mehreren Geräten: OneDrive
 
