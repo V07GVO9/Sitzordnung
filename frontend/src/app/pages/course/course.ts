@@ -19,7 +19,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
@@ -132,17 +132,6 @@ export class CoursePage implements OnDestroy {
   /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
   readonly lessonTime = signal<{ from: string; to: string } | null>(null);
   readonly isToday = computed(() => this.lessonDate() === toDateKey(new Date()));
-  /** Für Hinweise wie „keine Bewertung heute“ bzw. „… am 05.10.“. */
-  readonly dayWord = computed(() =>
-    this.isToday()
-      ? 'heute'
-      : 'am ' +
-        new Date(`${this.lessonDate()}T12:00:00`).toLocaleDateString('de-DE', {
-          day: '2-digit',
-          month: '2-digit',
-        }),
-  );
-
   readonly courseId = signal(0);
   readonly loading = signal(true);
   readonly course = signal<Course | null>(null);
@@ -662,43 +651,64 @@ export class CoursePage implements OnDestroy {
 
   // --- Bewerten ---
 
+  /** Listenansicht: je Schüler und Tag eine Bewertung, der letzte Klick zählt. */
   onRate(request: RateRequest): void {
-    this.rate(request.student, request.value);
+    this.rate(request.student, request.value, true);
   }
 
-  rate(student: Student, value: RatingValue): void {
+  rate(student: Student, value: RatingValue, replaceSameDay = false): void {
     if (this.editMode()) {
       return;
     }
     // Nach dem Bewerten klappt die Kachel wieder zusammen.
     this.selectedId.set(null);
     const courseId = this.courseId();
+    // Beim Ersetzen merken, was vorher galt - „Rückgängig“ stellt es wieder her.
+    const previous = replaceSameDay
+      ? ((this.todayRatings().get(student.id)?.at(-1)?.value ?? null) as RatingValue | null)
+      : null;
 
-    this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
-      next: (rating) => {
-        this.refreshScores();
-        this.flashTile(student.id, value);
+    this.api
+      .rate(courseId, student.id, value, undefined, this.lessonDate(), replaceSameDay)
+      .subscribe({
+        next: (rating) => {
+          this.refreshScores();
+          this.flashTile(student.id, value);
 
-        // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
-        // im Unterricht nichts stapelt.
-        if (this.undoToastId !== null) {
-          this.toasts.dismiss(this.undoToastId);
-        }
-        this.undoToastId = this.toasts.show(
-          `${fullName(student)}: ${ratingSymbol(value)}`,
-          'success',
-          6000,
-          { label: 'Rückgängig', run: () => this.undoRating(rating.id) },
-        );
-      },
-      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
-    });
+          // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
+          // im Unterricht nichts stapelt.
+          if (this.undoToastId !== null) {
+            this.toasts.dismiss(this.undoToastId);
+          }
+          this.undoToastId = this.toasts.show(
+            `${fullName(student)}: ${ratingSymbol(value)}`,
+            'success',
+            6000,
+            { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
+          );
+        },
+        error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
+      });
   }
 
-  /** Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. */
-  private undoRating(ratingId: number): void {
+  /**
+   * Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. Hat sie
+   * eine frühere ersetzt, gilt danach wieder diese.
+   */
+  private undoRating(rating: Rating, previous: RatingValue | null): void {
     this.undoToastId = null;
-    this.api.deleteRating(ratingId).subscribe({
+    const undo$: Observable<unknown> =
+      previous === null
+        ? this.api.deleteRating(rating.id)
+        : this.api.rate(
+            rating.courseId,
+            rating.studentId,
+            previous,
+            undefined,
+            rating.lessonDate,
+            true,
+          );
+    undo$.subscribe({
       next: () => {
         this.toasts.show('Die Bewertung wurde zurückgenommen.');
         this.refreshScores();
