@@ -1,5 +1,6 @@
-# Betrieb auf einem Server: ein Reverse-Proxy, dahinter die Produktiv- und die
-# Testumgebung. Beide haben eigene Daten und sind über eigene Adressen erreichbar.
+# Betrieb auf einem Server: ein Reverse-Proxy, dahinter die Produktiv-, die
+# Test- und die Entwicklungsumgebung. Alle haben eigene Daten und sind über
+# eigene Adressen erreichbar.
 services:
   caddy:
     image: caddy:2-alpine
@@ -14,6 +15,8 @@ services:
     environment:
       PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN fehlt}
       TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN fehlt}
+      # Mit Vorgabewert, damit ältere .env-Dateien ohne DEV_DOMAIN weiter laufen.
+      DEV_DOMAIN: ${DEV_DOMAIN:-develop.sitzordnung.chedig-soft.de}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL fehlt}
     # Bewusst kein depends_on: Caddy soll auch dann starten, wenn nur eine der
     # beiden Umgebungen vorhanden ist. Sonst zieht ein Ausrollen der
@@ -46,8 +49,22 @@ services:
     volumes:
       - test-data:/data
 
+  # Entwicklungsumgebung - wird aus dem Branch develop gebaut.
+  # Vorgabewerte statt Pflichtangaben, damit ältere .env-Dateien gültig bleiben.
+  app-dev:
+    image: ${IMAGE_DEV:-ghcr.io/v07gvo9/sitzordnung:develop}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Auth__Username: ${DEV_AUTH_USERNAME:-lehrkraft}
+      Auth__InitialPassword: ${DEV_AUTH_INITIAL_PASSWORD:-}
+    volumes:
+      - dev-data:/data
+
 volumes:
   caddy-data:
   caddy-config:
   prod-data:
   test-data:
+  dev-data:

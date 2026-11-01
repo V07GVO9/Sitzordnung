@@ -33,3 +33,11 @@
 	# Suchmaschinen sollen die Testumgebung nicht aufnehmen.
 	header X-Robots-Tag "noindex, nofollow"
 }
+
+{$DEV_DOMAIN} {
+	import gemeinsam
+	reverse_proxy app-dev:8080
+
+	# Suchmaschinen sollen die Entwicklungsumgebung nicht aufnehmen.
+	header X-Robots-Tag "noindex, nofollow"
+}
