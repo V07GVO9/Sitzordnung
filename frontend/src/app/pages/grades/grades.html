@@ -460,12 +460,13 @@
       <section class="card">
         <h2>Mitarbeit je Doppelstunde</h2>
         <p class="muted small">
-          Jede Doppelstunde mit mindestens einer Bewertung zählt. ++ =
+          Es zählen nur Doppelstunden, in denen mindestens ein Schüler bewertet wurde; wer dort
+          keine Bewertung hat, bekommt eine 0. ++ =
           {{ formatGrade(b.scheme.participationGrades.plusPlus, 1) }} · + =
-          {{ formatGrade(b.scheme.participationGrades.plus, 1) }} · − =
+          {{ formatGrade(b.scheme.participationGrades.plus, 1) }} · 0 =
+          {{ formatGrade(b.scheme.participationGrades.neutral, 1) }} · − =
           {{ formatGrade(b.scheme.participationGrades.minus, 1) }} · −− =
-          {{ formatGrade(b.scheme.participationGrades.minusMinus, 1) }} · ohne Bewertung =
-          {{ formatGrade(b.scheme.participationGrades.unrated, 1) }}. Fehlt ein Schüler, „fehlte"
+          {{ formatGrade(b.scheme.participationGrades.minusMinus, 1) }}. Fehlt ein Schüler, „fehlte"
           wählen - die Stunde zählt dann nicht.
         </p>
         @if (b.lessonDates.length === 0) {
@@ -699,7 +700,7 @@
                     </td>
                   </tr>
                   <tr>
-                    <td>+ und − ausgeglichen</td>
+                    <td>0 / ohne Bewertung</td>
                     <td class="num">
                       <input
                         class="short"
@@ -734,19 +735,6 @@
                         [ngModel]="formatGrade(draft.participationGrades.minusMinus, 1)"
                         (change)="patchParticipation('minusMinus', $any($event.target).value)"
                         name="pMinusMinus"
-                      />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>ohne Bewertung</td>
-                    <td class="num">
-                      <input
-                        class="short"
-                        type="text"
-                        inputmode="decimal"
-                        [ngModel]="formatGrade(draft.participationGrades.unrated, 1)"
-                        (change)="patchParticipation('unrated', $any($event.target).value)"
-                        name="pUnrated"
                       />
                     </td>
                   </tr>

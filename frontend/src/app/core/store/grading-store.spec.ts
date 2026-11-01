@@ -35,7 +35,7 @@ describe('LocalStore - Bewertungsschema', () => {
 
     expect(scheme.isDefault).toBeTrue();
     expect(scheme.writtenPercent).toBe(50);
-    expect(scheme.participationGrades.unrated).toBe(3);
+    expect(scheme.participationGrades.neutral).toBe(3);
   });
 
   it('speichert ein eigenes Schema je Lernfeld', () => {

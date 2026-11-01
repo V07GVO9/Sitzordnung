@@ -307,7 +307,6 @@ export interface ParticipationGrades {
   neutral: number;
   minus: number;
   minusMinus: number;
-  unrated: number;
 }
 
 export interface GradingSchemeInput {
