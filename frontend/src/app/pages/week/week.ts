@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
+import { freeDayReason } from '../../core/store/school-calendar';
 import { toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
@@ -66,8 +67,8 @@ export class WeekPage {
     return date;
   });
 
-  /** Mo–Fr, Samstag nur, wenn dort auch Unterricht steht. */
-  readonly days = computed(() => {
+  /** Mo–Fr, Samstag nur, wenn dort auch Unterricht steht - inkl. unterrichtsfreier Tage. */
+  readonly allDays = computed(() => {
     const withSaturday = this.entries().some((e) => e.dayOfWeek === 6);
     return (withSaturday ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]).map((dayOfWeek) => {
       const date = new Date(this.monday());
@@ -80,12 +81,27 @@ export class WeekPage {
         long: WEEKDAY_NAMES[dayOfWeek],
         label: date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
         isToday: key === this.todayKey,
+        freeReason: freeDayReason(key),
       };
     });
   });
 
+  /** Die Unterrichtstage: ohne Feiertage und Ferientage in Niedersachsen. */
+  readonly days = computed(() => this.allDays().filter((d) => !d.freeReason));
+
+  /** Die ausgeblendeten Tage der Woche, gleiche Gründe zusammengefasst. */
+  readonly freeDays = computed(() => {
+    const groups = new Map<string, string[]>();
+    for (const day of this.allDays()) {
+      if (day.freeReason) {
+        groups.set(day.freeReason, [...(groups.get(day.freeReason) ?? []), day.short]);
+      }
+    }
+    return [...groups].map(([reason, days]) => ({ reason, days: days.join(', ') }));
+  });
+
   readonly weekLabel = computed(() => {
-    const days = this.days();
+    const days = this.allDays();
     const first = days[0];
     const last = days[days.length - 1];
     return `KW ${isoWeek(this.monday())} · ${first.label}–${last.label}`;
@@ -202,6 +218,10 @@ export class WeekPage {
   /** Wie viele Bewertungen in welcher Stunde der Woche schon stehen. */
   private loadRatings(): void {
     const days = this.days();
+    if (days.length === 0) {
+      this.ratingCounts.set(new Map());
+      return;
+    }
     const range = { from: days[0].key, to: days[days.length - 1].key };
     const courseIds = [...new Set(this.entries().map((e) => e.courseId))];
 
