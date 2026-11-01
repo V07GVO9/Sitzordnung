@@ -175,6 +175,16 @@ describe('LocalStore - Mitarbeit und Gesamtnote', () => {
     expect(benRow.participation).toBe(3);
   });
 
+  it('ersetzt in der Listenansicht die Bewertung desselben Tages', () => {
+    const { store, course, anna } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-10-05', true);
+    store.rate(course.id, anna.id, -1, undefined, '2026-10-05', true);
+
+    const ratings = store.getRatings(course.id, { from: '2026-10-05', to: '2026-10-05' });
+    expect(ratings.length).toBe(1);
+    expect(ratings[0].value).toBe(-1);
+  });
+
   it('nimmt eine als "fehlte" markierte Stunde aus dem Durchschnitt', () => {
     const { store, course, anna, ben } = setup();
     store.rate(course.id, anna.id, 2);

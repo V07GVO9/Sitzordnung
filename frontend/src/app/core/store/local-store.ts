@@ -777,6 +777,7 @@ export class LocalStore {
     value: RatingValue,
     comment?: string,
     lessonDate?: string,
+    replaceSameDay = false,
   ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
       throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
@@ -808,6 +809,19 @@ export class LocalStore {
       createdAt: now.toISOString(),
       comment: comment?.trim() ? comment.trim() : null,
     };
+
+    // Listenansicht: je Schüler und Tag nur eine Bewertung - der letzte
+    // Klick ersetzt die vorige.
+    if (replaceSameDay) {
+      this.database.ratings = this.database.ratings.filter(
+        (r) =>
+          !(
+            r.courseId === courseId &&
+            r.studentId === studentId &&
+            r.lessonDate === record.lessonDate
+          ),
+      );
+    }
 
     this.database.ratings.push(record);
     this.changed();

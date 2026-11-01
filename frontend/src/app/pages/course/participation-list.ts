@@ -7,7 +7,6 @@ import {
   fullName,
   initials,
   ratingClass,
-  ratingSymbol,
 } from '../../core/models';
 
 export interface RateRequest {
@@ -26,14 +25,14 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 
 /**
  * Mitarbeit als Liste - wie der Reiter „Mitarbeit“ im Kursbuch der
- * Klassenmappe: Foto, Name, was heute schon eingetragen ist, der
- * Punktestand und rechts die kleine Skala zum Antippen.
+ * Klassenmappe: Foto, Name, der Punktestand und rechts die kleine Skala
+ * zum Antippen. Die heute geltende Bewertung ist auf der Skala markiert.
  */
 @Component({
   selector: 'app-participation-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="list-group">
+    <div class="p-list">
       @for (row of rows(); track row.student.id) {
         <div class="list-row p-row" [class.flash]="flashId() === row.student.id">
           <button
@@ -51,18 +50,6 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
             </span>
             <span class="row-text">
               <strong>{{ fullName(row.student) }}</strong>
-              @if (row.today.length) {
-                <span class="today">
-                  {{ dayLabel() }}
-                  @for (rating of row.today; track rating.id) {
-                    <span class="chip" [class]="ratingClass(rating.value)">{{
-                      ratingSymbol(rating.value)
-                    }}</span>
-                  }
-                </span>
-              } @else {
-                <span class="sub muted">keine Bewertung {{ dayLabel() }}</span>
-              }
             </span>
           </button>
 
@@ -84,6 +71,8 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
               <button
                 type="button"
                 [class]="ratingClass(option.value)"
+                [class.active]="row.current === option.value"
+                [attr.aria-pressed]="row.current === option.value"
                 (click)="rate.emit({ student: row.student, value: option.value })"
                 [title]="option.title"
                 [attr.aria-label]="fullName(row.student) + ': ' + option.title"
@@ -94,7 +83,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
           </span>
         </div>
       } @empty {
-        <div class="list-row">
+        <div class="list-row p-row">
           <span class="row-text"
             ><span class="sub muted">Keine Schüler in dieser Klasse.</span></span
           >
@@ -103,10 +92,20 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
     </div>
   `,
   styles: `
+    /* Jeder Schüler eine eigene weiße Karte - Name und Skala gehören sichtbar zusammen. */
+    .p-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
     .p-row {
       gap: 0.6rem;
-      padding-block: 0.4rem;
+      padding-block: 0.5rem;
       flex-wrap: wrap;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
     }
 
     .flash {
@@ -129,23 +128,6 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       border: 0;
       background: transparent;
       text-align: left;
-    }
-
-    .today {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .chip {
-      min-width: 1.6rem;
-      padding: 0 0.3rem;
-      border-radius: 0.3rem;
-      font-weight: 700;
-      font-size: 0.75rem;
-      text-align: center;
     }
 
     .points {
@@ -179,6 +161,13 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
         &:active {
           transform: scale(0.93);
         }
+
+        /* Die heute geltende Bewertung - ohne Auswahl bleibt alles neutral. */
+        &.active {
+          opacity: 1;
+          outline: 3px solid var(--text);
+          outline-offset: 1px;
+        }
       }
     }
 
@@ -195,8 +184,6 @@ export class ParticipationList {
   readonly scores = input.required<Map<number, StudentScore>>();
   readonly today = input.required<Map<number, Rating[]>>();
   readonly flashId = input<number | null>(null);
-  /** „heute“ oder - beim Nachtragen aus dem Wochenplan - „am 05.10.“. */
-  readonly dayLabel = input('heute');
 
   readonly rate = output<RateRequest>();
   readonly openStudent = output<Student>();
@@ -205,7 +192,6 @@ export class ParticipationList {
   readonly fullName = fullName;
   readonly initials = initials;
   readonly ratingClass = ratingClass;
-  readonly ratingSymbol = ratingSymbol;
 
   readonly rows = computed(() =>
     [...this.students()]
@@ -217,7 +203,7 @@ export class ParticipationList {
       .map((student) => ({
         student,
         score: this.scores().get(student.id) ?? null,
-        today: this.today().get(student.id) ?? [],
+        current: this.today().get(student.id)?.at(-1)?.value ?? null,
       })),
   );
 
