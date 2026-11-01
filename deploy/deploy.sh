@@ -44,6 +44,15 @@ VORHER="$(docker inspect --format '{{.Image}}' "$(docker compose ps -q "$DIENST"
 docker compose pull "$DIENST"
 docker compose up -d "$DIENST" caddy
 
+# Caddy liest die Caddyfile nur beim Start. Hat sie sich geändert (z. B. eine
+# neue Adresse), Caddy neu starten - ein Neustart bindet die Datei frisch ein,
+# auch wenn git sie beim Aktualisieren ersetzt hat.
+if [ "$(sha256sum Caddyfile | cut -d' ' -f1)" != \
+     "$(docker compose exec -T caddy sha256sum /etc/caddy/Caddyfile 2>/dev/null | cut -d' ' -f1)" ]; then
+  echo "==> Caddyfile geändert, starte Caddy neu"
+  docker compose restart caddy
+fi
+
 echo "==> Warte auf https://$DOMAIN/health"
 GESUND=0
 for _ in $(seq 1 30); do
