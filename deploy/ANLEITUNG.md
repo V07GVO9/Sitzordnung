@@ -6,7 +6,7 @@ Diese Anleitung richtet drei Umgebungen auf **einem** Server ein:
 | --- | --- | --- |
 | Produktion | `master` | `sitzordnung.celik-soft.de` |
 | Test | `test` | `test.sitzordnung.celik-soft.de` |
-| Entwicklung | `develop` | `develop.sitzordnung.chedig-soft.de` |
+| Entwicklung | `develop` | `develop.sitzordnung.celik-soft.de` |
 
 Davor sitzt Caddy als Reverse-Proxy und holt die HTTPS-Zertifikate automatisch
 von Let's Encrypt. Beide Umgebungen haben **getrennte Daten** – auf der
@@ -43,7 +43,7 @@ Beim Domain-Anbieter drei A-Einträge auf die IP des Servers setzen:
 ```
 sitzordnung.celik-soft.de.        A    <IP des Servers>
 test.sitzordnung.celik-soft.de.   A    <IP des Servers>
-develop.sitzordnung.chedig-soft.de.   A    <IP des Servers>
+develop.sitzordnung.celik-soft.de.   A    <IP des Servers>
 ```
 
 Erst wenn die Namen auflösen, kann Caddy Zertifikate holen. Prüfen mit

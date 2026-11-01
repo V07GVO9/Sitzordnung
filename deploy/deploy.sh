@@ -31,7 +31,7 @@ set +a
 # Vorgaben für die Entwicklungsumgebung, falls .env sie noch nicht kennt
 # (gleiche Werte wie in docker-compose.yml).
 : "${IMAGE_DEV:=ghcr.io/v07gvo9/sitzordnung:develop}"
-: "${DEV_DOMAIN:=develop.sitzordnung.chedig-soft.de}"
+: "${DEV_DOMAIN:=develop.sitzordnung.celik-soft.de}"
 
 IMAGE="${!IMAGE_VAR}"
 DOMAIN="${!DOMAIN_VAR}"

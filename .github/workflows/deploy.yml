@@ -1,6 +1,6 @@
 name: Ausrollen
 
-# develop -> Entwicklungsumgebung (develop.sitzordnung.chedig-soft.de)
+# develop -> Entwicklungsumgebung (develop.sitzordnung.celik-soft.de)
 # test    -> Testumgebung
 # master  -> Produktivumgebung
 on:

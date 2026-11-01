@@ -16,7 +16,7 @@ services:
       PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN fehlt}
       TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN fehlt}
       # Mit Vorgabewert, damit ältere .env-Dateien ohne DEV_DOMAIN weiter laufen.
-      DEV_DOMAIN: ${DEV_DOMAIN:-develop.sitzordnung.chedig-soft.de}
+      DEV_DOMAIN: ${DEV_DOMAIN:-develop.sitzordnung.celik-soft.de}
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL fehlt}
     # Bewusst kein depends_on: Caddy soll auch dann starten, wenn nur eine der
     # beiden Umgebungen vorhanden ist. Sonst zieht ein Ausrollen der
