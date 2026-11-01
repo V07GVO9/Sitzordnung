@@ -1,10 +1,11 @@
 name: Ausrollen
 
-# test  -> Testumgebung
-# master -> Produktivumgebung
+# develop -> Entwicklungsumgebung (develop.sitzordnung.celik-soft.de)
+# test    -> Testumgebung
+# master  -> Produktivumgebung
 on:
   push:
-    branches: [master, test]
+    branches: [master, test, develop]
   workflow_dispatch:
 
 concurrency:
@@ -65,7 +66,7 @@ jobs:
   ausrollen:
     needs: bauen
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'master' && 'produktion' || 'test' }}
+    environment: ${{ github.ref_name == 'master' && 'produktion' || github.ref_name == 'develop' && 'develop' || 'test' }}
     steps:
       - name: Auf dem Server ausrollen
         uses: appleboy/ssh-action@v1
@@ -80,4 +81,4 @@ jobs:
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            ./deploy/deploy.sh ${{ github.ref_name == 'master' && 'prod' || 'test' }}
+            ./deploy/deploy.sh ${{ github.ref_name == 'master' && 'prod' || github.ref_name == 'develop' && 'dev' || 'test' }}

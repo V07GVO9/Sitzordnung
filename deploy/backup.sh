@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sichert Datenbank und Fotos beider Umgebungen. Gedacht für einen täglichen
+# Sichert Datenbank und Fotos aller Umgebungen. Gedacht für einen täglichen
 # Cron-Eintrag auf dem Server:
 #
 #   0 2 * * * /opt/sitzordnung/deploy/backup.sh >> /var/log/sitzordnung-backup.log 2>&1
@@ -13,7 +13,7 @@ STEMPEL="$(date +%Y-%m-%d-%H%M)"
 
 mkdir -p "$ZIEL"
 
-for UMGEBUNG in prod test; do
+for UMGEBUNG in prod test dev; do
   VOLUME="deploy_${UMGEBUNG}-data"
 
   if ! docker volume inspect "$VOLUME" >/dev/null 2>&1; then
