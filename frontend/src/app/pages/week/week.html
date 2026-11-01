@@ -23,7 +23,22 @@
         Stundenplan, Klassen und Schüler legst du im Menü unter „Einrichten“ an.
       </p>
     </div>
+  } @else if (days().length === 0) {
+    <div class="empty">
+      <p>Diese Woche ist unterrichtsfrei.</p>
+      @for (free of freeDays(); track free.reason) {
+        <p class="muted small">{{ free.reason }} ({{ free.days }})</p>
+      }
+    </div>
   } @else {
+    @if (freeDays().length) {
+      <p class="muted small free-days">
+        Ausgeblendet:
+        @for (free of freeDays(); track free.reason; let last = $last) {
+          {{ free.days }} – {{ free.reason }}{{ last ? '' : ' · ' }}
+        }
+      </p>
+    }
     <div class="grid-wrap">
       <table class="week-grid">
         <thead>
