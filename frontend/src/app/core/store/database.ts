@@ -117,8 +117,6 @@ export interface ParticipationGradesRecord {
   neutral: number;
   minus: number;
   minusMinus: number;
-  /** Für Schüler, die in einer gehaltenen Stunde keine Bewertung bekommen haben. */
-  unrated: number;
 }
 
 /** Das Bewertungsschema eines Kurses - also eines Lernfelds oder Fachs. */
@@ -317,6 +315,6 @@ export function createDefaultScheme(courseId: number): GradingSchemeRecord {
       { minPercent: 0, grade: 6 },
     ],
     participationWeight: 2,
-    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5, unrated: 3 },
+    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5 },
   };
 }

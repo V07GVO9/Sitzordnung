@@ -651,44 +651,41 @@ export class CoursePage implements OnDestroy {
 
   // --- Bewerten ---
 
-  /** Listenansicht: je Schüler und Tag eine Bewertung, der letzte Klick zählt. */
   onRate(request: RateRequest): void {
-    this.rate(request.student, request.value, true);
+    this.rate(request.student, request.value);
   }
 
-  rate(student: Student, value: RatingValue, replaceSameDay = false): void {
+  /** Je Schüler und Tag eine Bewertung - der letzte Klick ersetzt die vorige. */
+  rate(student: Student, value: RatingValue): void {
     if (this.editMode()) {
       return;
     }
     // Nach dem Bewerten klappt die Kachel wieder zusammen.
     this.selectedId.set(null);
     const courseId = this.courseId();
-    // Beim Ersetzen merken, was vorher galt - „Rückgängig“ stellt es wieder her.
-    const previous = replaceSameDay
-      ? ((this.todayRatings().get(student.id)?.at(-1)?.value ?? null) as RatingValue | null)
-      : null;
+    // Merken, was vorher galt - „Rückgängig“ stellt es wieder her.
+    const previous = (this.todayRatings().get(student.id)?.at(-1)?.value ??
+      null) as RatingValue | null;
 
-    this.api
-      .rate(courseId, student.id, value, undefined, this.lessonDate(), replaceSameDay)
-      .subscribe({
-        next: (rating) => {
-          this.refreshScores();
-          this.flashTile(student.id, value);
+    this.api.rate(courseId, student.id, value, undefined, this.lessonDate(), true).subscribe({
+      next: (rating) => {
+        this.refreshScores();
+        this.flashTile(student.id, value);
 
-          // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
-          // im Unterricht nichts stapelt.
-          if (this.undoToastId !== null) {
-            this.toasts.dismiss(this.undoToastId);
-          }
-          this.undoToastId = this.toasts.show(
-            `${fullName(student)}: ${ratingSymbol(value)}`,
-            'success',
-            6000,
-            { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
-          );
-        },
-        error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
-      });
+        // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
+        // im Unterricht nichts stapelt.
+        if (this.undoToastId !== null) {
+          this.toasts.dismiss(this.undoToastId);
+        }
+        this.undoToastId = this.toasts.show(
+          `${fullName(student)}: ${ratingSymbol(value)}`,
+          'success',
+          6000,
+          { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
+        );
+      },
+      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
+    });
   }
 
   /**
