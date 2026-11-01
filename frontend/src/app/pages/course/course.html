@@ -23,20 +23,6 @@
   </ng-template>
 
   <div class="stack">
-    <!-- Fach-Reiter der Klasse, wie im Kursbuch der Klassenmappe -->
-    <nav class="subject-tabs course-tabs" aria-label="Fach wählen">
-      @for (sibling of siblings(); track sibling.id) {
-        <a
-          [routerLink]="['/kurs', sibling.id]"
-          [queryParams]="isToday() ? {} : { datum: lessonDate() }"
-          [class.active]="sibling.id === courseId()"
-          [attr.aria-current]="sibling.id === courseId() ? 'page' : null"
-        >
-          {{ sibling.subjectName }}
-        </a>
-      }
-    </nav>
-
     <!-- Datum und Stunde, darunter Liste/Sitzplan und Bearbeiten -->
     <section class="kb-bar">
       <div class="today-box" [class.live]="isRunning()">

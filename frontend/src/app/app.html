@@ -1,132 +1,21 @@
 @if (!isOpen()) {
   <app-vault-gate />
 } @else {
-  <div class="shell" [class.sidebar-open]="sidebarOpen()">
-    <!-- Links: Klassen bzw. Unterricht des Tages - wie in der Klassenmappe -->
-    <aside class="sidebar" aria-label="Klassen und Tagesansicht">
-      <div class="side-top">
-        <button
-          class="btn ghost icon"
-          type="button"
-          aria-label="Menü"
-          [attr.aria-expanded]="menuOpen()"
-          (click)="menuOpen.set(true)"
-        >
-          <app-icon name="menu" />
-        </button>
-
-        <div class="tabs side-switch" role="tablist" aria-label="Ansicht der Seitenleiste">
+  <div class="shell">
+    <div class="main-col">
+      <header class="titlebar" [class.editing]="isEdit()">
+        <div class="title-left">
           <button
+            class="round-btn"
             type="button"
-            role="tab"
-            [attr.aria-selected]="sidebarView() === 'klassen'"
-            (click)="sidebarView.set('klassen')"
+            aria-label="Menü"
+            [attr.aria-expanded]="menuOpen()"
+            (click)="menuOpen.set(true)"
           >
-            Klassen
+            <app-icon name="menu" />
           </button>
-          <button
-            type="button"
-            role="tab"
-            [attr.aria-selected]="sidebarView() === 'tag'"
-            (click)="sidebarView.set('tag')"
-          >
-            Tagesansicht
-          </button>
-        </div>
-
-        <button
-          class="btn ghost icon"
-          type="button"
-          aria-label="Seitenleiste ausblenden"
-          title="Seitenleiste ausblenden"
-          (click)="toggleSidebar()"
-        >
-          <app-icon name="panel-left" />
-        </button>
-      </div>
-
-      <div class="side-scroll">
-        @if (sidebarView() === 'klassen') {
-          <p class="section-label">Aktive Klassen</p>
-
-          <nav class="class-list" aria-label="Klassen">
-            @for (schoolClass of classes(); track schoolClass.id) {
-              <a
-                class="class-row"
-                [routerLink]="['/klasse', schoolClass.id, 'uebersicht']"
-                [class.active]="schoolClass.id === activeClassId()"
-                [attr.aria-current]="schoolClass.id === activeClassId() ? 'page' : null"
-              >
-                <app-icon class="folder" name="folder" [style.--hue]="hue(schoolClass.name)" />
-                <span class="row-text">
-                  <strong>{{ schoolClass.name }}</strong>
-                  <span class="sub">
-                    Schüler: {{ schoolClass.studentCount }}
-                    @if (subjectsByClass().get(schoolClass.id); as subjects) {
-                      | {{ subjects }}
-                    }
-                  </span>
-                </span>
-              </a>
-            } @empty {
-              <p class="muted small side-empty">Noch keine Klassen angelegt.</p>
-            }
-          </nav>
-
-          @if (isEdit()) {
-            <a class="side-link" routerLink="/verwaltung" [queryParams]="{ tab: 'klassen' }">
-              <app-icon name="plus" /> Klasse anlegen
-            </a>
-          }
-        } @else {
-          <div class="date-bar">
-            <button type="button" aria-label="Vorheriger Tag" (click)="shiftDay(-1)">
-              <app-icon name="chevron-left" />
-            </button>
-            <button type="button" class="date-label" (click)="dayOffset.set(0)" title="Heute">
-              {{ dayLabel() }}
-            </button>
-            <button type="button" aria-label="Nächster Tag" (click)="shiftDay(1)">
-              <app-icon name="chevron-right" />
-            </button>
-          </div>
-          <p class="day-long">{{ dayLong() }}</p>
-
-          <div class="day-list">
-            @for (entry of dayLessons(); track entry.id) {
-              <a
-                class="lesson-block"
-                [routerLink]="['/kurs', entry.courseId]"
-                [class.running]="isRunning(entry)"
-                [style.--hue]="hue(entry.subjectName)"
-              >
-                <span class="lesson-time">{{ entry.startTime }} – {{ entry.endTime }}</span>
-                <strong>{{ entry.subjectName }} | {{ entry.schoolClassName }}</strong>
-                @if (entry.room) {
-                  <span class="lesson-room">Raum {{ entry.room }}</span>
-                }
-                @if (isRunning(entry)) {
-                  <span class="lesson-live"><span class="dot"></span> läuft</span>
-                }
-              </a>
-            } @empty {
-              <p class="muted small side-empty">An diesem Tag steht kein Unterricht im Plan.</p>
-            }
-          </div>
-
-          @if (isEdit()) {
-            <a class="side-link" routerLink="/stundenplan">
-              <app-icon name="calendar-days" /> Stundenplan bearbeiten
-            </a>
-          }
-        }
-      </div>
-
-      <!-- Kurzbefehle unten, wie die Symbolleiste der Klassenmappe -->
-      <div class="side-bottom">
-        @if (!isEdit()) {
           <a
-            class="btn ghost icon"
+            class="round-btn"
             routerLink="/"
             routerLinkActive="on"
             [routerLinkActiveOptions]="{ exact: true }"
@@ -135,73 +24,6 @@
           >
             <app-icon name="calendar-days" />
           </a>
-        } @else {
-          <a
-            class="btn ghost icon"
-            routerLink="/stundenplan"
-            routerLinkActive="on"
-            aria-label="Stundenplan"
-            title="Stundenplan"
-          >
-            <app-icon name="calendar-days" />
-          </a>
-          <a
-            class="btn ghost icon"
-            routerLink="/verwaltung"
-            routerLinkActive="on"
-            aria-label="Klassen, Fächer und Schüler verwalten"
-            title="Klassen, Fächer & Schüler"
-          >
-            <app-icon name="users" />
-          </a>
-        }
-        <a
-          class="btn ghost icon"
-          routerLink="/auswertung"
-          routerLinkActive="on"
-          aria-label="Auswertung und Einstellungen"
-          title="Auswertung & Einstellungen"
-        >
-          <app-icon name="chart-column" />
-        </a>
-        <span class="spacer"></span>
-        <button
-          class="save-btn"
-          type="button"
-          [attr.data-state]="saveState()"
-          [disabled]="isSaving()"
-          (click)="save()"
-          [attr.aria-label]="saveStateText() + ' – jetzt speichern'"
-          [title]="saveStateText() + ' – jetzt speichern (Strg+S)'"
-        >
-          @if (saveState() === 'saving') {
-            <app-icon name="loader-circle" class="spin" />
-          } @else if (saveState() === 'dirty') {
-            <app-icon name="save" />
-          } @else {
-            <app-icon name="circle-check" />
-          }
-        </button>
-      </div>
-    </aside>
-
-    <!-- Auf schmalen Geräten liegt die Seitenleiste über dem Inhalt. -->
-    <div class="side-scrim" (click)="sidebarOpen.set(false)" aria-hidden="true"></div>
-
-    <div class="main-col">
-      <header class="titlebar" [class.editing]="isEdit()">
-        <div class="title-left">
-          @if (!sidebarOpen()) {
-            <button
-              class="round-btn"
-              type="button"
-              aria-label="Seitenleiste einblenden"
-              title="Klassen anzeigen"
-              (click)="toggleSidebar()"
-            >
-              <app-icon name="panel-left" />
-            </button>
-          }
         </div>
 
         <h1 class="title">{{ title() || 'Sitzordnung' }}</h1>
@@ -239,6 +61,23 @@
               >
             </a>
           }
+          <button
+            class="save-btn"
+            type="button"
+            [attr.data-state]="saveState()"
+            [disabled]="isSaving()"
+            (click)="save()"
+            [attr.aria-label]="saveStateText() + ' – jetzt speichern'"
+            [title]="saveStateText() + ' – jetzt speichern (Strg+S)'"
+          >
+            @if (saveState() === 'saving') {
+              <app-icon name="loader-circle" class="spin" />
+            } @else if (saveState() === 'dirty') {
+              <app-icon name="save" />
+            } @else {
+              <app-icon name="circle-check" />
+            }
+          </button>
         </div>
       </header>
 
@@ -253,25 +92,9 @@
         </div>
       }
 
-      <main [class.with-tabs]="activeClassId() !== null">
+      <main>
         <router-outlet />
       </main>
-
-      <!-- Die großen Bereiche einer Klasse, unten mit dem Daumen erreichbar -->
-      @if (activeClassId() !== null) {
-        <nav class="class-tabs" aria-label="Bereiche der Klasse">
-          @for (tab of tabs; track tab.key) {
-            <a
-              [routerLink]="tabLink(tab.key)"
-              [class.active]="isTabActive(tab.key)"
-              [attr.aria-current]="isTabActive(tab.key) ? 'page' : null"
-            >
-              <app-icon [name]="tab.icon" />
-              <span>{{ tab.label }}</span>
-            </a>
-          }
-        </nav>
-      }
     </div>
 
     <!-- Das Menü hinter den drei Balken - dunkel, wie in der Klassenmappe -->
@@ -312,10 +135,9 @@
             <app-icon name="users" /> Schüler anlegen & importieren
           </a>
           <a routerLink="/stundenplan"><app-icon name="calendar-days" /> Stundenplan</a>
-        } @else {
-          <p class="menu-label">Unterricht</p>
-          <a routerLink="/"><app-icon name="calendar-days" /> Wochenplan</a>
         }
+        <p class="menu-label">Unterricht</p>
+        <a routerLink="/"><app-icon name="calendar-days" /> Wochenplan</a>
         <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
           <app-icon name="file-down" /> Auswertung & Export
         </a>
