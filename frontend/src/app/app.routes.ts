@@ -1,56 +1,17 @@
-import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
-import { ModeService, editModeGuard } from './core/mode.service';
+import { editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
 // entschluesselte Datei offen ist, zeigt AppComponent das Schloss statt der
 // Routen. Eine serverseitige Anmeldung gibt es nicht mehr.
-//
-// Aufbau nach dem Vorbild der Klassenmappe: Man wählt links eine Klasse und
-// bewegt sich dann in ihren Bereichen Übersicht, Schüler, Mitarbeit und Noten.
 export const routes: Routes = [
-  // Im Unterricht ist der Wochenplan die Startseite.
+  // Einziger Einstieg ist der Wochenplan: Von dort wählt man die Stunde,
+  // die bewertet werden soll.
   {
     path: '',
     pathMatch: 'full',
     title: 'Wochenplan',
-    canMatch: [() => !inject(ModeService).isEdit()],
     loadComponent: () => import('./pages/week/week').then((m) => m.WeekPage),
-  },
-  {
-    path: '',
-    pathMatch: 'full',
-    title: 'Sitzordnung',
-    loadComponent: () => import('./pages/home/home').then((m) => m.HomePage),
-  },
-  {
-    path: 'klasse/:classId',
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'uebersicht' },
-      {
-        path: 'uebersicht',
-        title: 'Übersicht',
-        loadComponent: () =>
-          import('./pages/class/class-overview').then((m) => m.ClassOverviewPage),
-      },
-      {
-        path: 'schueler',
-        title: 'Schüler',
-        loadComponent: () =>
-          import('./pages/class/class-students').then((m) => m.ClassStudentsPage),
-      },
-      {
-        path: 'mitarbeit',
-        title: 'Mitarbeit',
-        loadComponent: () =>
-          import('./pages/class/class-participation').then((m) => m.ClassParticipationPage),
-      },
-      {
-        path: 'noten',
-        title: 'Noten',
-        loadComponent: () => import('./pages/class/class-grades').then((m) => m.ClassGradesPage),
-      },
-    ],
   },
   {
     path: 'kurs/:courseId',
@@ -88,5 +49,6 @@ export const routes: Routes = [
   },
   // Frühere Adressen führen weiterhin irgendwohin Sinnvolles.
   { path: 'unterricht', redirectTo: '' },
+  { path: 'klasse/**', redirectTo: '' },
   { path: '**', redirectTo: '' },
 ];
