@@ -51,6 +51,13 @@ if [ "$(sha256sum Caddyfile | cut -d' ' -f1)" != \
      "$(docker compose exec -T caddy sha256sum /etc/caddy/Caddyfile 2>/dev/null | cut -d' ' -f1)" ]; then
   echo "==> Caddyfile geändert, starte Caddy neu"
   docker compose restart caddy
+# Kein Zertifikat für die Adresse (TLS-Fehler)? Dann wartet Caddy nach einem
+# früheren Fehlversuch (z. B. DNS noch nicht eingetragen) womöglich lange auf
+# den nächsten Versuch. Ein Neustart holt das Zertifikat sofort.
+elif ! curl -sS --max-time 5 -o /dev/null "https://$DOMAIN/" 2>/dev/null \
+     && [ "$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' "http://$DOMAIN/")" = "308" ]; then
+  echo "==> Kein Zertifikat für $DOMAIN, starte Caddy neu"
+  docker compose restart caddy
 fi
 
 echo "==> Warte auf https://$DOMAIN/health"
@@ -72,6 +79,8 @@ fi
 
 echo "FEHLER: Die neue Version antwortet nicht. Letzte Logzeilen:" >&2
 docker compose logs --tail 40 "$DIENST" >&2
+echo "Caddy (Zertifikate):" >&2
+docker compose logs --tail 60 caddy 2>&1 | grep -i -E "$DOMAIN|error" | tail -15 >&2 || true
 
 if [ -n "$VORHER" ]; then
   echo "==> Stelle die vorherige Version wieder her" >&2
