@@ -241,8 +241,9 @@ export class ApiService {
     studentId: number,
     value: RatingValue,
     comment?: string,
+    lessonDate?: string,
   ): Observable<Rating> {
-    return this.run(() => this.store.rate(courseId, studentId, value, comment));
+    return this.run(() => this.store.rate(courseId, studentId, value, comment, lessonDate));
   }
 
   /** Nimmt genau diese Bewertung zurück - etwa nach einem Vertipper. */

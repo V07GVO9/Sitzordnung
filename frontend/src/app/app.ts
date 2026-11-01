@@ -357,12 +357,20 @@ export class App implements OnDestroy {
 
   startEdit(): void {
     this.menuOpen.set(false);
-    void this.mode.requestEdit();
+    void this.mode.requestEdit().then((ok) => ok && this.reloadStart());
   }
 
   finishEdit(): void {
     this.menuOpen.set(false);
     this.mode.finishEdit();
+    this.reloadStart();
+  }
+
+  /** Die Startseite hängt vom Modus ab: im Unterricht ist es der Wochenplan. */
+  private reloadStart(): void {
+    if (this.router.url.split('?')[0] === '/') {
+      void this.router.navigateByUrl('/', { onSameUrlNavigation: 'reload' });
+    }
   }
 
   /** Erster Kurs einer Klasse - oder der, der dort zuletzt offen war. */
@@ -404,6 +412,10 @@ export class App implements OnDestroy {
     }
 
     this.activeClassId.set(null);
+    if (path.length === 0 && !this.isEdit()) {
+      this.pageTitle.set('Wochenplan');
+      return;
+    }
     this.pageTitle.set(PAGE_TITLES[path[0] ?? ''] ?? '');
   }
 

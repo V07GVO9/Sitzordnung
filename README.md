@@ -111,6 +111,13 @@ Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
 *Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
+Beim nächsten Start ist die zuletzt benutzte Datei schon vorgewählt (Chrome und
+Edge): Passwort eingeben, Enter – fertig, ohne Dateidialog. Über „Andere Datei
+wählen“ geht es zum Dateidialog. Der Browser fragt dabei unter Umständen einmal
+nach, ob die App die Datei bearbeiten darf; mit „Bei jedem Besuch zulassen“
+entfällt auch diese Rückfrage. Gemerkt wird nur der Verweis auf die Datei, kein
+Passwort.
+
 ### Auf mehreren Geräten: OneDrive
 
 Statt auf einem Gerät kann der Bestand auch in **OneDrive** liegen (Ordner

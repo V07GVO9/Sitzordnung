@@ -1,5 +1,6 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
-import { editModeGuard } from './core/mode.service';
+import { ModeService, editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
 // entschluesselte Datei offen ist, zeigt AppComponent das Schloss statt der
@@ -8,6 +9,14 @@ import { editModeGuard } from './core/mode.service';
 // Aufbau nach dem Vorbild der Klassenmappe: Man wählt links eine Klasse und
 // bewegt sich dann in ihren Bereichen Übersicht, Schüler, Mitarbeit und Noten.
 export const routes: Routes = [
+  // Im Unterricht ist der Wochenplan die Startseite.
+  {
+    path: '',
+    pathMatch: 'full',
+    title: 'Wochenplan',
+    canMatch: [() => !inject(ModeService).isEdit()],
+    loadComponent: () => import('./pages/week/week').then((m) => m.WeekPage),
+  },
   {
     path: '',
     pathMatch: 'full',

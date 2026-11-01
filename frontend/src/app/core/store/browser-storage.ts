@@ -122,3 +122,35 @@ export async function clearRemembered(): Promise<void> {
     // Nichts zu tun.
   }
 }
+
+// --- Zuletzt benutzte Datei -------------------------------------------------
+
+const LAST_FILE_KEY = 'lastFile';
+
+/**
+ * Der Griff auf die zuletzt benutzte Datei auf diesem Rechner (nur Chrome/Edge).
+ * Er enthält keine Daten und kein Passwort, nur den Verweis auf die Datei.
+ */
+export async function readLastFileHandle<T>(): Promise<T | null> {
+  try {
+    return (await run<T | undefined>('readonly', (s) => s.get(LAST_FILE_KEY))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeLastFileHandle(handle: unknown): Promise<void> {
+  try {
+    await run('readwrite', (s) => s.put(handle, LAST_FILE_KEY));
+  } catch {
+    // Lässt sich der Griff nicht ablegen, wird beim nächsten Mal wieder gesucht.
+  }
+}
+
+export async function clearLastFileHandle(): Promise<void> {
+  try {
+    await run('readwrite', (s) => s.delete(LAST_FILE_KEY));
+  } catch {
+    // Nichts zu tun.
+  }
+}

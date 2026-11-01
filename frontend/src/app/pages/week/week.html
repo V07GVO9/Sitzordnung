@@ -1,0 +1,96 @@
+<div class="week">
+  <div class="week-bar">
+    <button class="round-btn" type="button" aria-label="Vorherige Woche" (click)="shiftWeek(-1)">
+      <app-icon name="chevron-left" />
+    </button>
+    <button class="week-label" type="button" (click)="thisWeek()" title="Zur aktuellen Woche">
+      <strong>{{ weekLabel() }}</strong>
+      @if (weekOffset() !== 0) {
+        <span class="small muted">zurück zu heute</span>
+      }
+    </button>
+    <button class="round-btn" type="button" aria-label="Nächste Woche" (click)="shiftWeek(1)">
+      <app-icon name="chevron-right" />
+    </button>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Stundenplan wird geladen …</p>
+  } @else if (entries().length === 0) {
+    <div class="empty">
+      <p>Im Stundenplan steht noch kein Unterricht.</p>
+      <p class="muted small">
+        Stundenplan, Klassen und Schüler legst du im Menü unter „Einrichten“ an.
+      </p>
+    </div>
+  } @else {
+    <div class="grid-wrap">
+      <table class="week-grid">
+        <thead>
+          <tr>
+            <th class="slot-col" scope="col"><span class="sr-only">Zeit</span></th>
+            @for (day of days(); track day.dayOfWeek) {
+              <th scope="col" [class.today]="day.isToday" [title]="day.long">
+                <span class="day-short">{{ day.short }}</span>
+                <span class="day-date">{{ day.label }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (slot of slots(); track slot.startTime + slot.endTime; let i = $index) {
+            <tr>
+              <th class="slot-col" scope="row">
+                <span class="slot-no">{{ i + 1 }}</span>
+                <span class="slot-time">{{ slot.startTime }}</span>
+                <span class="slot-time">{{ slot.endTime }}</span>
+              </th>
+              @for (day of days(); track day.dayOfWeek) {
+                <td [class.today]="day.isToday">
+                  @for (cell of cellsAt(day.dayOfWeek, slot); track cell.entry.id) {
+                    <a
+                      class="lesson"
+                      [class.running]="cell.running"
+                      [style.--hue]="hue(cell.entry.subjectName)"
+                      [routerLink]="['/kurs', cell.entry.courseId]"
+                      [queryParams]="{
+                        datum: cell.date,
+                        von: cell.entry.startTime,
+                        bis: cell.entry.endTime,
+                      }"
+                      [attr.aria-label]="
+                        day.long +
+                        ' ' +
+                        cell.entry.startTime +
+                        ': ' +
+                        cell.entry.subjectName +
+                        ', ' +
+                        cell.entry.schoolClassName +
+                        (cell.ratingCount ? ', ' + cell.ratingCount + ' Bewertungen' : '')
+                      "
+                    >
+                      <strong>{{ cell.short }}</strong>
+                      <span class="cls">{{ cell.entry.schoolClassName }}</span>
+                      @if (cell.entry.room) {
+                        <span class="room">{{ cell.entry.room }}</span>
+                      }
+                      @if (cell.ratingCount) {
+                        <span class="count" title="Bewertungen in dieser Stunde">{{
+                          cell.ratingCount
+                        }}</span>
+                      }
+                    </a>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small hint">
+      Tippe auf eine Stunde, um sie zu öffnen und zu bewerten – auch rückwirkend. Wischen blättert
+      die Woche.
+    </p>
+  }
+</div>

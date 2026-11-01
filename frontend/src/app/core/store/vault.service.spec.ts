@@ -395,4 +395,53 @@ describe('VaultService', () => {
       await vault.closeVault();
     });
   });
+  describe('VaultService - zuletzt benutzte Datei', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeHandle;
+
+    beforeEach(async () => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+      handle = new FakeHandle();
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+      await vault.closeVault();
+      vault.lastLocalFile.set(handle);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+      await vault.forgetLastLocalFile();
+    });
+
+    it('öffnet die vorgemerkte Datei nur mit dem Passwort', async () => {
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(store.isOpen()).toBeTrue();
+      expect(vault.fileName()).toBe(handle.name);
+      expect(vault.hasFileHandle()).toBeTrue();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a']);
+    });
+
+    it('lehnt ein falsches Passwort ab', async () => {
+      await expectAsync(vault.openLastLocalFile('Falsches#Passwort1')).toBeRejected();
+      expect(store.isOpen()).toBeFalse();
+    });
+
+    it('bricht ab, wenn der Browser den Zugriff verweigert', async () => {
+      handle.erlaubt = false;
+      await expectAsync(vault.openLastLocalFile(PASSWORT)).toBeRejected();
+      expect(store.isOpen()).toBeFalse();
+    });
+
+    it('vergisst die Datei auf Wunsch', async () => {
+      await vault.forgetLastLocalFile();
+      expect(vault.lastLocalFile()).toBeNull();
+      await expectAsync(vault.openLastLocalFile(PASSWORT)).toBeRejected();
+    });
+  });
 });
