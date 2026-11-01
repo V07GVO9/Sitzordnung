@@ -153,7 +153,6 @@ export class CoursePage implements OnDestroy {
   readonly saving = signal(false);
 
   /** Die anderen Fächer derselben Klasse - als Reiter oben. */
-  readonly siblings = signal<Course[]>([]);
   /** Was laut Stundenplan gerade läuft. */
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
@@ -366,14 +365,12 @@ export class CoursePage implements OnDestroy {
 
     forkJoin({
       course: this.api.getCourse(courseId),
-      courses: this.api.getCourses(),
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
       scoreboard: this.api.getScoreboard(courseId),
     }).subscribe({
-      next: ({ course, courses, students, plans, scoreboard }) => {
+      next: ({ course, students, plans, scoreboard }) => {
         this.course.set(course);
-        this.siblings.set(courses.filter((c) => c.schoolClassId === course.schoolClassId));
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);

@@ -59,24 +59,17 @@ Verordnungen und Konferenzbeschlüsse.
 
 ## Bedienung
 
-Aufbau und Bedienung sind an die iPad-App „Meine Klassenmappe“ angelehnt:
-
-- **Klassen links:** Die Seitenleiste zeigt alle Klassen (Ordner, Schülerzahl,
-  Fächer). Der Umschalter *Tagesansicht* zeigt stattdessen den Unterricht eines
-  Tages aus dem Stundenplan – ein Tipp auf eine Stunde öffnet sie. Mit dem
-  Symbol oben rechts lässt sich die Leiste ausblenden; auf schmalen Geräten
-  liegt sie als Schublade über dem Inhalt.
-- **Bereiche einer Klasse unten:** *Übersicht* (laufende und heutige Stunden,
-  Fächer, gute und schwache Mitarbeit der letzten 14 Tage), *Schüler*
-  (Klassenliste mit Buchstaben-Register, Stammdaten als Blatt mit ‹ ›),
-  *Mitarbeit* und *Noten* (Punkte, Note und Farbbalken je Fach).
-- **Mitarbeit eintragen:** Oben die Fächer der Klasse, darunter Datum und
-  laufende Stunde. Bewertet wird wahlweise in der **Liste** oder auf dem
-  **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in den Farben Grün bis
-  Rot. Wer heute bewertet wurde, bekommt die Farbe seiner Bewertung. Ein Tipp
-  auf Foto oder Namen öffnet den Verlauf mit Verteilung (7 Tage, 30 Tage,
-  gesamt); dort lassen sich einzelne Bewertungen löschen. Nach jeder Bewertung
-  erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
+- **Wochenplan als Startseite:** Die App zeigt immer den Stundenplan der ganzen
+  Woche (‹ › blättert). Ein Tipp auf eine Stunde öffnet sie zum Bewerten – auch
+  rückwirkend. Oben links führen die drei Balken ins Menü und das
+  Kalender-Symbol zurück zum Wochenplan.
+- **Mitarbeit eintragen:** Oben Datum und Stunde. Bewertet wird wahlweise in der
+  **Liste** oder auf dem **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in
+  den Farben Grün bis Rot. Wer heute bewertet wurde, bekommt die Farbe seiner
+  Bewertung. Ein Tipp auf Foto oder Namen öffnet den Verlauf mit Verteilung
+  (7 Tage, 30 Tage, gesamt); dort lassen sich einzelne Bewertungen löschen. Nach
+  jeder Bewertung erscheint unten eine Meldung mit **Rückgängig** – für
+  Vertipper.
 - **Sitzplan bearbeiten:** Stift-Symbol neben *Liste | Sitzplan*. Neben Drag and
   Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
   Schlag.

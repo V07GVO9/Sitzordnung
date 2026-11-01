@@ -1,13 +1,7 @@
 /* Mobile first: kleine Kacheln, die sich über Container-Abfragen an die
    tatsächliche Platzbreite anpassen – so muss nie seitlich gescrollt werden. */
 
-/* --- Kopf im Stil des Kursbuchs: Fach-Reiter, Datum, Ansicht --- */
-
-.course-tabs {
-  margin: calc(var(--pad-seite) * -1) calc(var(--pad-seite) * -1) 0;
-  padding-top: 0.35rem;
-  border-bottom: 1px solid var(--separator);
-}
+/* --- Kopf im Stil des Kursbuchs: Datum, Ansicht --- */
 
 .kb-bar {
   display: flex;
