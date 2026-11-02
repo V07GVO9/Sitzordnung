@@ -5,7 +5,6 @@ import {
   combineGrades,
   formatGrade,
   gradeFromPercent,
-  percentFromGrade,
   lessonGradeFor,
   parseGrade,
   participationLessons,
@@ -26,14 +25,6 @@ const test: AssessmentRecord = {
   releasedAt: null,
   comment: null,
 };
-
-describe('percentFromGrade', () => {
-  it('gibt die Untergrenze der Stufe zurück', () => {
-    expect(percentFromGrade(scheme.percentScale, 1)).toBe(92);
-    expect(percentFromGrade(scheme.percentScale, 2.3)).toBe(81);
-    expect(percentFromGrade(scheme.percentScale, 6)).toBe(0);
-  });
-});
 
 describe('gradeFromPercent', () => {
   it('nimmt die Stufe des IHK-Schlüssels, die gerade noch erreicht ist', () => {

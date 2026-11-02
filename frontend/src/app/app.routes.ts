@@ -24,6 +24,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/grades/grades').then((m) => m.GradesPage),
   },
   {
+    path: 'noten',
+    title: 'Noten',
+    loadComponent: () =>
+      import('./pages/quarter-grades/quarter-grades').then((m) => m.QuarterGradesPage),
+  },
+  {
     path: 'stundenplan',
     canActivate: [editModeGuard],
     title: 'Stundenplan',

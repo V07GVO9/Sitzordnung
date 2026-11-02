@@ -36,6 +36,7 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
 /** Titel der Seiten in der Kopfleiste. */
 const PAGE_TITLES: Record<string, string> = {
   '': 'Wochenplan',
+  noten: 'Noten',
   stundenplan: 'Stundenplan',
   verwaltung: 'Klassen, Fächer & Schüler',
   auswertung: 'Auswertung & Einstellungen',
