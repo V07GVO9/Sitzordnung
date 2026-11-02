@@ -439,6 +439,55 @@ Siehe [Abschnitt 11](#11-speichern-datei-und-passwort).
 | OneDrive | Speichert automatisch in OneDrive. Hat ein anderes Gerät inzwischen gespeichert, fragt die App, welcher Stand gilt |
 | Android-App | Speichert in *Dokumente/Sitzordnung* |
 
+### Automatisch speichern einschalten – Schritt für Schritt
+
+Das automatische Speichern ist **normalerweise schon an**. Damit es wirklich in
+die Datei schreibt, müssen drei Dinge stimmen.
+
+**Vorher prüfen: Läuft es schon?**
+
+1. Oben links auf die **drei Striche (☰)** tippen.
+2. Unter **„Datei“** steht der Dateiname.
+3. Steht darunter **„· speichert automatisch“**? → Fertig, alles läuft.
+4. Steht das **nicht** da → mit Schritt 1 weitermachen.
+
+**Schritt 1: Den richtigen Browser nehmen**
+
+- **Google Chrome** oder **Microsoft Edge** verwenden.
+- In Firefox oder Safari geht es nicht – dort landet jedes Speichern als neue
+  Datei im Download-Ordner.
+- Liegt die Datei in **OneDrive**, geht es in jedem Browser.
+
+**Schritt 2: Die Datei richtig öffnen**
+
+- Beim Start den Reiter **„Datei öffnen“** wählen, die eigene Datei aussuchen,
+  dann das Passwort eingeben.
+- ❗ Nicht über „Zwischenstand wiederherstellen“ einsteigen – sonst weiß die
+  App nicht, in welche Datei sie schreiben soll.
+
+**Schritt 3: Einmal von Hand speichern**
+
+1. **☰ → Jetzt speichern** (oder <kbd>Strg</kbd>+<kbd>S</kbd>).
+2. Der Browser fragt, ob die Seite Änderungen an der Datei speichern darf.
+3. **„Änderungen speichern“** bzw. **„Zulassen“** klicken.
+
+Ab jetzt speichert die App etwa **3 Sekunden nach jeder Änderung** von selbst.
+
+**Schritt 4 (nur falls nötig): Den Schalter prüfen**
+
+1. **☰ → Bearbeitungsmodus starten** → mit **Bearbeiten** bestätigen.
+2. **☰ → Datei & Passwort**.
+3. Haken bei **„Nach jeder Änderung automatisch in die Datei speichern“** setzen.
+4. **☰ → Zurück zum Unterricht**.
+
+**Gut zu wissen**
+
+- Die Einstellung gilt **nur für dieses Gerät**.
+- Nach einem Browser-Neustart fragt Chrome/Edge eventuell erneut nach der
+  Erlaubnis – dann Schritt 3 wiederholen.
+- Hat ein **anderes Gerät** zwischendurch gespeichert, pausiert das automatische
+  Speichern, bis entschieden ist, welcher Stand gilt.
+
 ### Reiter „Datei“ (Auswertung → Datei)
 
 - **Automatisch speichern** ein-/ausschalten (gilt je Gerät).
