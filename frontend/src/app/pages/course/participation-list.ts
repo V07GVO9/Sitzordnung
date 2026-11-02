@@ -34,7 +34,12 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
   template: `
     <div class="p-list">
       @for (row of rows(); track row.student.id) {
-        <div class="list-row p-row" [class.flash]="flashId() === row.student.id">
+        <div
+          class="list-row p-row"
+          [class.flash]="flashId() === row.student.id"
+          [class.rated]="row.current !== null"
+          [style.--rated]="ratedColor(row.current)"
+        >
           <button
             class="who"
             type="button"
@@ -106,6 +111,14 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       background: var(--surface);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+    }
+
+    /* Wer heute bewertet wurde, bekommt die Farbe der Bewertung - wie die Kachel im Sitzplan. */
+    .p-row.rated {
+      background: color-mix(in srgb, var(--rated) 55%, var(--surface));
+      box-shadow:
+        inset 0 0 0 1px var(--rated),
+        var(--shadow);
     }
 
     .flash {
@@ -206,6 +219,12 @@ export class ParticipationList {
         current: this.today().get(student.id)?.at(-1)?.value ?? null,
       })),
   );
+
+  /** Die Farbe der heutigen Bewertung als CSS-Variable für die Zeile. */
+  ratedColor(value: number | null): string | null {
+    const css = ratingClass(value);
+    return css ? `var(--${css})` : null;
+  }
 
   signed(points: number): string {
     return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
