@@ -9,6 +9,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
   AREA_LABELS,
+  GradeArea,
   AppSettings,
   Assessment,
   AssessmentDetail,
@@ -43,6 +44,8 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  Quarter,
+  QuarterGrade,
   WEEKDAY_NAMES,
 } from '../models';
 import { AppError } from './app-error';
@@ -62,8 +65,10 @@ import {
   average,
   combineGrades,
   formatGrade,
+  gradeFromPercent,
   isValidGrade,
   participationLessons,
+  percentFromGrade,
   resultGrade,
 } from './assessment.logic';
 import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
@@ -437,6 +442,9 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => o.courseId !== courseId,
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter(
+      (q) => q.courseId !== courseId,
+    );
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => c.courseId !== courseId);
     this.database.gradeReports = this.database.gradeReports.filter((r) => r.courseId !== courseId);
   }
@@ -455,6 +463,7 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => !gone.has(o.studentId),
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !gone.has(q.studentId));
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => !gone.has(c.studentId));
     this.database.gradeReports = this.database.gradeReports.filter((r) => !gone.has(r.studentId));
     for (const plan of this.database.seatingPlans) {
@@ -780,7 +789,9 @@ export class LocalStore {
     replaceSameDay = false,
   ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
-      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
+      throw new AppError(
+        'Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).',
+      );
     }
 
     const course = this.requireCourse(courseId);
@@ -1553,6 +1564,88 @@ export class LocalStore {
       ),
       scheme.participationGrades,
     );
+  }
+
+  // --- Quartalsnoten -----------------------------------------------------
+
+  /** Alle eingetragenen Quartalsnoten eines Kurses. */
+  getQuarterGrades(courseId: number): QuarterGrade[] {
+    this.requireCourse(courseId);
+    return this.database.quarterGrades
+      .filter((q) => q.courseId === courseId)
+      .map(({ studentId, quarter, area, percent, grade }) => ({
+        studentId,
+        quarter,
+        area,
+        percent,
+        grade,
+      }));
+  }
+
+  /**
+   * Trägt eine Quartalsnote ein. Fehlt Prozent oder Note, wird der fehlende
+   * Wert über den Prozentschlüssel des Kurses ergänzt. Beides leer löscht den Eintrag.
+   */
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    percent: number | null,
+    grade: number | null,
+  ): QuarterGrade {
+    const course = this.requireCourse(courseId);
+    const student = this.requireStudent(studentId);
+    if (student.schoolClassId !== course.schoolClassId) {
+      throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+    }
+    if (![1, 2, 3, 4].includes(quarter)) {
+      throw new AppError('Es gibt nur die Quartale 1 bis 4.');
+    }
+    if (percent !== null && !(Number.isFinite(percent) && percent >= 0 && percent <= 100)) {
+      throw new AppError('Die Prozentzahl muss zwischen 0 und 100 liegen.');
+    }
+    if (grade !== null && !isValidGrade(grade)) {
+      throw new AppError('Die Note muss zwischen 1,0 und 6,0 liegen.');
+    }
+
+    const scale = this.schemeRecord(courseId).percentScale;
+    if (percent !== null && grade === null) {
+      grade = gradeFromPercent(scale, percent);
+    } else if (grade !== null && percent === null) {
+      percent = percentFromGrade(scale, grade);
+    }
+
+    const matches = (q: { courseId: number; studentId: number; quarter: number; area: string }) =>
+      q.courseId === courseId &&
+      q.studentId === studentId &&
+      q.quarter === quarter &&
+      q.area === area;
+    const before = this.database.quarterGrades.find(matches);
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !matches(q));
+
+    if (percent !== null || grade !== null) {
+      this.database.quarterGrades.push({ courseId, studentId, quarter, area, percent, grade });
+    }
+
+    const describe = (p: number | null, g: number | null) =>
+      p === null && g === null ? '–' : `${p === null ? '–' : p + ' %'} / ${formatGrade(g, 1)}`;
+    const oldText = describe(before?.percent ?? null, before?.grade ?? null);
+    const newText = describe(percent, grade);
+    if (oldText !== newText) {
+      this.logChange(
+        courseId,
+        studentId,
+        `${quarter}. Quartal ${AREA_LABELS[area]}`,
+        oldText,
+        newText,
+        null,
+        this.clock.now().toISOString(),
+      );
+    }
+    this.changed();
+
+    return { studentId, quarter, area, percent, grade };
   }
 
   // --- Notenübersicht -----------------------------------------------------

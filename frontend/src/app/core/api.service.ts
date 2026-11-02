@@ -32,6 +32,9 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  GradeArea,
+  Quarter,
+  QuarterGrade,
 } from './models';
 import { DateRange, LocalStore } from './store/local-store';
 import { readPhoto } from './store/photo';
@@ -312,6 +315,23 @@ export class ApiService {
 
   copyScheme(fromCourseId: number, toCourseIds: number[]): Observable<void> {
     return this.run(() => this.store.copyScheme(fromCourseId, toCourseIds));
+  }
+
+  getQuarterGrades(courseId: number): Observable<QuarterGrade[]> {
+    return this.run(() => this.store.getQuarterGrades(courseId));
+  }
+
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    percent: number | null,
+    grade: number | null,
+  ): Observable<QuarterGrade> {
+    return this.run(() =>
+      this.store.setQuarterGrade(courseId, studentId, quarter, area, percent, grade),
+    );
   }
 
   getGradeBook(courseId: number, range?: DateRange): Observable<GradeBook> {

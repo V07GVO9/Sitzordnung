@@ -465,6 +465,20 @@ export interface StudentReport {
   partial: boolean;
 }
 
+/** Die vier Quartale des Schuljahres. */
+export type Quarter = 1 | 2 | 3 | 4;
+
+export const QUARTERS: Quarter[] = [1, 2, 3, 4];
+
+/** Eine von Hand eingetragene Quartalsnote - in Prozent und als Note. */
+export interface QuarterGrade {
+  studentId: number;
+  quarter: Quarter;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+}
+
 /** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */
 export function ratingClass(value: number | null | undefined): string {
   switch (value) {
