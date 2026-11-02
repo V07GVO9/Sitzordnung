@@ -470,13 +470,17 @@ export type Quarter = 1 | 2 | 3 | 4;
 
 export const QUARTERS: Quarter[] = [1, 2, 3, 4];
 
-/** Eine von Hand eingetragene Quartalsnote - in Prozent und als Note. */
+/**
+ * Eine Quartalsnote. Schriftlich mit Prozent und Note, mündlich nur als Note.
+ * suggested = nicht eingetragen, sondern der Durchschnitt der Mitarbeit.
+ */
 export interface QuarterGrade {
   studentId: number;
   quarter: Quarter;
   area: GradeArea;
   percent: number | null;
   grade: number | null;
+  suggested: boolean;
 }
 
 /** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */

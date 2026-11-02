@@ -326,9 +326,9 @@ export class ApiService {
     studentId: number,
     quarter: Quarter,
     area: GradeArea,
-    percent: number | null,
+    value: number | null,
   ): Observable<QuarterGrade> {
-    return this.run(() => this.store.setQuarterGrade(courseId, studentId, quarter, area, percent));
+    return this.run(() => this.store.setQuarterGrade(courseId, studentId, quarter, area, value));
   }
 
   getGradeBook(courseId: number, range?: DateRange): Observable<GradeBook> {

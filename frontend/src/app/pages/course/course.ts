@@ -41,12 +41,7 @@ import { isValidDateKey, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
-import {
-  ParticipationList,
-  QuarterGradeRequest,
-  RATING_OPTIONS,
-  RateRequest,
-} from './participation-list';
+import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
 import { ParticipationSheet } from './participation-sheet';
 
 /** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
@@ -662,20 +657,6 @@ export class CoursePage implements OnDestroy {
 
   // --- Bewerten ---
 
-  /** Quartalsnote aus der Liste speichern. */
-  onQuarterGrade(request: QuarterGradeRequest): void {
-    const { student, quarter, area, percent } = request;
-    this.api.setQuarterGrade(this.courseId(), student.id, quarter, area, percent).subscribe({
-      next: (saved) => {
-        const others = this.quarterGrades().filter(
-          (g) => !(g.studentId === student.id && g.quarter === quarter && g.area === area),
-        );
-        this.quarterGrades.set(saved.percent === null ? others : [...others, saved]);
-      },
-      error: (err) => this.toasts.error(err, 'Die Note konnte nicht gespeichert werden.'),
-    });
-  }
-
   onRate(request: RateRequest): void {
     this.rate(request.student, request.value);
   }
@@ -849,6 +830,10 @@ export class CoursePage implements OnDestroy {
     this.api.getScoreboard(this.courseId()).subscribe({
       next: (board) => this.scores.set(board.students),
       error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    });
+    // Der mündliche Vorschlag (Ø Mitarbeit) ändert sich mit jeder Bewertung.
+    this.api.getQuarterGrades(this.courseId()).subscribe({
+      next: (grades) => this.quarterGrades.set(grades),
     });
     this.refreshToday();
     if (this.sheetStudentId() !== null) {

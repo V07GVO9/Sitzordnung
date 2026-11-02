@@ -139,7 +139,6 @@
         [flashId]="flash()?.studentId ?? null"
         [quarterGrades]="quarterGrades()"
         (rate)="onRate($event)"
-        (gradeChange)="onQuarterGrade($event)"
         (openStudent)="openSheet($event)"
       />
     } @else {

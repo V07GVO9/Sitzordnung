@@ -13,22 +13,7 @@ import {
   ratingClass,
 } from '../../core/models';
 import { formatGrade } from '../../core/store/assessment.logic';
-
-export interface QuarterGradeRequest {
-  student: Student;
-  quarter: Quarter;
-  area: GradeArea;
-  percent: number | null;
-}
-
-/** Grob nach dem Schuljahr: Aug–Okt, Nov–Jan, Feb–Apr, Mai–Jul. */
-export function currentQuarter(date = new Date()): Quarter {
-  const month = date.getMonth() + 1;
-  if (month >= 8 && month <= 10) return 1;
-  if (month >= 11 || month === 1) return 2;
-  if (month <= 4) return 3;
-  return 4;
-}
+import { quarterOf } from '../../core/store/quarter.logic';
 
 export interface RateRequest {
   student: Student;
@@ -105,21 +90,23 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 
           <span class="q-grades">
             @for (area of areas; track area.key) {
-              <span class="q-cell" [title]="area.title + ' im ' + quarter() + '. Quartal'">
+              <span
+                class="q-cell"
+                [title]="
+                  area.title +
+                  ' im ' +
+                  quarter() +
+                  '. Quartal' +
+                  (row.grades[area.key]?.suggested ? ' (Ø Mitarbeit, Vorschlag)' : '')
+                "
+              >
                 <span class="q-label">{{ area.short }}</span>
-                <input
-                  class="q-pct"
-                  inputmode="decimal"
-                  placeholder="%"
-                  [value]="percentText(row.grades[area.key])"
-                  (change)="onPercent(row.student, area.key, $any($event.target))"
-                  [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' in Prozent'"
-                />
-                <output
-                  class="q-grade"
-                  [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' als Note'"
-                  >{{ gradeText(row.grades[area.key]) }}</output
-                >
+                @if (row.grades[area.key]?.percent != null) {
+                  <span class="q-pct">{{ percentText(row.grades[area.key]) }}</span>
+                }
+                <span class="q-grade" [class.suggested]="row.grades[area.key]?.suggested">{{
+                  gradeText(row.grades[area.key])
+                }}</span>
               </span>
             }
           </span>
@@ -270,28 +257,30 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       flex: none;
     }
 
+    /* Nur Anzeige - eingetragen wird im Menü „Noten“. */
     .q-cell {
-      display: grid;
-      grid-template-columns: auto 3.4rem 3.2rem;
-      align-items: center;
-      gap: 0.2rem;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.3rem;
+      min-width: 4.5rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.4rem;
+      background: color-mix(in srgb, var(--surface) 70%, transparent);
+      font-size: 0.9rem;
 
-      input {
-        width: 100%;
-        min-height: 2.2rem;
-        padding: 0.2rem 0.3rem;
-        border: 1px solid var(--border);
-        border-radius: 0.4rem;
-        background: var(--surface);
-        color: var(--text);
-        text-align: center;
-        font-size: 0.9rem;
+      .q-pct {
+        color: var(--text-muted);
+        font-size: 0.8rem;
       }
 
-      /* Die Note wird nur angezeigt - sie folgt aus dem Prozentschlüssel. */
       .q-grade {
-        text-align: center;
         font-weight: 700;
+      }
+
+      .q-grade.suggested {
+        font-style: italic;
+        font-weight: 600;
+        color: var(--text-muted);
       }
     }
 
@@ -323,10 +312,9 @@ export class ParticipationList {
   readonly quarterGrades = input<QuarterGrade[]>([]);
 
   readonly rate = output<RateRequest>();
-  readonly gradeChange = output<QuarterGradeRequest>();
 
   readonly quarters = QUARTERS;
-  readonly quarter = signal<Quarter>(currentQuarter());
+  readonly quarter = signal<Quarter>(quarterOf(new Date()));
   readonly areas: { key: GradeArea; short: string; title: string }[] = [
     { key: 'written', short: 'S', title: 'Schriftlich' },
     { key: 'oral', short: 'M', title: 'Mündlich' },
@@ -368,34 +356,11 @@ export class ParticipationList {
   );
 
   percentText(g: QuarterGrade | null): string {
-    return g?.percent == null ? '' : String(g.percent).replace('.', ',');
+    return g?.percent == null ? '' : `${String(g.percent).replace('.', ',')} %`;
   }
 
   gradeText(g: QuarterGrade | null): string {
     return g?.grade == null ? '–' : formatGrade(g.grade, 1);
-  }
-
-  /** Prozent eingetippt - die Note folgt aus dem Prozentschlüssel. */
-  onPercent(student: Student, area: GradeArea, field: HTMLInputElement): void {
-    const text = field.value.trim().replace('%', '').replace(',', '.').trim();
-    if (text === '') {
-      this.emitPercent(student, area, null);
-      return;
-    }
-    const percent = Number(text);
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      field.value = this.percentText(this.gradeOf(student, area));
-      return;
-    }
-    this.emitPercent(student, area, Math.round(percent * 10) / 10);
-  }
-
-  private gradeOf(student: Student, area: GradeArea): QuarterGrade | null {
-    return this.gradesOfQuarter().get(`${student.id}:${area}`) ?? null;
-  }
-
-  private emitPercent(student: Student, area: GradeArea, percent: number | null): void {
-    this.gradeChange.emit({ student, quarter: this.quarter(), area, percent });
   }
 
   /** Die Farbe der heutigen Bewertung als CSS-Variable für die Zeile. */

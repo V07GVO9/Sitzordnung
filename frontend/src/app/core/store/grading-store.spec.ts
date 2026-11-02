@@ -294,21 +294,45 @@ describe('LocalStore - Notenbogen', () => {
 });
 
 describe('Quartalsnoten', () => {
-  it('rechnet Prozent in die Note um (IHK-Schlüssel)', () => {
+  it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
     const { store, course, anna } = setup();
 
-    expect(store.setQuarterGrade(course.id, anna.id, 1, 'written', 85).grade).toBe(2);
-    expect(store.setQuarterGrade(course.id, anna.id, 1, 'oral', 67).grade).toBe(3);
-    expect(store.getQuarterGrades(course.id)).toHaveSize(2);
+    const saved = store.setQuarterGrade(course.id, anna.id, 1, 'written', 85);
+    expect(saved.percent).toBe(85);
+    expect(saved.grade).toBe(2);
   });
 
-  it('löscht den Eintrag, wenn das Feld geleert wird', () => {
+  it('nimmt mündlich eine Note und schlägt sonst den Ø der Mitarbeit vor', () => {
+    const { store, course, anna, ben } = setup();
+    // Montag, 05.10.2026 liegt im 1. Quartal.
+    store.rate(course.id, anna.id, 2);
+
+    const oralQ1 = (id: number) =>
+      store
+        .getQuarterGrades(course.id)
+        .find((g) => g.studentId === id && g.quarter === 1 && g.area === 'oral');
+
+    expect(oralQ1(anna.id)).toEqual(
+      jasmine.objectContaining({ grade: 1, suggested: true, percent: null }),
+    );
+    // Ben wurde in der Stunde nicht bewertet - zählt wie 0 (Note 3).
+    expect(oralQ1(ben.id)?.grade).toBe(3);
+
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', 2.5);
+    expect(oralQ1(anna.id)).toEqual(jasmine.objectContaining({ grade: 2.5, suggested: false }));
+
+    // Löschen führt zurück auf den Vorschlag.
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', null);
+    expect(oralQ1(anna.id)?.suggested).toBeTrue();
+  });
+
+  it('löscht den schriftlichen Eintrag, wenn das Feld geleert wird', () => {
     const { store, course, anna } = setup();
 
     store.setQuarterGrade(course.id, anna.id, 2, 'written', 50);
     store.setQuarterGrade(course.id, anna.id, 2, 'written', null);
 
-    expect(store.getQuarterGrades(course.id)).toEqual([]);
+    expect(store.getQuarterGrades(course.id).filter((g) => g.area === 'written')).toEqual([]);
   });
 
   it('weist ungültige Werte ab', () => {
@@ -317,6 +341,6 @@ describe('Quartalsnoten', () => {
     expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120)).toThrowError(
       AppError,
     );
-    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', -5)).toThrowError(AppError);
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', 7)).toThrowError(AppError);
   });
 });
