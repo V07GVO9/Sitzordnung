@@ -150,3 +150,30 @@ table.lessons {
     text-decoration: line-through;
   }
 }
+
+table.quarters {
+  th.group {
+    text-align: center;
+    border-left: 1px solid var(--border);
+  }
+
+  .group-start {
+    border-left: 1px solid var(--border);
+  }
+
+  td.name {
+    white-space: nowrap;
+  }
+
+  input.grade {
+    width: 3.6rem;
+    padding: 0.2rem 0.3rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input.invalid {
+    border-color: var(--negative);
+    background: var(--negative-soft);
+  }
+}

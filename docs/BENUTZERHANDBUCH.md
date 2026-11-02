@@ -320,11 +320,30 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
 | Reiter | Inhalt |
 | --- | --- |
 | **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). |
+| **Quartalsnoten** | Je Schüler und Quartal eine schriftliche und eine mündliche Note eintragen (siehe unten). |
 | **Leistungsnachweise** | Klassenarbeit, Test, Referat … anlegen und Noten eintragen (siehe unten). |
 | **Mitarbeit** | Je Doppelstunde eine Mitarbeitsnote pro Schüler. |
 | **Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
 | **Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
 | **Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
+
+### Quartalsnoten
+
+Oben das **Schuljahr** wählen (beginnt am 1. August; **Nächstes Schuljahr**
+legt das folgende an). Je Schüler stehen vier Quartale mit je einem Feld
+**schr.** und **mdl.** – Noten mit Komma oder Punkt eintragen (z. B. `2,5`),
+leer lassen, wenn es noch keine gibt. Ungültige Eingaben werden rot markiert.
+
+- **ges.** verrechnet beide Noten des Quartals nach dem Anteil im
+  Bewertungsschema (Vorschlag: 50 : 50). Fehlt eine, zählt die vorhandene.
+- **Schuljahr Ø** mittelt die eingetragenen Quartale je Bereich und bildet
+  daraus die Gesamtnote.
+- **Quartalsnoten speichern** übernimmt alle Eingaben; **Verwerfen** stellt den
+  gespeicherten Stand wieder her. Wird eine bereits eingetragene Note geändert,
+  steht das mit der (optionalen) Begründung im **Protokoll**.
+
+Die Quartalsnoten sind unabhängig von Leistungsnachweisen und Mitarbeit – sie
+fließen nicht in die Übersicht ein.
 
 ### Leistungsnachweis anlegen und bewerten
 

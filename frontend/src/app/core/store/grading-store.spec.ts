@@ -1,7 +1,7 @@
 /** Notenverwaltung im Datenspeicher: Schema, Leistungsnachweise, Mitarbeit, Notenbogen. */
 
 import { AppError } from './app-error';
-import { LocalStore } from './local-store';
+import { LocalStore, schoolYearOf } from './local-store';
 
 /** Montag, 05.10.2026, mitten in der Doppelstunde. */
 const MONDAY = new Date('2026-10-05T11:30:00');
@@ -290,5 +290,69 @@ describe('LocalStore - Notenbogen', () => {
 
     expect(store.snapshot().assessments).toEqual([]);
     expect(store.snapshot().nextIds.assessment).toBe(1);
+  });
+});
+
+describe('LocalStore - Quartalsnoten', () => {
+  it('ermittelt das Schuljahr ab dem 1. August', () => {
+    expect(schoolYearOf(new Date('2026-07-31T12:00:00'))).toBe('2025/26');
+    expect(schoolYearOf(new Date('2026-08-01T12:00:00'))).toBe('2026/27');
+  });
+
+  it('speichert schriftlich und mündlich je Quartal und verrechnet nach dem Schema', () => {
+    const { store, course, anna } = setup();
+
+    const book = store.saveQuarterGrades(course.id, '2026/27', [
+      { studentId: anna.id, quarter: 1, written: 2, oral: 3 },
+      { studentId: anna.id, quarter: 2, written: 1, oral: null },
+    ]);
+
+    const row = book.students.find((s) => s.studentId === anna.id)!;
+    expect(book.schoolYear).toBe('2026/27');
+    expect(row.quarters[0]).toEqual({ quarter: 1, written: 2, oral: 3, overall: 2.5 });
+    expect(row.quarters[1].overall).toBe(1);
+    expect(row.written).toBe(1.5);
+    expect(row.oral).toBe(3);
+    expect(row.overall).toBe(2.25);
+  });
+
+  it('protokolliert Änderungen bereits eingetragener Noten', () => {
+    const { store, course, anna } = setup();
+    store.saveQuarterGrades(course.id, '2026/27', [
+      { studentId: anna.id, quarter: 1, written: 2, oral: 3 },
+    ]);
+    store.saveQuarterGrades(
+      course.id,
+      '2026/27',
+      [{ studentId: anna.id, quarter: 1, written: 2.5, oral: 3 }],
+      'Nachkorrektur',
+    );
+
+    const changes = store.getGradeChanges(course.id);
+    expect(changes.length).toBe(1);
+    expect(changes[0].oldValue).toBe('2,0');
+    expect(changes[0].newValue).toBe('2,5');
+    expect(changes[0].reason).toBe('Nachkorrektur');
+  });
+
+  it('lehnt ungültige Noten und Schuljahre ab', () => {
+    const { store, course, anna } = setup();
+
+    expect(() =>
+      store.saveQuarterGrades(course.id, '2026/27', [
+        { studentId: anna.id, quarter: 1, written: 7, oral: null },
+      ]),
+    ).toThrowError(AppError);
+    expect(() => store.getQuarterGrades(course.id, '2026/28')).toThrowError(AppError);
+  });
+
+  it('räumt die Quartalsnoten eines gelöschten Schülers weg', () => {
+    const { store, course, anna } = setup();
+    store.saveQuarterGrades(course.id, '2026/27', [
+      { studentId: anna.id, quarter: 1, written: 2, oral: 2 },
+    ]);
+    store.deleteStudent(anna.id);
+
+    expect(store.snapshot().quarterGrades).toEqual([]);
   });
 });

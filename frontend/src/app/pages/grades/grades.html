@@ -85,6 +85,9 @@
         <button type="button" [class.active]="tab() === 'overview'" (click)="selectTab('overview')">
           Übersicht
         </button>
+        <button type="button" [class.active]="tab() === 'quarters'" (click)="selectTab('quarters')">
+          Quartalsnoten
+        </button>
         <button
           type="button"
           [class.active]="tab() === 'assessments'"
@@ -167,6 +170,132 @@
           </table>
         </div>
         <p class="muted small">* vorläufig - ein Bereich hat noch keine Noten.</p>
+      </section>
+    }
+
+    <!-- Quartalsnoten -->
+    @if (tab() === 'quarters') {
+      <section class="card">
+        @if (quarterBook(); as qb) {
+          <div class="filter">
+            <label>
+              Schuljahr
+              <select
+                [value]="qb.schoolYear"
+                (change)="selectSchoolYear($any($event.target).value, $any($event.target))"
+              >
+                @for (y of qb.schoolYears; track y) {
+                  <option [value]="y" [selected]="y === qb.schoolYear">{{ y }}</option>
+                }
+              </select>
+            </label>
+            <button class="btn small" type="button" (click)="addSchoolYear()">
+              Nächstes Schuljahr
+            </button>
+          </div>
+          <p class="muted small">
+            Je Quartal eine schriftliche und eine mündliche Note eintragen (z. B. 2 oder 2,5). Die
+            Gesamtnote verrechnet schriftlich {{ qb.writtenPercent }} % und mündlich
+            {{ 100 - qb.writtenPercent }} % – wie im Bewertungsschema. Ø = Durchschnitt der
+            eingetragenen Quartale.
+          </p>
+          <div class="table-wrap">
+            <table class="quarters">
+              <thead>
+                <tr>
+                  <th rowspan="2">Name</th>
+                  @for (q of quarters; track q) {
+                    <th colspan="3" class="group">{{ q }}. Quartal</th>
+                  }
+                  <th colspan="3" class="group">Schuljahr Ø</th>
+                </tr>
+                <tr>
+                  @for (q of quarters; track q) {
+                    <th class="num group-start">schr.</th>
+                    <th class="num">mdl.</th>
+                    <th class="num">ges.</th>
+                  }
+                  <th class="num group-start">schr.</th>
+                  <th class="num">mdl.</th>
+                  <th class="num">ges.</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of quarterRows(); track row.studentId) {
+                  <tr>
+                    <td class="name">{{ row.name }}</td>
+                    @for (q of quarters; track q) {
+                      <td class="num group-start">
+                        <input
+                          type="text"
+                          inputmode="decimal"
+                          class="grade"
+                          [class.invalid]="isInvalid(row, q, 'written')"
+                          [ngModel]="row.cells[q - 1].written"
+                          (ngModelChange)="updateQuarterCell(row.studentId, q, 'written', $event)"
+                          [attr.aria-label]="row.name + ', ' + q + '. Quartal schriftlich'"
+                        />
+                      </td>
+                      <td class="num">
+                        <input
+                          type="text"
+                          inputmode="decimal"
+                          class="grade"
+                          [class.invalid]="isInvalid(row, q, 'oral')"
+                          [ngModel]="row.cells[q - 1].oral"
+                          (ngModelChange)="updateQuarterCell(row.studentId, q, 'oral', $event)"
+                          [attr.aria-label]="row.name + ', ' + q + '. Quartal mündlich'"
+                        />
+                      </td>
+                      <td class="num">{{ formatGrade(quarterOverall(row, q)) }}</td>
+                    }
+                    <td class="num group-start">{{ formatGrade(yearAverage(row, 'written')) }}</td>
+                    <td class="num">{{ formatGrade(yearAverage(row, 'oral')) }}</td>
+                    <td class="num">
+                      <strong>{{ formatGrade(yearOverall(row)) }}</strong>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="16" class="muted">
+                      In dieser Klasse sind keine Schüler angelegt.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <label class="full">
+            Begründung bei Änderung bereits eingetragener Noten (optional, steht im Protokoll)
+            <input
+              type="text"
+              [ngModel]="quarterReason()"
+              (ngModelChange)="quarterReason.set($event)"
+              name="quarterReason"
+            />
+          </label>
+          <div class="actions">
+            <button
+              class="btn primary"
+              type="button"
+              [disabled]="!quarterDirty()"
+              (click)="saveQuarters()"
+            >
+              Quartalsnoten speichern
+            </button>
+            <button
+              class="btn"
+              type="button"
+              [disabled]="!quarterDirty()"
+              (click)="applyQuartersReset()"
+            >
+              Verwerfen
+            </button>
+            @if (quarterDirty()) {
+              <span class="muted small">Ungespeicherte Änderungen</span>
+            }
+          </div>
+        }
       </section>
     }
 

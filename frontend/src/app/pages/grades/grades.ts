@@ -18,19 +18,23 @@ import {
   LessonGrade,
   ParticipationGrades,
   PercentScaleEntry,
+  QUARTERS,
+  Quarter,
+  QuarterGradeBook,
+  QuarterGradeInput,
   ResultStatus,
   STATUS_LABELS,
   StudentGrades,
   StudentReport,
   ratingSymbol,
 } from '../../core/models';
-import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
+import { average, combineGrades, formatGrade, parseGrade } from '../../core/store/assessment.logic';
 import { download, isNativeApp } from '../../core/store/file-system';
 import { renderReports } from '../../core/store/report';
 import { formatDateGerman, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
 
-type Tab = 'overview' | 'assessments' | 'participation' | 'scheme' | 'reports' | 'log';
+type Tab = 'overview' | 'quarters' | 'assessments' | 'participation' | 'scheme' | 'reports' | 'log';
 
 /** Eine Zeile der Eingabetabelle - Punkte und Note als Text, wie getippt. */
 interface ResultRow {
@@ -40,6 +44,13 @@ interface ResultRow {
   points: string;
   grade: string;
   comment: string;
+}
+
+/** Eine Zeile der Quartalsnoten - je Quartal schriftlich und mündlich als Text, wie getippt. */
+interface QuarterRow {
+  studentId: number;
+  name: string;
+  cells: { written: string; oral: string }[];
 }
 
 /** Ein Leistungsnachweis im Formular. */
@@ -92,6 +103,21 @@ export class GradesPage {
   readonly detailForm = signal<AssessmentForm>(this.emptyForm());
   readonly resultRows = signal<ResultRow[]>([]);
   readonly changeReason = signal('');
+
+  // --- Quartalsnoten ---
+  readonly quarters = QUARTERS;
+  readonly quarterBook = signal<QuarterGradeBook | null>(null);
+  readonly quarterRows = signal<QuarterRow[]>([]);
+  readonly quarterReason = signal('');
+
+  /** Ungespeicherte Eingaben? Dann warnt der Wechsel des Schuljahres. */
+  readonly quarterDirty = computed(() => {
+    const book = this.quarterBook();
+    return (
+      !!book &&
+      JSON.stringify(this.quarterRows()) !== JSON.stringify(GradesPage.toQuarterRows(book))
+    );
+  });
 
   // --- Schema ---
   readonly schemeDraft = signal<GradingSchemeInput | null>(null);
@@ -182,6 +208,9 @@ export class GradesPage {
     });
 
     this.api.getGradeChanges(courseId).subscribe((changes) => this.changes.set(changes));
+    if (!this.quarterDirty()) {
+      this.loadQuarters(this.quarterBook()?.schoolYear);
+    }
     this.api.getGradeReports(courseId).subscribe((reports) => this.reports.set(reports));
   }
 
@@ -244,6 +273,145 @@ export class GradesPage {
       next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
       error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
     });
+  }
+
+  // --- Quartalsnoten ---
+
+  private static toQuarterRows(book: QuarterGradeBook): QuarterRow[] {
+    const text = (g: number | null) => (g === null ? '' : formatGrade(g, 1));
+    return book.students.map((s) => ({
+      studentId: s.studentId,
+      name: `${s.lastName}, ${s.firstName}`,
+      cells: s.quarters.map((q) => ({ written: text(q.written), oral: text(q.oral) })),
+    }));
+  }
+
+  loadQuarters(schoolYear?: string): void {
+    this.api.getQuarterGrades(this.courseId(), schoolYear).subscribe({
+      next: (book) => this.applyQuarters(book),
+      error: (err) => this.toasts.error(err, 'Die Quartalsnoten konnten nicht geladen werden.'),
+    });
+  }
+
+  private applyQuarters(book: QuarterGradeBook): void {
+    this.quarterBook.set(book);
+    this.quarterRows.set(GradesPage.toQuarterRows(book));
+    this.quarterReason.set('');
+  }
+
+  applyQuartersReset(): void {
+    const book = this.quarterBook();
+    if (book) {
+      this.applyQuarters(book);
+    }
+  }
+
+  selectSchoolYear(schoolYear: string, select: HTMLSelectElement): void {
+    if (this.quarterDirty() && !confirm('Ungespeicherte Quartalsnoten verwerfen?')) {
+      select.value = this.quarterBook()?.schoolYear ?? schoolYear;
+      return;
+    }
+    this.loadQuarters(schoolYear);
+  }
+
+  /** Legt das nächste Schuljahr an - für den Wechsel im Sommer. */
+  addSchoolYear(): void {
+    const years = this.quarterBook()?.schoolYears ?? [];
+    const last = years[years.length - 1];
+    if (!last) {
+      return;
+    }
+    const start = Number(last.slice(0, 4)) + 1;
+    this.loadQuarters(`${start}/${String((start + 1) % 100).padStart(2, '0')}`);
+  }
+
+  updateQuarterCell(studentId: number, quarter: Quarter, area: GradeArea, value: string): void {
+    this.quarterRows.update((rows) =>
+      rows.map((r) =>
+        r.studentId === studentId
+          ? {
+              ...r,
+              cells: r.cells.map((c, i) => (i === quarter - 1 ? { ...c, [area]: value } : c)),
+            }
+          : r,
+      ),
+    );
+  }
+
+  /** Liest eine Zelle - NaN, wenn keine gültige Note drinsteht. */
+  quarterValue(row: QuarterRow, quarter: Quarter, area: GradeArea): number | null {
+    return parseGrade(row.cells[quarter - 1][area]);
+  }
+
+  isInvalid(row: QuarterRow, quarter: Quarter, area: GradeArea): boolean {
+    return Number.isNaN(this.quarterValue(row, quarter, area));
+  }
+
+  private combineQuarter(written: number | null, oral: number | null): number | null {
+    const valid = (g: number | null) => (g === null || Number.isNaN(g) ? null : g);
+    return combineGrades(
+      [
+        { area: 'written', weight: 1, grade: valid(written) },
+        { area: 'oral', weight: 1, grade: valid(oral) },
+      ],
+      this.quarterBook()?.writtenPercent ?? 50,
+    ).overall;
+  }
+
+  /** Gesamtnote eines Quartals - schon beim Tippen. */
+  quarterOverall(row: QuarterRow, quarter: Quarter): number | null {
+    return this.combineQuarter(
+      this.quarterValue(row, quarter, 'written'),
+      this.quarterValue(row, quarter, 'oral'),
+    );
+  }
+
+  /** Durchschnitt eines Bereichs über alle eingetragenen Quartale. */
+  yearAverage(row: QuarterRow, area: GradeArea): number | null {
+    return average(
+      QUARTERS.map((q) => this.quarterValue(row, q, area)).map((g) =>
+        g === null || Number.isNaN(g) ? null : g,
+      ),
+    );
+  }
+
+  yearOverall(row: QuarterRow): number | null {
+    return this.combineQuarter(this.yearAverage(row, 'written'), this.yearAverage(row, 'oral'));
+  }
+
+  saveQuarters(): void {
+    const book = this.quarterBook();
+    if (!book) {
+      return;
+    }
+
+    const inputs: QuarterGradeInput[] = [];
+    for (const row of this.quarterRows()) {
+      for (const quarter of QUARTERS) {
+        const written = this.quarterValue(row, quarter, 'written');
+        const oral = this.quarterValue(row, quarter, 'oral');
+        if (Number.isNaN(written) || Number.isNaN(oral)) {
+          this.toasts.show(
+            `${row.name}, ${quarter}. Quartal: bitte eine Note zwischen 1,0 und 6,0 eintragen.`,
+            'error',
+          );
+          return;
+        }
+        inputs.push({ studentId: row.studentId, quarter, written, oral });
+      }
+    }
+
+    this.api
+      .saveQuarterGrades(this.courseId(), book.schoolYear, inputs, this.quarterReason())
+      .subscribe({
+        next: (updated) => {
+          this.applyQuarters(updated);
+          this.toasts.success('Die Quartalsnoten wurden gespeichert.');
+          this.api.getGradeChanges(this.courseId()).subscribe((c) => this.changes.set(c));
+        },
+        error: (err) =>
+          this.toasts.error(err, 'Die Quartalsnoten konnten nicht gespeichert werden.'),
+      });
   }
 
   // --- Leistungsnachweise ---

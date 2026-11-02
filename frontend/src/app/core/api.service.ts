@@ -10,6 +10,8 @@ import {
   CourseScoreboard,
   CurrentLesson,
   GradeBook,
+  QuarterGradeBook,
+  QuarterGradeInput,
   GradeChange,
   GradeReport,
   GradeScale,
@@ -356,6 +358,19 @@ export class ApiService {
     return this.run(() =>
       this.store.setParticipationOverride(courseId, studentId, lessonDate, grade, reason),
     );
+  }
+
+  getQuarterGrades(courseId: number, schoolYear?: string): Observable<QuarterGradeBook> {
+    return this.run(() => this.store.getQuarterGrades(courseId, schoolYear));
+  }
+
+  saveQuarterGrades(
+    courseId: number,
+    schoolYear: string,
+    inputs: QuarterGradeInput[],
+    reason?: string | null,
+  ): Observable<QuarterGradeBook> {
+    return this.run(() => this.store.saveQuarterGrades(courseId, schoolYear, inputs, reason));
   }
 
   getGradeChanges(courseId: number): Observable<GradeChange[]> {

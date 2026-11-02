@@ -431,6 +431,48 @@ export interface GradeReport {
   overall: number | null;
 }
 
+// --- Quartalsnoten ---------------------------------------------------------
+
+export type Quarter = 1 | 2 | 3 | 4;
+
+export const QUARTERS: Quarter[] = [1, 2, 3, 4];
+
+/** Schriftliche und mündliche Note eines Quartals, dazu die verrechnete Gesamtnote. */
+export interface QuarterGrade {
+  quarter: Quarter;
+  written: number | null;
+  oral: number | null;
+  overall: number | null;
+}
+
+export interface StudentQuarterGrades {
+  studentId: number;
+  firstName: string;
+  lastName: string;
+  quarters: QuarterGrade[];
+  /** Durchschnitte über alle eingetragenen Quartale. */
+  written: number | null;
+  oral: number | null;
+  overall: number | null;
+}
+
+/** Alle Quartalsnoten eines Kurses in einem Schuljahr. */
+export interface QuarterGradeBook {
+  courseId: number;
+  schoolYear: string;
+  /** Schuljahre, für die schon Quartalsnoten vorliegen - und das laufende. */
+  schoolYears: string[];
+  writtenPercent: number;
+  students: StudentQuarterGrades[];
+}
+
+export interface QuarterGradeInput {
+  studentId: number;
+  quarter: Quarter;
+  written: number | null;
+  oral: number | null;
+}
+
 /** Eine Zeile im Notenbogen. */
 export interface ReportItem {
   date: string;

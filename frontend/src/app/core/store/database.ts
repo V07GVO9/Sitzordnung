@@ -189,6 +189,17 @@ export interface GradeReportRecord {
   overall: number | null;
 }
 
+/** Eine Quartalsnote: je Schuljahr und Quartal eine schriftliche und eine mündliche Note. */
+export interface QuarterGradeRecord {
+  courseId: number;
+  studentId: number;
+  /** Schuljahr als `2026/27`. */
+  schoolYear: string;
+  quarter: 1 | 2 | 3 | 4;
+  written: number | null;
+  oral: number | null;
+}
+
 export interface AppSettingsRecord {
   toleranceMinutes: number;
   allowRatingOutsideLesson: boolean;
@@ -230,6 +241,7 @@ export interface Database {
   participationOverrides: ParticipationOverrideRecord[];
   gradeChanges: GradeChangeRecord[];
   gradeReports: GradeReportRecord[];
+  quarterGrades: QuarterGradeRecord[];
   settings: AppSettingsRecord;
   nextIds: IdCounters;
 }
@@ -273,6 +285,7 @@ export function createEmptyDatabase(): Database {
     participationOverrides: [],
     gradeChanges: [],
     gradeReports: [],
+    quarterGrades: [],
     settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false },
     nextIds: {
       schoolClass: 1,

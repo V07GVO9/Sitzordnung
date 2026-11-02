@@ -19,6 +19,9 @@ import {
   CurrentLesson,
   DayOfWeek,
   GradeBook,
+  QUARTERS,
+  QuarterGradeBook,
+  QuarterGradeInput,
   GradeChange,
   GradeReport,
   GradeScale,
@@ -53,6 +56,7 @@ import {
   GradeScaleRecord,
   GradingSchemeRecord,
   MAX_PLANS_PER_COURSE,
+  QuarterGradeRecord,
   SeatingPlanRecord,
   StudentRecord,
   createDefaultScheme,
@@ -439,6 +443,9 @@ export class LocalStore {
     );
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => c.courseId !== courseId);
     this.database.gradeReports = this.database.gradeReports.filter((r) => r.courseId !== courseId);
+    this.database.quarterGrades = this.database.quarterGrades.filter(
+      (q) => q.courseId !== courseId,
+    );
   }
 
   /** Entfernt gelöschte Schüler aus Sitzordnungen und Bewertungen. */
@@ -457,6 +464,7 @@ export class LocalStore {
     );
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => !gone.has(c.studentId));
     this.database.gradeReports = this.database.gradeReports.filter((r) => !gone.has(r.studentId));
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !gone.has(q.studentId));
     for (const plan of this.database.seatingPlans) {
       plan.seats = plan.seats.filter((s) => !gone.has(s.studentId));
     }
@@ -780,7 +788,9 @@ export class LocalStore {
     replaceSameDay = false,
   ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
-      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
+      throw new AppError(
+        'Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).',
+      );
     }
 
     const course = this.requireCourse(courseId);
@@ -1616,6 +1626,134 @@ export class LocalStore {
     };
   }
 
+  // --- Quartalsnoten -----------------------------------------------------
+
+  /** Alle Quartalsnoten eines Kurses für ein Schuljahr - Gesamtnote nach dem Anteil im Schema. */
+  getQuarterGrades(courseId: number, schoolYear?: string): QuarterGradeBook {
+    this.requireCourse(courseId);
+    const current = schoolYearOf(this.clock.now());
+    const year = schoolYear ?? current;
+    requireSchoolYear(year);
+
+    const { writtenPercent } = this.schemeRecord(courseId);
+    const records = this.database.quarterGrades.filter((q) => q.courseId === courseId);
+    const schoolYears = [...new Set([current, year, ...records.map((q) => q.schoolYear)])].sort();
+    const combine = (written: number | null, oral: number | null) =>
+      combineGrades(
+        [
+          { area: 'written', weight: 1, grade: written },
+          { area: 'oral', weight: 1, grade: oral },
+        ],
+        writtenPercent,
+      ).overall;
+
+    return {
+      courseId,
+      schoolYear: year,
+      schoolYears,
+      writtenPercent,
+      students: this.studentsOfCourse(courseId).map((student) => {
+        const quarters = QUARTERS.map((quarter) => {
+          const record = records.find(
+            (q) => q.studentId === student.id && q.schoolYear === year && q.quarter === quarter,
+          );
+          const written = record?.written ?? null;
+          const oral = record?.oral ?? null;
+          return { quarter, written, oral, overall: combine(written, oral) };
+        });
+        const written = average(quarters.map((q) => q.written));
+        const oral = average(quarters.map((q) => q.oral));
+
+        return {
+          studentId: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          quarters,
+          written,
+          oral,
+          overall: combine(written, oral),
+        };
+      }),
+    };
+  }
+
+  /** Speichert Quartalsnoten. Jede Änderung einer schon eingetragenen Note landet im Protokoll. */
+  saveQuarterGrades(
+    courseId: number,
+    schoolYear: string,
+    inputs: QuarterGradeInput[],
+    reason?: string | null,
+  ): QuarterGradeBook {
+    const course = this.requireCourse(courseId);
+    requireSchoolYear(schoolYear);
+
+    for (const input of inputs) {
+      const student = this.requireStudent(input.studentId);
+      if (student.schoolClassId !== course.schoolClassId) {
+        throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+      }
+      if (!QUARTERS.includes(input.quarter)) {
+        throw new AppError('Das Quartal muss zwischen 1 und 4 liegen.');
+      }
+      for (const grade of [input.written, input.oral]) {
+        if (grade !== null && !isValidGrade(grade)) {
+          throw new AppError('Die Note muss zwischen 1,0 und 6,0 liegen.');
+        }
+      }
+    }
+
+    const now = this.clock.now().toISOString();
+    const describe = (g: number | null) => (g === null ? '–' : formatGrade(g, 1));
+    let dirty = false;
+
+    for (const input of inputs) {
+      const matches = (q: QuarterGradeRecord) =>
+        q.courseId === courseId &&
+        q.studentId === input.studentId &&
+        q.schoolYear === schoolYear &&
+        q.quarter === input.quarter;
+      const before = this.database.quarterGrades.find(matches);
+
+      for (const area of ['written', 'oral'] as const) {
+        const old = before?.[area] ?? null;
+        if (old !== null && old !== input[area]) {
+          this.logChange(
+            courseId,
+            input.studentId,
+            `${input.quarter}. Quartal ${schoolYear} ${AREA_LABELS[area]}`,
+            describe(old),
+            describe(input[area]),
+            reason ?? null,
+            now,
+          );
+        }
+      }
+
+      if ((before?.written ?? null) === input.written && (before?.oral ?? null) === input.oral) {
+        continue;
+      }
+
+      dirty = true;
+      this.database.quarterGrades = this.database.quarterGrades.filter((q) => !matches(q));
+      if (input.written !== null || input.oral !== null) {
+        this.database.quarterGrades.push({
+          courseId,
+          studentId: input.studentId,
+          schoolYear,
+          quarter: input.quarter,
+          written: input.written,
+          oral: input.oral,
+        });
+      }
+    }
+
+    if (dirty) {
+      this.changed();
+    }
+
+    return this.getQuarterGrades(courseId, schoolYear);
+  }
+
   getGradeChanges(courseId: number): GradeChange[] {
     this.requireCourse(courseId);
 
@@ -2062,6 +2200,19 @@ export class LocalStore {
     this.changed();
 
     return { createdClasses, createdSubjects, createdCourses, createdLessons, skipped };
+  }
+}
+
+/** Das Schuljahr eines Tages - es beginnt am 1. August. */
+export function schoolYearOf(date: Date): string {
+  const start = date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+  return `${start}/${String((start + 1) % 100).padStart(2, '0')}`;
+}
+
+function requireSchoolYear(schoolYear: string): void {
+  const match = /^(\d{4})\/(\d{2})$/.exec(schoolYear);
+  if (!match || (Number(match[1]) + 1) % 100 !== Number(match[2])) {
+    throw new AppError('Das Schuljahr muss wie „2026/27" geschrieben sein.');
   }
 }
 

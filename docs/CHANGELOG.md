@@ -8,6 +8,15 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 02.11.2026
+
+**Neu**
+- **Quartalsnoten:** Neuer Reiter unter Kurs → Noten. Je Schuljahr und
+  Quartal lassen sich für jeden Schüler eine schriftliche und eine mündliche
+  Note eintragen; die App zeigt die Gesamtnote je Quartal und den
+  Schuljahresdurchschnitt. Änderungen an eingetragenen Noten stehen im
+  Protokoll.
+
 ## 29.10.2026
 
 **Geändert**
