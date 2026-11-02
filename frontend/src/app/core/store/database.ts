@@ -165,6 +165,16 @@ export interface ParticipationOverrideRecord {
   reason: string | null;
 }
 
+/** Eine Quartalsnote (schriftlich oder mündlich) - in Prozent und als Note. */
+export interface QuarterGradeRecord {
+  courseId: number;
+  studentId: number;
+  quarter: 1 | 2 | 3 | 4;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+}
+
 /** Ein Eintrag im Änderungsprotokoll - geändert wird nie stillschweigend. */
 export interface GradeChangeRecord {
   id: number;
@@ -228,6 +238,7 @@ export interface Database {
   assessments: AssessmentRecord[];
   assessmentResults: AssessmentResultRecord[];
   participationOverrides: ParticipationOverrideRecord[];
+  quarterGrades: QuarterGradeRecord[];
   gradeChanges: GradeChangeRecord[];
   gradeReports: GradeReportRecord[];
   settings: AppSettingsRecord;
@@ -271,6 +282,7 @@ export function createEmptyDatabase(): Database {
     assessments: [],
     assessmentResults: [],
     participationOverrides: [],
+    quarterGrades: [],
     gradeChanges: [],
     gradeReports: [],
     settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false },

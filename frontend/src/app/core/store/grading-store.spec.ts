@@ -292,3 +292,33 @@ describe('LocalStore - Notenbogen', () => {
     expect(store.snapshot().nextIds.assessment).toBe(1);
   });
 });
+
+describe('Quartalsnoten', () => {
+  it('rechnet Prozent in Note um und umgekehrt (IHK-Schlüssel)', () => {
+    const { store, course, anna } = setup();
+
+    expect(store.setQuarterGrade(course.id, anna.id, 1, 'written', 85, null).grade).toBe(2);
+    expect(store.setQuarterGrade(course.id, anna.id, 1, 'oral', null, 3).percent).toBe(67);
+    expect(store.getQuarterGrades(course.id)).toHaveSize(2);
+  });
+
+  it('löscht den Eintrag, wenn beides leer ist', () => {
+    const { store, course, anna } = setup();
+
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', 50, null);
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', null, null);
+
+    expect(store.getQuarterGrades(course.id)).toEqual([]);
+  });
+
+  it('weist ungültige Werte ab', () => {
+    const { store, course, anna } = setup();
+
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120, null)).toThrowError(
+      AppError,
+    );
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', null, 7)).toThrowError(
+      AppError,
+    );
+  });
+});

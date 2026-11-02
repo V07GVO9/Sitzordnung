@@ -1,5 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import {
+  GradeArea,
+  PercentScaleEntry,
+  QUARTERS,
+  Quarter,
+  QuarterGrade,
   Rating,
   RatingValue,
   Student,
@@ -8,6 +13,29 @@ import {
   initials,
   ratingClass,
 } from '../../core/models';
+import {
+  formatGrade,
+  gradeFromPercent,
+  parseGrade,
+  percentFromGrade,
+} from '../../core/store/assessment.logic';
+
+export interface QuarterGradeRequest {
+  student: Student;
+  quarter: Quarter;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+}
+
+/** Grob nach dem Schuljahr: Aug–Okt, Nov–Jan, Feb–Apr, Mai–Jul. */
+export function currentQuarter(date = new Date()): Quarter {
+  const month = date.getMonth() + 1;
+  if (month >= 8 && month <= 10) return 1;
+  if (month >= 11 || month === 1) return 2;
+  if (month <= 4) return 3;
+  return 4;
+}
 
 export interface RateRequest {
   student: Student;
@@ -32,6 +60,21 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
   selector: 'app-participation-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <div class="q-bar" role="group" aria-label="Quartal für die Noten">
+      <span class="muted">Noten im</span>
+      @for (q of quarters; track q) {
+        <button
+          type="button"
+          class="q-chip"
+          [class.on]="quarter() === q"
+          [attr.aria-pressed]="quarter() === q"
+          (click)="quarter.set(q)"
+        >
+          {{ q }}. Quartal
+        </button>
+      }
+    </div>
+
     <div class="p-list">
       @for (row of rows(); track row.student.id) {
         <div
@@ -65,6 +108,30 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
             title="Punktestand"
           >
             {{ signed(row.score?.points ?? 0) }}
+          </span>
+
+          <span class="q-grades">
+            @for (area of areas; track area.key) {
+              <span class="q-cell" [title]="area.title + ' im ' + quarter() + '. Quartal'">
+                <span class="q-label">{{ area.short }}</span>
+                <input
+                  class="q-pct"
+                  inputmode="decimal"
+                  placeholder="%"
+                  [value]="percentText(row.grades[area.key])"
+                  (change)="onPercent(row.student, area.key, $any($event.target))"
+                  [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' in Prozent'"
+                />
+                <input
+                  class="q-grade"
+                  inputmode="decimal"
+                  placeholder="Note"
+                  [value]="gradeText(row.grades[area.key])"
+                  (change)="onGrade(row.student, area.key, $any($event.target))"
+                  [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' als Note'"
+                />
+              </span>
+            }
           </span>
 
           <span
@@ -184,7 +251,70 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       }
     }
 
+    .q-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .q-chip {
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.85rem;
+
+      &.on {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+    }
+
+    .q-grades {
+      display: flex;
+      gap: 0.5rem;
+      flex: none;
+    }
+
+    .q-cell {
+      display: grid;
+      grid-template-columns: auto 3.4rem 3.2rem;
+      align-items: center;
+      gap: 0.2rem;
+
+      input {
+        width: 100%;
+        min-height: 2.2rem;
+        padding: 0.2rem 0.3rem;
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        background: var(--surface);
+        color: var(--text);
+        text-align: center;
+        font-size: 0.9rem;
+      }
+
+      .q-grade {
+        font-weight: 700;
+      }
+    }
+
+    .q-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
     @media (max-width: 34rem) {
+      .q-grades {
+        flex: 1 1 100%;
+        justify-content: space-between;
+      }
+
       .scale {
         grid-template-columns: repeat(5, 1fr);
         flex: 1 1 100%;
@@ -197,8 +327,31 @@ export class ParticipationList {
   readonly scores = input.required<Map<number, StudentScore>>();
   readonly today = input.required<Map<number, Rating[]>>();
   readonly flashId = input<number | null>(null);
+  /** Alle Quartalsnoten des Kurses. */
+  readonly quarterGrades = input<QuarterGrade[]>([]);
+  /** Der Prozentschlüssel des Kurses - für die Umrechnung % ↔ Note. */
+  readonly percentScale = input<PercentScaleEntry[]>([]);
 
   readonly rate = output<RateRequest>();
+  readonly gradeChange = output<QuarterGradeRequest>();
+
+  readonly quarters = QUARTERS;
+  readonly quarter = signal<Quarter>(currentQuarter());
+  readonly areas: { key: GradeArea; short: string; title: string }[] = [
+    { key: 'written', short: 'S', title: 'Schriftlich' },
+    { key: 'oral', short: 'M', title: 'Mündlich' },
+  ];
+
+  /** Die Noten des gewählten Quartals, je Schüler und Bereich. */
+  private readonly gradesOfQuarter = computed(() => {
+    const map = new Map<string, QuarterGrade>();
+    for (const g of this.quarterGrades()) {
+      if (g.quarter === this.quarter()) {
+        map.set(`${g.studentId}:${g.area}`, g);
+      }
+    }
+    return map;
+  });
   readonly openStudent = output<Student>();
 
   readonly options = RATING_OPTIONS;
@@ -217,8 +370,63 @@ export class ParticipationList {
         student,
         score: this.scores().get(student.id) ?? null,
         current: this.today().get(student.id)?.at(-1)?.value ?? null,
+        grades: {
+          written: this.gradesOfQuarter().get(`${student.id}:written`) ?? null,
+          oral: this.gradesOfQuarter().get(`${student.id}:oral`) ?? null,
+        } as Record<GradeArea, QuarterGrade | null>,
       })),
   );
+
+  percentText(g: QuarterGrade | null): string {
+    return g?.percent == null ? '' : String(g.percent).replace('.', ',');
+  }
+
+  gradeText(g: QuarterGrade | null): string {
+    return g?.grade == null ? '' : formatGrade(g.grade, 1);
+  }
+
+  /** Prozent eingetippt - die Note folgt aus dem Prozentschlüssel. */
+  onPercent(student: Student, area: GradeArea, field: HTMLInputElement): void {
+    const text = field.value.trim().replace('%', '').replace(',', '.').trim();
+    if (text === '') {
+      this.emitGrade(student, area, null, null);
+      return;
+    }
+    const percent = Number(text);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      field.value = this.percentText(this.gradeOf(student, area));
+      return;
+    }
+    const rounded = Math.round(percent * 10) / 10;
+    this.emitGrade(student, area, rounded, gradeFromPercent(this.percentScale(), rounded));
+  }
+
+  /** Note eingetippt - die Prozentzahl folgt aus dem Prozentschlüssel. */
+  onGrade(student: Student, area: GradeArea, field: HTMLInputElement): void {
+    const grade = parseGrade(field.value);
+    if (grade === null) {
+      this.emitGrade(student, area, null, null);
+      return;
+    }
+    if (Number.isNaN(grade)) {
+      field.value = this.gradeText(this.gradeOf(student, area));
+      return;
+    }
+    this.emitGrade(student, area, percentFromGrade(this.percentScale(), grade), grade);
+  }
+
+  private gradeOf(student: Student, area: GradeArea): QuarterGrade | null {
+    return this.gradesOfQuarter().get(`${student.id}:${area}`) ?? null;
+  }
+
+  private emitGrade(
+    student: Student,
+    area: GradeArea,
+    percent: number | null,
+    grade: number | null,
+  ): void {
+    this.gradeChange.emit({ student, quarter: this.quarter(), area, percent, grade });
+  }
 
   /** Die Farbe der heutigen Bewertung als CSS-Variable für die Zeile. */
   ratedColor(value: number | null): string | null {

@@ -66,6 +66,22 @@ export function gradeFromPercent(scale: PercentScaleEntryRecord[], percent: numb
 }
 
 /**
+ * Der umgekehrte Weg: die Prozentgrenze, ab der eine Note erreicht ist.
+ * Bei Zwischennoten (etwa 2,3) gilt die Stufe mit der nächstgelegenen Note.
+ */
+export function percentFromGrade(scale: PercentScaleEntryRecord[], grade: number): number | null {
+  if (scale.length === 0) {
+    return null;
+  }
+
+  const nearest = [...scale].sort(
+    (a, b) => Math.abs(a.grade - grade) - Math.abs(b.grade - grade) || b.grade - a.grade,
+  )[0];
+
+  return Math.max(0, Math.min(100, nearest.minPercent));
+}
+
+/**
  * Die Note, mit der ein Ergebnis zählt - null, wenn es nicht zählt
  * (entschuldigt oder noch nichts eingetragen).
  */
