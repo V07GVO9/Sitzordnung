@@ -68,7 +68,6 @@ import {
   gradeFromPercent,
   isValidGrade,
   participationLessons,
-  percentFromGrade,
   resultGrade,
 } from './assessment.logic';
 import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
@@ -1583,8 +1582,8 @@ export class LocalStore {
   }
 
   /**
-   * Trägt eine Quartalsnote ein. Fehlt Prozent oder Note, wird der fehlende
-   * Wert über den Prozentschlüssel des Kurses ergänzt. Beides leer löscht den Eintrag.
+   * Trägt eine Quartalsnote in Prozent ein; die Note folgt aus dem
+   * Prozentschlüssel des Kurses. Leer (null) löscht den Eintrag.
    */
   setQuarterGrade(
     courseId: number,
@@ -1592,7 +1591,6 @@ export class LocalStore {
     quarter: Quarter,
     area: GradeArea,
     percent: number | null,
-    grade: number | null,
   ): QuarterGrade {
     const course = this.requireCourse(courseId);
     const student = this.requireStudent(studentId);
@@ -1605,16 +1603,9 @@ export class LocalStore {
     if (percent !== null && !(Number.isFinite(percent) && percent >= 0 && percent <= 100)) {
       throw new AppError('Die Prozentzahl muss zwischen 0 und 100 liegen.');
     }
-    if (grade !== null && !isValidGrade(grade)) {
-      throw new AppError('Die Note muss zwischen 1,0 und 6,0 liegen.');
-    }
 
-    const scale = this.schemeRecord(courseId).percentScale;
-    if (percent !== null && grade === null) {
-      grade = gradeFromPercent(scale, percent);
-    } else if (grade !== null && percent === null) {
-      percent = percentFromGrade(scale, grade);
-    }
+    const grade =
+      percent === null ? null : gradeFromPercent(this.schemeRecord(courseId).percentScale, percent);
 
     const matches = (q: { courseId: number; studentId: number; quarter: number; area: string }) =>
       q.courseId === courseId &&
@@ -1624,7 +1615,7 @@ export class LocalStore {
     const before = this.database.quarterGrades.find(matches);
     this.database.quarterGrades = this.database.quarterGrades.filter((q) => !matches(q));
 
-    if (percent !== null || grade !== null) {
+    if (percent !== null) {
       this.database.quarterGrades.push({ courseId, studentId, quarter, area, percent, grade });
     }
 

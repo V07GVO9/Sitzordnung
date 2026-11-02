@@ -294,19 +294,19 @@ describe('LocalStore - Notenbogen', () => {
 });
 
 describe('Quartalsnoten', () => {
-  it('rechnet Prozent in Note um und umgekehrt (IHK-Schlüssel)', () => {
+  it('rechnet Prozent in die Note um (IHK-Schlüssel)', () => {
     const { store, course, anna } = setup();
 
-    expect(store.setQuarterGrade(course.id, anna.id, 1, 'written', 85, null).grade).toBe(2);
-    expect(store.setQuarterGrade(course.id, anna.id, 1, 'oral', null, 3).percent).toBe(67);
+    expect(store.setQuarterGrade(course.id, anna.id, 1, 'written', 85).grade).toBe(2);
+    expect(store.setQuarterGrade(course.id, anna.id, 1, 'oral', 67).grade).toBe(3);
     expect(store.getQuarterGrades(course.id)).toHaveSize(2);
   });
 
-  it('löscht den Eintrag, wenn beides leer ist', () => {
+  it('löscht den Eintrag, wenn das Feld geleert wird', () => {
     const { store, course, anna } = setup();
 
-    store.setQuarterGrade(course.id, anna.id, 2, 'written', 50, null);
-    store.setQuarterGrade(course.id, anna.id, 2, 'written', null, null);
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', 50);
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', null);
 
     expect(store.getQuarterGrades(course.id)).toEqual([]);
   });
@@ -314,11 +314,9 @@ describe('Quartalsnoten', () => {
   it('weist ungültige Werte ab', () => {
     const { store, course, anna } = setup();
 
-    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120, null)).toThrowError(
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120)).toThrowError(
       AppError,
     );
-    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', null, 7)).toThrowError(
-      AppError,
-    );
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', -5)).toThrowError(AppError);
   });
 });
