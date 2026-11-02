@@ -160,6 +160,9 @@ export class WeekPage {
 
   private touchX: number | null = null;
 
+  /** Aus welcher Richtung die neue Woche hereingleitet; null beim ersten Anzeigen. */
+  private readonly slideDirection = signal<'next' | 'prev' | null>(null);
+
   constructor() {
     forkJoin({
       entries: this.api.getTimetable(),
@@ -188,13 +191,25 @@ export class WeekPage {
   }
 
   shiftWeek(step: number): void {
+    this.slideDirection.set(step > 0 ? 'next' : 'prev');
     this.weekOffset.update((offset) => offset + step);
     this.loadRatings();
   }
 
   thisWeek(): void {
+    const offset = this.weekOffset();
+    if (offset === 0) {
+      return;
+    }
+    this.slideDirection.set(offset > 0 ? 'prev' : 'next');
     this.weekOffset.set(0);
     this.loadRatings();
+  }
+
+  /** CSS-Klasse für die Einblende-Animation beim Wochenwechsel. */
+  slideClass(): string {
+    const direction = this.slideDirection();
+    return direction ? `slide-${direction}` : '';
   }
 
   onTouchStart(event: TouchEvent): void {
