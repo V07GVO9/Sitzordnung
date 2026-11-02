@@ -25,7 +25,6 @@ import { ModeService } from '../../core/mode.service';
 import {
   Course,
   CurrentLesson,
-  PercentScaleEntry,
   QuarterGrade,
   Rating,
   RatingValue,
@@ -148,8 +147,7 @@ export class CoursePage implements OnDestroy {
   readonly scores = signal<StudentScore[]>([]);
   /** Quartalsnoten für die Listenansicht. */
   readonly quarterGrades = signal<QuarterGrade[]>([]);
-  /** Prozentschlüssel des Kurses - für die Umrechnung % ↔ Note. */
-  readonly percentScale = signal<PercentScaleEntry[]>([]);
+
   readonly saving = signal(false);
 
   /** Die anderen Fächer derselben Klasse - als Reiter oben. */
@@ -369,12 +367,10 @@ export class CoursePage implements OnDestroy {
       plans: this.api.getSeatingPlans(courseId),
       scoreboard: this.api.getScoreboard(courseId),
       quarterGrades: this.api.getQuarterGrades(courseId),
-      scheme: this.api.getScheme(courseId),
     }).subscribe({
-      next: ({ course, students, plans, scoreboard, quarterGrades, scheme }) => {
+      next: ({ course, students, plans, scoreboard, quarterGrades }) => {
         this.course.set(course);
         this.quarterGrades.set(quarterGrades);
-        this.percentScale.set(scheme.percentScale);
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
@@ -668,15 +664,13 @@ export class CoursePage implements OnDestroy {
 
   /** Quartalsnote aus der Liste speichern. */
   onQuarterGrade(request: QuarterGradeRequest): void {
-    const { student, quarter, area, percent, grade } = request;
-    this.api.setQuarterGrade(this.courseId(), student.id, quarter, area, percent, grade).subscribe({
+    const { student, quarter, area, percent } = request;
+    this.api.setQuarterGrade(this.courseId(), student.id, quarter, area, percent).subscribe({
       next: (saved) => {
         const others = this.quarterGrades().filter(
           (g) => !(g.studentId === student.id && g.quarter === quarter && g.area === area),
         );
-        this.quarterGrades.set(
-          saved.percent === null && saved.grade === null ? others : [...others, saved],
-        );
+        this.quarterGrades.set(saved.percent === null ? others : [...others, saved]);
       },
       error: (err) => this.toasts.error(err, 'Die Note konnte nicht gespeichert werden.'),
     });

@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import {
   GradeArea,
-  PercentScaleEntry,
   QUARTERS,
   Quarter,
   QuarterGrade,
@@ -13,19 +12,13 @@ import {
   initials,
   ratingClass,
 } from '../../core/models';
-import {
-  formatGrade,
-  gradeFromPercent,
-  parseGrade,
-  percentFromGrade,
-} from '../../core/store/assessment.logic';
+import { formatGrade } from '../../core/store/assessment.logic';
 
 export interface QuarterGradeRequest {
   student: Student;
   quarter: Quarter;
   area: GradeArea;
   percent: number | null;
-  grade: number | null;
 }
 
 /** Grob nach dem Schuljahr: Aug–Okt, Nov–Jan, Feb–Apr, Mai–Jul. */
@@ -122,14 +115,11 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
                   (change)="onPercent(row.student, area.key, $any($event.target))"
                   [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' in Prozent'"
                 />
-                <input
+                <output
                   class="q-grade"
-                  inputmode="decimal"
-                  placeholder="Note"
-                  [value]="gradeText(row.grades[area.key])"
-                  (change)="onGrade(row.student, area.key, $any($event.target))"
                   [attr.aria-label]="fullName(row.student) + ': ' + area.title + ' als Note'"
-                />
+                  >{{ gradeText(row.grades[area.key]) }}</output
+                >
               </span>
             }
           </span>
@@ -298,7 +288,9 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
         font-size: 0.9rem;
       }
 
+      /* Die Note wird nur angezeigt - sie folgt aus dem Prozentschlüssel. */
       .q-grade {
+        text-align: center;
         font-weight: 700;
       }
     }
@@ -329,8 +321,6 @@ export class ParticipationList {
   readonly flashId = input<number | null>(null);
   /** Alle Quartalsnoten des Kurses. */
   readonly quarterGrades = input<QuarterGrade[]>([]);
-  /** Der Prozentschlüssel des Kurses - für die Umrechnung % ↔ Note. */
-  readonly percentScale = input<PercentScaleEntry[]>([]);
 
   readonly rate = output<RateRequest>();
   readonly gradeChange = output<QuarterGradeRequest>();
@@ -382,14 +372,14 @@ export class ParticipationList {
   }
 
   gradeText(g: QuarterGrade | null): string {
-    return g?.grade == null ? '' : formatGrade(g.grade, 1);
+    return g?.grade == null ? '–' : formatGrade(g.grade, 1);
   }
 
   /** Prozent eingetippt - die Note folgt aus dem Prozentschlüssel. */
   onPercent(student: Student, area: GradeArea, field: HTMLInputElement): void {
     const text = field.value.trim().replace('%', '').replace(',', '.').trim();
     if (text === '') {
-      this.emitGrade(student, area, null, null);
+      this.emitPercent(student, area, null);
       return;
     }
     const percent = Number(text);
@@ -397,35 +387,15 @@ export class ParticipationList {
       field.value = this.percentText(this.gradeOf(student, area));
       return;
     }
-    const rounded = Math.round(percent * 10) / 10;
-    this.emitGrade(student, area, rounded, gradeFromPercent(this.percentScale(), rounded));
-  }
-
-  /** Note eingetippt - die Prozentzahl folgt aus dem Prozentschlüssel. */
-  onGrade(student: Student, area: GradeArea, field: HTMLInputElement): void {
-    const grade = parseGrade(field.value);
-    if (grade === null) {
-      this.emitGrade(student, area, null, null);
-      return;
-    }
-    if (Number.isNaN(grade)) {
-      field.value = this.gradeText(this.gradeOf(student, area));
-      return;
-    }
-    this.emitGrade(student, area, percentFromGrade(this.percentScale(), grade), grade);
+    this.emitPercent(student, area, Math.round(percent * 10) / 10);
   }
 
   private gradeOf(student: Student, area: GradeArea): QuarterGrade | null {
     return this.gradesOfQuarter().get(`${student.id}:${area}`) ?? null;
   }
 
-  private emitGrade(
-    student: Student,
-    area: GradeArea,
-    percent: number | null,
-    grade: number | null,
-  ): void {
-    this.gradeChange.emit({ student, quarter: this.quarter(), area, percent, grade });
+  private emitPercent(student: Student, area: GradeArea, percent: number | null): void {
+    this.gradeChange.emit({ student, quarter: this.quarter(), area, percent });
   }
 
   /** Die Farbe der heutigen Bewertung als CSS-Variable für die Zeile. */
