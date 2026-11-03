@@ -61,12 +61,16 @@ Bestand ohne Passwort. Nur auf eigenen, gesperrten Geräten nutzen, nie an
 Schul-PCs. Eine gemerkte Datei erscheint oben mit **Öffnen** und **Vergessen**.
 Dateien in OneDrive lassen sich über das Papierkorb-Symbol löschen.
 
-### Zwischenstand wiederherstellen
+### Ungesicherte Änderungen wiederherstellen
 
-Die App sichert den Bestand zusätzlich verschlüsselt im Browser. Findet sie
-beim Start einen solchen **Zwischenstand**, bietet sie ihn an:
-Passwort eingeben → **Zwischenstand laden** oder **Verwerfen**.
-Der Zwischenstand ersetzt die Datei nicht.
+Die App sichert den Bestand zusätzlich verschlüsselt im Browser. Öffnest du
+deine Datei und liegen dazu noch **ungesicherte Änderungen** im Browser, übernimmt
+die App sie automatisch – es erscheint „Ungesicherte Änderungen
+wiederhergestellt“. Danach einmal speichern.
+
+Wurde die Datei inzwischen anderswo gespeichert (z. B. auf einem anderen Gerät),
+fragt die App nach: **Stand der Datei laden** oder **Meine Änderungen behalten**.
+Der Zwischenspeicher ersetzt die Datei nicht.
 
 ---
 
@@ -80,7 +84,7 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
 | **Titelleiste** | Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. |
+| **Menü (drei Balken)** | Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -394,10 +398,11 @@ Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
 
 ### Reiter „Punkte & Export“
 
-1. **Kurs** wählen, optional Zeitraum **Von/Bis** (leer = gesamter Zeitraum).
+1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
+   **Von/Bis** (leer = gesamter Zeitraum).
 2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
 3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – der gewählte Kurs,
+   - **Punktestand (CSV)** – das gewählte Fach,
    - **Einzelbewertungen** – jede Bewertung einzeln,
    - **Alle Kurse** – Punktestände aller Kurse.
 
@@ -462,8 +467,7 @@ die Datei schreibt, müssen drei Dinge stimmen.
 
 - Beim Start den Reiter **„Datei öffnen“** wählen, die eigene Datei aussuchen,
   dann das Passwort eingeben.
-- ❗ Nicht über „Zwischenstand wiederherstellen“ einsteigen – sonst weiß die
-  App nicht, in welche Datei sie schreiben soll.
+- Ungesicherte Änderungen aus dem Browser übernimmt die App dabei von selbst.
 
 **Schritt 3: Einmal von Hand speichern**
 

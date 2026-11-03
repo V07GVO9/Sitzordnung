@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { ActiveCourseService } from './core/active-course.service';
 import { ApiService } from './core/api.service';
 import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson } from './core/models';
@@ -22,6 +23,7 @@ import { ConfirmHost } from './core/ui/confirm-host';
 import { ConfirmService } from './core/ui/confirm.service';
 import { Icon } from './core/ui/icon';
 import { IconName } from './core/ui/icons';
+import { subjectHue } from './core/ui/subject-hue';
 import { PwaService } from './core/ui/pwa.service';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
 import { ChangePasswordDialog } from './vault/change-password-dialog';
@@ -82,6 +84,7 @@ export class App implements OnDestroy {
   private readonly pwa = inject(PwaService);
   private readonly confirm = inject(ConfirmService);
   private readonly mode = inject(ModeService);
+  private readonly active = inject(ActiveCourseService);
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
@@ -92,10 +95,28 @@ export class App implements OnDestroy {
   readonly isEdit = this.mode.isEdit;
 
   readonly lesson = signal<CurrentLesson | null>(null);
-  readonly courses = signal<Course[]>([]);
+
+  /** Das im Wochenplan gewählte Fach - ohne es bleibt das Menü im Unterricht zu. */
+  readonly activeCourse = this.active.course;
+  readonly activeCourseHue = computed(() => {
+    const course = this.activeCourse();
+    return course ? subjectHue(course.subjectName) : 0;
+  });
+  /** Im Bearbeitungsmodus ist das Menü immer offen, im Unterricht erst mit Fach. */
+  readonly menuLocked = computed(() => !this.isEdit() && !this.activeCourse());
+
+  /** Der Pfad der aktuellen Seite, in Teile zerlegt. */
+  private readonly path = signal<string[]>([]);
 
   /** Der Titel der aktuellen Seite in der Kopfleiste. */
-  readonly title = signal('');
+  readonly title = computed(() => {
+    const [page = '', , sub] = this.path();
+    const course = this.activeCourse();
+    if (page === 'kurs') {
+      return course ? courseTitle(course) + (sub === 'noten' ? ' – Noten' : '') : '';
+    }
+    return PAGE_TITLES[page] ?? '';
+  });
   readonly menuOpen = signal(false);
   readonly passwordDialogOpen = signal(false);
 
@@ -122,11 +143,18 @@ export class App implements OnDestroy {
   private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
-    // Jede Änderung am Bestand kann Kurse und die laufende Stunde betreffen.
+    // Jede Änderung am Bestand kann die laufende Stunde betreffen.
     effect(() => {
       this.store.revision();
       this.store.isOpen();
-      untracked(() => this.refresh());
+      untracked(() => this.refreshLesson());
+    });
+
+    // Fällt das Fach weg (andere Datei, Kurs gelöscht), schließt das Menü im Unterricht.
+    effect(() => {
+      if (this.menuLocked()) {
+        untracked(() => this.menuOpen.set(false));
+      }
     });
 
     // Schlägt das automatische Speichern fehl, soll das niemand übersehen.
@@ -158,6 +186,15 @@ export class App implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.timer);
+  }
+
+  /** Öffnet das Menü - im Unterricht nur, wenn ein Fach gewählt ist. */
+  openMenu(): void {
+    if (this.menuLocked()) {
+      this.toasts.show('Bitte zuerst im Wochenplan eine Stunde wählen.', 'info');
+      return;
+    }
+    this.menuOpen.set(true);
   }
 
   install(): void {
@@ -235,37 +272,14 @@ export class App implements OnDestroy {
     this.mode.finishEdit();
   }
 
-  /** Leitet aus der Adresse den Titel der Kopfleiste ab. */
+  /** Merkt sich die Seite; auf einer Kursseite wird deren Fach das aktive. */
   private readUrl(url: string): void {
     const path = url.split('?')[0].split('/').filter(Boolean);
+    this.path.set(path);
 
     if (path[0] === 'kurs' && path[1]) {
-      const courseId = Number(path[1]);
-      const known = this.courses().find((c) => c.id === courseId);
-      const suffix = path[2] === 'noten' ? ' – Noten' : '';
-      if (known) {
-        this.title.set(courseTitle(known) + suffix);
-      } else {
-        this.title.set('');
-        this.api.getCourse(courseId).subscribe({
-          next: (course) => this.title.set(courseTitle(course) + suffix),
-        });
-      }
-      return;
+      this.active.select(Number(path[1]));
     }
-
-    this.title.set(PAGE_TITLES[path[0] ?? ''] ?? '');
-  }
-
-  private refresh(): void {
-    if (!this.store.isOpen()) {
-      this.lesson.set(null);
-      this.courses.set([]);
-      return;
-    }
-
-    this.api.getCourses().subscribe({ next: (courses) => this.courses.set(courses) });
-    this.refreshLesson();
   }
 
   private refreshLesson(): void {

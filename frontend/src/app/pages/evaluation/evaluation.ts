@@ -1,17 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { ActiveCourseService } from '../../core/active-course.service';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
-import {
-  AppSettings,
-  Course,
-  CourseScoreboard,
-  GradeScale,
-  GradeScaleEntry,
-} from '../../core/models';
+import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
 import { OneDriveService } from '../../core/store/onedrive.service';
 import { isStrongPassword } from '../../core/store/password-policy';
@@ -58,8 +62,10 @@ export class EvaluationPage {
   readonly newPassword = signal('');
   readonly isStrongPassword = isStrongPassword;
 
-  readonly courses = signal<Course[]>([]);
-  readonly selectedCourseId = signal<number | null>(null);
+  /** Ausgewertet wird immer das Fach, das im Wochenplan gewählt ist. */
+  private readonly active = inject(ActiveCourseService);
+  readonly selectedCourse = this.active.course;
+  readonly selectedCourseId = this.active.courseId;
   readonly scoreboard = signal<CourseScoreboard | null>(null);
   readonly from = signal('');
   readonly to = signal('');
@@ -70,10 +76,6 @@ export class EvaluationPage {
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
   readonly settings = signal<AppSettings | null>(null);
-
-  readonly selectedCourse = computed(
-    () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
-  );
 
   /** Die Stufen absteigend - so liest sich ein Notenschlüssel. */
   readonly sortedEntries = computed(() =>
@@ -86,25 +88,23 @@ export class EvaluationPage {
 
   constructor() {
     forkJoin({
-      courses: this.api.getCourses(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
       settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, scale, settings }) => {
-        this.courses.set(courses);
+      next: ({ scale, settings }) => {
         this.applyScale(scale);
         this.settings.set(settings);
-
-        if (courses.length) {
-          this.selectCourse(courses[0].id);
-        }
       },
       error: (err) => this.toasts.error(err, 'Die Auswertung konnte nicht geladen werden.'),
     });
+
+    effect(() => {
+      const courseId = this.selectedCourseId();
+      untracked(() => this.loadScoreboard(courseId));
+    });
   }
 
-  selectCourse(courseId: number | null): void {
-    this.selectedCourseId.set(courseId);
+  private loadScoreboard(courseId: number | null): void {
     this.scoreboard.set(null);
 
     if (courseId === null) {
@@ -118,7 +118,7 @@ export class EvaluationPage {
   }
 
   refreshScoreboard(): void {
-    this.selectCourse(this.selectedCourseId());
+    this.loadScoreboard(this.selectedCourseId());
   }
 
   clearRange(): void {

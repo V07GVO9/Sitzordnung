@@ -17,10 +17,20 @@ export interface AutosaveEntry {
   content: string;
   /** Wann zuletzt gespeichert wurde, als ISO-8601-Zeichenkette. */
   savedAt: string;
-  /** Name der zugehörigen Datei, nur zur Anzeige. */
+  /** Name der zugehörigen Datei - je Datei gibt es einen eigenen Zwischenstand. */
   fileName: string | null;
   /** Stand der Zwischenstand Änderungen, die noch in keiner Datei stehen? */
   dirty?: boolean;
+  /**
+   * Prüfsumme der Datei, auf der die Änderungen aufsetzen. Weicht die Datei
+   * beim nächsten Öffnen davon ab, wurde sie inzwischen anderswo gespeichert.
+   */
+  baseHash?: string | null;
+}
+
+/** Je Datei ein eigener Platz, damit ein Zwischenstand nicht den einer anderen Datei verdrängt. */
+function autosaveKey(fileName: string | null): string {
+  return `${KEY}:${fileName ?? ''}`;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -55,9 +65,17 @@ function run<T>(
   );
 }
 
-export async function readAutosave(): Promise<AutosaveEntry | null> {
+export async function readAutosave(fileName: string | null): Promise<AutosaveEntry | null> {
   try {
-    return (await run<AutosaveEntry | undefined>('readonly', (s) => s.get(KEY))) ?? null;
+    const entry = await run<AutosaveEntry | undefined>('readonly', (s) =>
+      s.get(autosaveKey(fileName)),
+    );
+    if (entry) {
+      return entry;
+    }
+    // Ältere Versionen kannten nur einen einzigen Platz für alle Dateien.
+    const legacy = await run<AutosaveEntry | undefined>('readonly', (s) => s.get(KEY));
+    return legacy && legacy.fileName === fileName ? legacy : null;
   } catch {
     // Ein privates Fenster oder gesperrter Speicher darf die App nicht aufhalten.
     return null;
@@ -66,17 +84,27 @@ export async function readAutosave(): Promise<AutosaveEntry | null> {
 
 export async function writeAutosave(entry: AutosaveEntry): Promise<void> {
   try {
-    await run('readwrite', (s) => s.put(entry, KEY));
+    await run('readwrite', (s) => s.put(entry, autosaveKey(entry.fileName)));
+    await clearLegacyAutosave(entry.fileName);
   } catch {
     // Siehe oben: der Zwischenspeicher ist eine Zugabe, kein Muss.
   }
 }
 
-export async function clearAutosave(): Promise<void> {
+export async function clearAutosave(fileName: string | null): Promise<void> {
   try {
-    await run('readwrite', (s) => s.delete(KEY));
+    await run('readwrite', (s) => s.delete(autosaveKey(fileName)));
+    await clearLegacyAutosave(fileName);
   } catch {
     // Nichts zu tun.
+  }
+}
+
+/** Räumt den alten, gemeinsamen Platz ab - aber nur, wenn er zu dieser Datei gehört. */
+async function clearLegacyAutosave(fileName: string | null): Promise<void> {
+  const legacy = await run<AutosaveEntry | undefined>('readonly', (s) => s.get(KEY));
+  if (legacy && legacy.fileName === fileName) {
+    await run('readwrite', (s) => s.delete(KEY));
   }
 }
 

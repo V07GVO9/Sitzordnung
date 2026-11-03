@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { activeCourseGuard, evaluationGuard } from './core/active-course.service';
 import { editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
@@ -25,6 +26,7 @@ export const routes: Routes = [
   },
   {
     path: 'noten',
+    canActivate: [activeCourseGuard],
     title: 'Noten',
     loadComponent: () =>
       import('./pages/quarter-grades/quarter-grades').then((m) => m.QuarterGradesPage),
@@ -50,6 +52,7 @@ export const routes: Routes = [
   },
   {
     path: 'auswertung',
+    canActivate: [evaluationGuard],
     title: 'Auswertung',
     loadComponent: () => import('./pages/evaluation/evaluation').then((m) => m.EvaluationPage),
   },

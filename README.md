@@ -141,8 +141,9 @@ erneut abgefragt.
 
 Damit ein Absturz oder ein versehentlich geschlossenes Fenster keine Noten
 kostet, schreibt die Anwendung den Bestand zusätzlich – ebenfalls verschlüsselt –
-in den Speicher des Browsers (IndexedDB). Beim nächsten Start bietet sie diesen
-Zwischenstand zum Laden an.
+in den Speicher des Browsers (IndexedDB) – je Datei ein eigener Zwischenstand.
+Beim nächsten Öffnen derselben Datei übernimmt sie ungesicherte Änderungen
+automatisch; wurde die Datei inzwischen anderswo gespeichert, fragt sie nach.
 
 Der Zwischenspeicher ersetzt die Datei nicht: Er liegt im Browserprofil, ist beim
 Leeren der Browserdaten weg und in einem privaten Fenster gar nicht erst

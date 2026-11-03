@@ -235,33 +235,6 @@
       </form>
     }
 
-    @if (autosave(); as entry) {
-      <div class="autosave">
-        <strong><app-icon name="info" /> Zwischenstand gefunden</strong>
-        <p class="muted small">
-          Zuletzt gesichert am {{ savedAtText(entry) }}
-          @if (entry.fileName) {
-            , zur Datei „{{ entry.fileName }}"
-          }
-          . Der Zwischenstand liegt verschlüsselt im Browser und lässt sich mit demselben Passwort
-          öffnen.
-        </p>
-        <div class="row">
-          <button
-            class="btn"
-            type="button"
-            [disabled]="busy() || password().length === 0"
-            (click)="restore()"
-          >
-            Zwischenstand laden
-          </button>
-          <button class="btn danger small" type="button" (click)="discardAutosave()">
-            Verwerfen
-          </button>
-        </div>
-      </div>
-    }
-
     <p class="hint foot muted">
       <app-icon name="lock" />
       @if (mode() === 'onedrive') {
