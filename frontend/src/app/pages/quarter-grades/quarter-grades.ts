@@ -1,15 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { ApiService } from '../../core/api.service';
 import {
-  Course,
-  GradeArea,
-  QUARTERS,
-  Quarter,
-  QuarterGrade,
-  Student,
-  fullName,
-} from '../../core/models';
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { ActiveCourseService } from '../../core/active-course.service';
+import { ApiService } from '../../core/api.service';
+import { GradeArea, QUARTERS, Quarter, QuarterGrade, Student, fullName } from '../../core/models';
 import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
 import { quarterOf } from '../../core/store/quarter.logic';
 import { ToastService } from '../../core/toast.service';
@@ -32,6 +32,9 @@ interface Row {
     <div class="stack">
       <div class="page-head">
         <div>
+          @if (course(); as c) {
+            <p class="eyebrow">{{ c.subjectName }} · {{ c.schoolClassName }}</p>
+          }
           <h1>Noten</h1>
           <p class="muted small">
             Schriftlich in Prozent eintragen, die Note wird berechnet. Mündlich ist mit dem
@@ -40,102 +43,86 @@ interface Row {
         </div>
       </div>
 
-      @if (courses().length === 0 && !loading()) {
-        <div class="banner">Noch keine Kurse angelegt.</div>
+      @if (courseId() === null) {
+        <div class="banner">Bitte zuerst im Wochenplan eine Stunde wählen.</div>
       } @else {
-        <div class="card stack">
-          <div class="chips" role="group" aria-label="Kurs wählen">
-            @for (c of courses(); track c.id) {
-              <button
-                type="button"
-                class="chip"
-                [class.active]="c.id === courseId()"
-                (click)="selectCourse(c.id)"
-              >
-                {{ c.subjectShortName }} · {{ c.schoolClassName }}
-              </button>
-            }
-          </div>
-          <div class="chips" role="group" aria-label="Quartal wählen">
-            @for (q of quarters; track q) {
-              <button
-                type="button"
-                class="chip"
-                [class.active]="q === quarter()"
-                (click)="quarter.set(q)"
-              >
-                Q{{ q }}
-              </button>
-            }
-          </div>
+        <div class="chips" role="group" aria-label="Quartal wählen">
+          @for (q of quarters; track q) {
+            <button
+              type="button"
+              class="chip"
+              [class.active]="q === quarter()"
+              (click)="quarter.set(q)"
+            >
+              Q{{ q }}
+            </button>
+          }
         </div>
 
-        @if (courseId() !== null) {
-          <div class="card table-wrap">
-            <table>
-              <thead>
+        <div class="card table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Schüler</th>
+                <th class="num">Schriftlich %</th>
+                <th class="num">Note</th>
+                <th class="num">Mündlich (Note)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows(); track row.student.id) {
                 <tr>
-                  <th>Schüler</th>
-                  <th class="num">Schriftlich %</th>
-                  <th class="num">Note</th>
-                  <th class="num">Mündlich (Note)</th>
+                  <td>{{ fullName(row.student) }}</td>
+                  <td class="num">
+                    <input
+                      class="g-input"
+                      inputmode="decimal"
+                      placeholder="%"
+                      [value]="percentText(row.written)"
+                      (change)="onWritten(row.student, $any($event.target))"
+                      [attr.aria-label]="fullName(row.student) + ': schriftlich in Prozent'"
+                    />
+                  </td>
+                  <td class="num grade">{{ gradeText(row.written) }}</td>
+                  <td class="num">
+                    <input
+                      class="g-input"
+                      [class.suggested]="row.oral?.suggested"
+                      inputmode="decimal"
+                      placeholder="Note"
+                      [value]="gradeText(row.oral, '')"
+                      (change)="onOral(row.student, $any($event.target))"
+                      [title]="
+                        row.oral?.suggested
+                          ? 'Durchschnitt der Mitarbeit im Quartal - Eintippen überschreibt ihn'
+                          : ''
+                      "
+                      [attr.aria-label]="fullName(row.student) + ': mündliche Note'"
+                    />
+                    @if (row.oral && !row.oral.suggested) {
+                      <button
+                        type="button"
+                        class="remove"
+                        title="Zurück auf den Durchschnitt der Mitarbeit"
+                        (click)="resetOral(row.student)"
+                      >
+                        ↺
+                      </button>
+                    }
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                @for (row of rows(); track row.student.id) {
-                  <tr>
-                    <td>{{ fullName(row.student) }}</td>
-                    <td class="num">
-                      <input
-                        class="g-input"
-                        inputmode="decimal"
-                        placeholder="%"
-                        [value]="percentText(row.written)"
-                        (change)="onWritten(row.student, $any($event.target))"
-                        [attr.aria-label]="fullName(row.student) + ': schriftlich in Prozent'"
-                      />
-                    </td>
-                    <td class="num grade">{{ gradeText(row.written) }}</td>
-                    <td class="num">
-                      <input
-                        class="g-input"
-                        [class.suggested]="row.oral?.suggested"
-                        inputmode="decimal"
-                        placeholder="Note"
-                        [value]="gradeText(row.oral, '')"
-                        (change)="onOral(row.student, $any($event.target))"
-                        [title]="
-                          row.oral?.suggested
-                            ? 'Durchschnitt der Mitarbeit im Quartal - Eintippen überschreibt ihn'
-                            : ''
-                        "
-                        [attr.aria-label]="fullName(row.student) + ': mündliche Note'"
-                      />
-                      @if (row.oral && !row.oral.suggested) {
-                        <button
-                          type="button"
-                          class="remove"
-                          title="Zurück auf den Durchschnitt der Mitarbeit"
-                          (click)="resetOral(row.student)"
-                        >
-                          ↺
-                        </button>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="4" class="muted">Keine Schüler in diesem Kurs.</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <p class="muted small legend">
-              <span class="suggested-sample">kursiv</span> = Vorschlag aus der Mitarbeit (noch nicht
-              eingetragen).
-            </p>
-          </div>
-        }
+              } @empty {
+                <tr>
+                  <td colspan="4" class="muted">Keine Schüler in diesem Kurs.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <p class="muted small legend">
+            <span class="suggested-sample">kursiv</span> = Vorschlag aus der Mitarbeit (noch nicht
+            eingetragen).
+          </p>
+        </div>
       }
     </div>
   `,
@@ -179,15 +166,13 @@ interface Row {
 export class QuarterGradesPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
 
   readonly fullName = fullName;
   readonly quarters = QUARTERS;
 
-  readonly loading = signal(true);
-  readonly courses = signal<Course[]>([]);
-  readonly courseId = signal<number | null>(null);
+  private readonly active = inject(ActiveCourseService);
+  readonly course = this.active.course;
+  readonly courseId = this.active.courseId;
   readonly quarter = signal<Quarter>(quarterOf(new Date()));
   readonly students = signal<Student[]>([]);
   readonly grades = signal<QuarterGrade[]>([]);
@@ -213,26 +198,16 @@ export class QuarterGradesPage {
   });
 
   constructor() {
-    this.api.getCourses().subscribe({
-      next: (courses) => {
-        this.courses.set(courses);
-        this.loading.set(false);
-        const wanted = Number(this.route.snapshot.queryParamMap.get('kurs'));
-        const start = courses.find((c) => c.id === wanted) ?? courses[0];
-        if (start) {
-          this.selectCourse(start.id);
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.toasts.error(err, 'Die Kurse konnten nicht geladen werden.');
-      },
+    // Die Noten gehören immer zum Fach, das im Wochenplan gewählt ist.
+    effect(() => {
+      const id = this.courseId();
+      if (id !== null) {
+        untracked(() => this.load(id));
+      }
     });
   }
 
-  selectCourse(id: number): void {
-    this.courseId.set(id);
-    this.router.navigate([], { queryParams: { kurs: id }, replaceUrl: true });
+  private load(id: number): void {
     this.api.getCourseStudents(id).subscribe({
       next: (students) => this.students.set(students),
       error: (err) => this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.'),

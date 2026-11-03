@@ -6,6 +6,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { createEmptyDatabase } from './database';
+import { ConfirmService } from '../ui/confirm.service';
 import { FileHandle, SaveConflictError } from './file-system';
 import { LocalStore } from './local-store';
 import { OneDriveService } from './onedrive.service';
@@ -442,6 +443,83 @@ describe('VaultService', () => {
       await vault.forgetLastLocalFile();
       expect(vault.lastLocalFile()).toBeNull();
       await expectAsync(vault.openLastLocalFile(PASSWORT)).toBeRejected();
+    });
+  });
+
+  describe('VaultService - Zwischenstand automatisch laden', () => {
+    let handle: FakeHandle;
+    let vorherAutoSave: boolean;
+
+    /** Ein frischer Seitenaufruf: neue Dienste, aber derselbe Browser-Speicher. */
+    function neuerAufruf(): { vault: VaultService; store: LocalStore; confirm: ConfirmService } {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      const vault = TestBed.inject(VaultService);
+      vault.setAutoSaveToFile(false);
+      vault.lastLocalFile.set(handle);
+      return { vault, store: TestBed.inject(LocalStore), confirm: TestBed.inject(ConfirmService) };
+    }
+
+    beforeEach(async () => {
+      handle = new FakeHandle();
+      TestBed.configureTestingModule({});
+      const vault = TestBed.inject(VaultService);
+      const store = TestBed.inject(LocalStore);
+      vorherAutoSave = vault.autoSaveToFile();
+      vault.setAutoSaveToFile(false);
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+
+      // Danach eine Änderung, die nur im Browser landet - dann „stürzt“ die Seite ab.
+      store.createClass('10b');
+      await warteAufAutosave();
+    });
+
+    afterEach(async () => {
+      const vault = TestBed.inject(VaultService);
+      await vault.closeVault();
+      vault.setAutoSaveToFile(vorherAutoSave);
+    });
+
+    it('übernimmt ungesicherte Änderungen beim Öffnen ohne Rückfrage', async () => {
+      const { vault, store, confirm } = neuerAufruf();
+      const frage = spyOn(confirm, 'ask').and.resolveTo(true);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(frage).not.toHaveBeenCalled();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a', '10b']);
+      expect(store.hasUnsavedChanges()).toBeTrue();
+      expect(vault.hasFileHandle()).toBeTrue();
+    });
+
+    it('fragt nach, wenn die Datei inzwischen anderswo gespeichert wurde', async () => {
+      const fremd = createEmptyDatabase();
+      fremd.schoolClasses = [{ id: 99, name: 'anderes Gerät' }];
+      handle.geschrieben.push(await encryptDatabase(fremd, PASSWORT));
+
+      const { vault, store, confirm } = neuerAufruf();
+      const frage = spyOn(confirm, 'ask').and.resolveTo(true);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(frage).toHaveBeenCalled();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['anderes Gerät']);
+    });
+
+    it('behält auf Wunsch die eigenen Änderungen statt der neueren Datei', async () => {
+      const fremd = createEmptyDatabase();
+      handle.geschrieben.push(await encryptDatabase(fremd, PASSWORT));
+
+      const { vault, store, confirm } = neuerAufruf();
+      spyOn(confirm, 'ask').and.resolveTo(false);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a', '10b']);
+      expect(store.hasUnsavedChanges()).toBeTrue();
     });
   });
 });

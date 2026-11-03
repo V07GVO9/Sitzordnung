@@ -29,6 +29,23 @@
   }
 }
 
+/* Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
+.menu-btn {
+  transition:
+    opacity 0.2s ease,
+    transform 0.15s ease;
+
+  &:active:not(.locked) {
+    transform: scale(0.94);
+  }
+
+  &.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
 .title-left .round-btn.on {
   color: var(--accent-text);
   background: var(--accent-soft);
@@ -203,6 +220,64 @@ main {
   background: linear-gradient(160deg, #5b8fd0, #2f5f9f);
   color: #fff;
   font-size: 1.05rem;
+}
+
+/* Das aktive Fach oben im Menü - in der Farbe des Fachs wie im Wochenplan. */
+.app-menu a.menu-course {
+  gap: 0.75rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.6rem;
+  border-radius: var(--radius, 0.75rem);
+  background: hsl(var(--hue) 45% 50% / 18%);
+  border: 1px solid hsl(var(--hue) 45% 60% / 30%);
+
+  &:hover {
+    background: hsl(var(--hue) 45% 50% / 26%);
+  }
+
+  > app-icon {
+    margin-left: auto;
+  }
+}
+
+.menu-course-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  background: hsl(var(--hue) 55% 45%);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.menu-course-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  span {
+    font-size: 0.72rem;
+    color: #a1a1a8;
+  }
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.menu-hint {
+  margin: 0.2rem 0 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #8e8e93;
 }
 
 .menu-label {
