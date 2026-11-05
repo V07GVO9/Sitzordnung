@@ -173,14 +173,11 @@
                   </span>
                   <span
                     class="score-pill"
-                    [class.pos]="(item.score?.points ?? 0) > 0"
-                    [class.neg]="(item.score?.points ?? 0) < 0"
+                    [class.pos]="(item.score?.average ?? 3) < 3"
+                    [class.neg]="(item.score?.average ?? 3) > 3"
                   >
-                    {{ signed(item.score?.points ?? 0) }}
+                    {{ scoreText(item.score?.average) }}
                   </span>
-                  @if (item.score?.grade) {
-                    <span class="grade-pill">{{ item.score!.grade }}</span>
-                  }
                 </a>
               } @empty {
                 <div class="list-row">

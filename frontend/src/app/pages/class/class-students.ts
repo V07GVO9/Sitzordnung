@@ -13,7 +13,14 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
-import { Course, CourseScoreboard, Student, fullName, initials } from '../../core/models';
+import {
+  Course,
+  CourseScoreboard,
+  Student,
+  formatAverage,
+  fullName,
+  initials,
+} from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { Icon } from '../../core/ui/icon';
@@ -137,14 +144,14 @@ export class ClassStudentsPage {
         if (!score || !course) {
           return '';
         }
-        return `${course.subjectShortName || course.subjectName}: ${this.signed(score.points)}`;
+        return `${course.subjectShortName || course.subjectName}: ${this.scoreText(score.average)}`;
       })
       .filter(Boolean)
       .join(' · ');
   }
 
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  scoreText(value: number | null | undefined): string {
+    return formatAverage(value);
   }
 
   jumpTo(letter: string): void {

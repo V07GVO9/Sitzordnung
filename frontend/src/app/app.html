@@ -322,9 +322,6 @@
 
         <p class="menu-label">Einstellungen</p>
         @if (isEdit()) {
-          <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
-            <app-icon name="graduation-cap" /> Notenschlüssel
-          </a>
           <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
             <app-icon name="settings" /> App-Einstellungen
           </a>

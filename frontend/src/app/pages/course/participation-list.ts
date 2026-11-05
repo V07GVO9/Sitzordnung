@@ -8,6 +8,7 @@ import {
   initials,
   ratingClass,
   ratingSymbol,
+  formatAverage,
 } from '../../core/models';
 
 export interface RateRequest {
@@ -68,11 +69,11 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 
           <span
             class="points"
-            [class.pos]="(row.score?.points ?? 0) > 0"
-            [class.neg]="(row.score?.points ?? 0) < 0"
-            title="Punktestand"
+            [class.pos]="(row.score?.average ?? 3) < 3"
+            [class.neg]="(row.score?.average ?? 3) > 3"
+            title="Mitarbeitsnote (Schnitt)"
           >
-            {{ signed(row.score?.points ?? 0) }}
+            {{ scoreText(row.score?.average) }}
           </span>
 
           <span
@@ -221,7 +222,7 @@ export class ParticipationList {
       })),
   );
 
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  scoreText(value: number | null | undefined): string {
+    return formatAverage(value);
   }
 }

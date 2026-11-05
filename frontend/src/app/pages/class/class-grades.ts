@@ -20,6 +20,7 @@ import {
   initials,
   ratingClass,
   ratingSymbol,
+  formatAverage,
 } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
@@ -88,13 +89,12 @@ export class ClassGradesPage {
       }));
   });
 
-  /** Durchschnittliche Punkte der Klasse in diesem Fach. */
+  /** Durchschnittsnote der Klasse in diesem Fach (nur bewertete Schüler). */
   readonly average = computed(() => {
-    const list = this.board()?.students ?? [];
-    if (!list.length) {
-      return 0;
-    }
-    return list.reduce((sum, s) => sum + s.points, 0) / list.length;
+    const list = (this.board()?.students ?? [])
+      .map((s) => s.average)
+      .filter((v): v is number => v !== null);
+    return list.length ? list.reduce((sum, v) => sum + v, 0) / list.length : null;
   });
 
   constructor() {
@@ -155,21 +155,22 @@ export class ClassGradesPage {
     }));
   }
 
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  scoreText(value: number | null | undefined): string {
+    return formatAverage(value);
   }
 
-  /** Farbe des Punktekastens: grün über, rot unter null. */
+  /** Farbe des Notenkastens nach der Durchschnittsnote. */
   pointsClass(score: StudentScore): string {
-    if (score.points >= 3) {
-      return 'rate-pp';
-    }
-    if (score.points > 0) {
-      return 'rate-p';
-    }
-    if (score.points === 0) {
+    const v = score.average;
+    if (v === null || (v > 2.5 && v < 3.5)) {
       return '';
     }
-    return score.points <= -3 ? 'rate-mm' : 'rate-m';
+    if (v <= 1.5) {
+      return 'rate-pp';
+    }
+    if (v <= 2.5) {
+      return 'rate-p';
+    }
+    return v >= 4.5 ? 'rate-mm' : 'rate-m';
   }
 }

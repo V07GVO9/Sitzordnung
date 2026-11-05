@@ -132,3 +132,58 @@ export function freeDayReason(dateKey: string): string | null {
   }
   return null;
 }
+
+/** Ein Quartal des Schuljahres, jeweils von–bis einschließlich (`YYYY-MM-DD`). */
+export interface SchoolQuarter {
+  quarter: 1 | 2 | 3 | 4;
+  from: string;
+  to: string;
+}
+
+function nextDay(dateKey: string): string {
+  return shifted(new Date(`${dateKey}T12:00:00`), 1);
+}
+
+function previousDay(dateKey: string): string {
+  return shifted(new Date(`${dateKey}T12:00:00`), -1);
+}
+
+/**
+ * Die vier Quartale des Schuljahres, in dem `dateKey` liegt (in den
+ * Sommerferien: das gerade beendete Schuljahr):
+ * - Q1: Schuljahresbeginn bis Ende der Herbstferien
+ * - Q2: nach den Herbstferien bis Ende der Zeugnisferien (Halbjahresferien)
+ * - Q3: nach den Zeugnisferien bis Ende der Osterferien
+ * - Q4: nach den Osterferien bis Schuljahresende (Tag vor den Sommerferien)
+ *
+ * Die Quartale schließen lückenlos aneinander an. `null`, wenn das Schuljahr
+ * nicht in der Ferientabelle steht.
+ */
+export function schoolQuarters(dateKey: string): SchoolQuarter[] | null {
+  const summers = SCHOOL_HOLIDAYS_NI.filter(([, , name]) => name === 'Sommerferien');
+  const startIndex = summers.filter(([, to]) => to < dateKey).length - 1;
+  const previousSummer = summers[startIndex];
+  const nextSummer = summers[startIndex + 1];
+  if (!previousSummer || !nextSummer) {
+    return null;
+  }
+
+  const yearStart = nextDay(previousSummer[1]);
+  const yearEnd = previousDay(nextSummer[0]);
+  const holidayEnd = (name: string) =>
+    SCHOOL_HOLIDAYS_NI.find(([from, , n]) => n === name && from >= yearStart && from <= yearEnd)?.[1];
+
+  const autumn = holidayEnd('Herbstferien');
+  const winter = holidayEnd('Halbjahresferien');
+  const easter = holidayEnd('Osterferien');
+  if (!autumn || !winter || !easter) {
+    return null;
+  }
+
+  return [
+    { quarter: 1, from: yearStart, to: autumn },
+    { quarter: 2, from: nextDay(autumn), to: winter },
+    { quarter: 3, from: nextDay(winter), to: easter },
+    { quarter: 4, from: nextDay(easter), to: yearEnd },
+  ];
+}

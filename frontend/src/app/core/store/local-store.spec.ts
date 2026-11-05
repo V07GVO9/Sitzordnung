@@ -348,7 +348,7 @@ describe('LocalStore - Bewertungen', () => {
 
     store.undoLastRating(course.id, student.id);
 
-    expect(store.getScoreboard(course.id).students[0].points).toBe(2);
+    expect(store.getScoreboard(course.id).students[0].average).toBe(1);
   });
 
   it('meldet, wenn es nichts zurückzunehmen gibt', () => {
@@ -358,22 +358,21 @@ describe('LocalStore - Bewertungen', () => {
     expect(() => store.undoLastRating(course.id, student.id)).toThrowError(AppError);
   });
 
-  it('rechnet Punkte, Anzahl und Note zusammen', () => {
+  it('macht aus den Bewertungen eines Tages eine Tagesnote', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 2);
-    store.rate(course.id, student.id, 2);
+    store.rate(course.id, student.id, 1);
+    store.rate(course.id, student.id, -2);
 
     const row = store.getScoreboard(course.id).students[0];
 
-    expect(row.points).toBe(4);
+    // +1 und −2 ergeben −1 an diesem Tag, also die Tagesnote 4.
+    expect(row.average).toBe(4);
     expect(row.ratingCount).toBe(2);
-    expect(row.pointsToday).toBe(4);
-    // Der mitgelieferte Standardschlüssel vergibt ab 4 Punkten die Note 3.
-    expect(row.grade).toBe('3');
+    expect(row.todayGrade).toBe(4);
   });
 
-  it('führt einen Schüler ohne Bewertung mit null Punkten', () => {
+  it('führt einen Schüler ohne Bewertung ohne Note', () => {
     const store = setup();
     const { schoolClass, course } = withCourse(store);
     store.createStudent(schoolClass.id, 'Bert', 'Zander');
@@ -381,17 +380,17 @@ describe('LocalStore - Bewertungen', () => {
     const rows = store.getScoreboard(course.id).students;
 
     expect(rows.length).toBe(2);
-    expect(rows.every((r) => r.ratingCount === 0 || r.points === 0)).toBe(true);
+    expect(rows.find((r) => r.ratingCount === 0)?.average).toBeNull();
   });
 
-  it('grenzt den Punktestand auf einen Zeitraum ein', () => {
+  it('grenzt die Mitarbeitsnote auf einen Zeitraum ein', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.rate(course.id, student.id, 2);
 
     const outside = store.getScoreboard(course.id, { from: '2026-09-01' });
 
-    expect(outside.students[0].points).toBe(0);
+    expect(outside.students[0].average).toBeNull();
   });
 });
 
@@ -443,7 +442,7 @@ describe('LocalStore - Export', () => {
     const content = await result.blob.text();
 
     expect(result.fileName).toContain('10a-Mathematik');
-    expect(content).toContain('Musterfrau;Anna;2;1;');
+    expect(content).toContain('Musterfrau;Anna;1,0;1');
   });
 
   it('schreibt jede Bewertung einzeln', async () => {

@@ -9,20 +9,20 @@ import {
   AppSettings,
   Course,
   CourseScoreboard,
-  GradeScale,
-  GradeScaleEntry,
+  formatAverage,
 } from '../../core/models';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
+import { schoolQuarters } from '../../core/store/school-calendar';
+import { formatDateGerman, toDateKey } from '../../core/store/time';
 import { OneDriveService } from '../../core/store/onedrive.service';
 import { isStrongPassword } from '../../core/store/password-policy';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
-import { ConfirmService } from '../../core/ui/confirm.service';
 import { PasswordRules } from '../../vault/password-rules';
 
-export type EvaluationTab = 'punkte' | 'noten' | 'einstellungen' | 'datei';
-const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
+export type EvaluationTab = 'punkte' | 'einstellungen' | 'datei';
+const TABS: EvaluationTab[] = ['punkte', 'einstellungen', 'datei'];
 
 @Component({
   selector: 'app-evaluation',
@@ -34,19 +34,19 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 export class EvaluationPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
-  private readonly confirm = inject(ConfirmService);
   private readonly vault = inject(VaultService);
   private readonly router = inject(Router);
 
-  /** Der Reiter steht in der Adresse (?tab=noten), damit Links direkt dorthin führen. */
+  /** Der Reiter steht in der Adresse (?tab=datei), damit Links direkt dorthin führen. */
   readonly tab = input<string>();
-  /** Notenschlüssel, Einstellungen und Datei gibt es nur im Bearbeitungsmodus. */
+  /** Einstellungen und Datei gibt es nur im Bearbeitungsmodus. */
   readonly isEdit = inject(ModeService).isEdit;
   readonly activeTab = computed<EvaluationTab>(() => {
     const tab = this.tab() as EvaluationTab;
     return TABS.includes(tab) && (tab === 'punkte' || this.isEdit()) ? tab : 'punkte';
   });
 
+  readonly formatAverage = formatAverage;
   readonly fileName = this.vault.fileName;
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly autoSaveToFile = this.vault.autoSaveToFile;
@@ -61,56 +61,38 @@ export class EvaluationPage {
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);
   readonly scoreboard = signal<CourseScoreboard | null>(null);
-  /** Gewähltes Quartal (1–4) des laufenden Kalenderjahres; null = gesamter Zeitraum. */
+  /** Gewähltes Quartal (1–4) des laufenden Schuljahres; null = gesamter Zeitraum. */
   readonly quarter = signal<number | null>(null);
   readonly quarters = [1, 2, 3, 4];
 
-  /** Der Schlüssel, der gerade bearbeitet wird. */
-  readonly scaleName = signal('Standard-Notenschlüssel');
-  readonly scaleEntries = signal<GradeScaleEntry[]>([]);
-  readonly scaleIsCourseSpecific = signal(false);
-  readonly loadedScale = signal<GradeScale | null>(null);
   readonly settings = signal<AppSettings | null>(null);
 
   readonly selectedCourse = computed(
     () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
   );
 
-  /** Die Stufen absteigend - so liest sich ein Notenschlüssel. */
-  readonly sortedEntries = computed(() =>
-    [...this.scaleEntries()].sort((a, b) => b.minPoints - a.minPoints),
-  );
+  /** Die Quartale des laufenden Schuljahres (nach den Ferien Niedersachsens). */
+  readonly schoolQuarters = schoolQuarters(toDateKey(new Date()));
 
   private get range(): DateRange {
-    const q = this.quarter();
-    if (q === null) {
-      return { from: null, to: null };
-    }
-    const year = new Date().getFullYear();
-    const startMonth = (q - 1) * 3 + 1;
-    const endMonth = startMonth + 2;
-    const lastDay = new Date(year, endMonth, 0).getDate();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return {
-      from: `${year}-${pad(startMonth)}-01`,
-      to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
-    };
+    const q = this.schoolQuarters?.find((s) => s.quarter === this.quarter());
+    return q ? { from: q.from, to: q.to } : { from: null, to: null };
   }
 
   quarterLabel(q: number): string {
-    const months = ['Januar–März', 'April–Juni', 'Juli–September', 'Oktober–Dezember'];
-    return `Q${q} ${new Date().getFullYear()} (${months[q - 1]})`;
+    const range = this.schoolQuarters?.find((s) => s.quarter === q);
+    return range
+      ? `Q${q} (${formatDateGerman(range.from)} – ${formatDateGerman(range.to)})`
+      : `Q${q}`;
   }
 
   constructor() {
     forkJoin({
       courses: this.api.getCourses(),
-      scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
       settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, scale, settings }) => {
+      next: ({ courses, settings }) => {
         this.courses.set(courses);
-        this.applyScale(scale);
         this.settings.set(settings);
 
         if (courses.length) {
@@ -131,7 +113,7 @@ export class EvaluationPage {
 
     this.api.getScoreboard(courseId, this.range).subscribe({
       next: (board) => this.scoreboard.set(board),
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+      error: (err) => this.toasts.error(err, 'Die Mitarbeitsnoten konnten nicht geladen werden.'),
     });
   }
 
@@ -146,98 +128,6 @@ export class EvaluationPage {
 
   setTab(tab: EvaluationTab): void {
     void this.router.navigate([], { queryParams: { tab }, replaceUrl: true });
-  }
-
-  // --- Notenschlüssel ---
-
-  private applyScale(scale: GradeScale | null): void {
-    this.loadedScale.set(scale);
-    this.scaleName.set(scale?.name ?? 'Notenschlüssel');
-    this.scaleEntries.set(scale ? scale.entries.map((e) => ({ ...e })) : []);
-  }
-
-  switchScaleTarget(courseSpecific: boolean): void {
-    this.scaleIsCourseSpecific.set(courseSpecific);
-
-    const courseId = this.selectedCourseId();
-    const request =
-      courseSpecific && courseId
-        ? this.api.getCourseGradeScale(courseId)
-        : this.api.getGlobalGradeScale();
-
-    request.pipe(catchError(() => of(null))).subscribe((scale) => this.applyScale(scale));
-  }
-
-  addScaleEntry(): void {
-    const lowest = this.sortedEntries().at(-1);
-    const nextPoints = lowest ? lowest.minPoints - 4 : 0;
-    this.scaleEntries.update((list) => [...list, { minPoints: nextPoints, grade: '' }]);
-  }
-
-  updateScaleEntry(index: number, patch: Partial<GradeScaleEntry>): void {
-    const sorted = this.sortedEntries();
-    const target = sorted[index];
-
-    this.scaleEntries.update((list) =>
-      list.map((entry) => (entry === target ? { ...entry, ...patch } : entry)),
-    );
-  }
-
-  removeScaleEntry(index: number): void {
-    const target = this.sortedEntries()[index];
-    this.scaleEntries.update((list) => list.filter((entry) => entry !== target));
-  }
-
-  saveScale(): void {
-    const entries = this.scaleEntries()
-      .map((e) => ({ minPoints: Math.round(Number(e.minPoints) || 0), grade: e.grade.trim() }))
-      .filter((e) => e.grade);
-
-    if (entries.length === 0) {
-      this.toasts.show('Bitte mindestens eine Stufe mit einer Note angeben.', 'error');
-      return;
-    }
-
-    const input = { name: this.scaleName().trim() || 'Notenschlüssel', entries };
-    const courseId = this.selectedCourseId();
-
-    const request =
-      this.scaleIsCourseSpecific() && courseId
-        ? this.api.saveCourseGradeScale(courseId, input)
-        : this.api.saveGlobalGradeScale(input);
-
-    request.subscribe({
-      next: (scale) => {
-        this.applyScale(scale);
-        this.toasts.success('Der Notenschlüssel wurde gespeichert.');
-        this.refreshScoreboard();
-      },
-      error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht gespeichert werden.'),
-    });
-  }
-
-  async deleteCourseScale(): Promise<void> {
-    const courseId = this.selectedCourseId();
-    if (
-      !courseId ||
-      !(await this.confirm.ask({
-        title: 'Eigenen Notenschlüssel entfernen?',
-        message: 'Für diesen Kurs gilt danach wieder der allgemeine Notenschlüssel.',
-        confirmLabel: 'Entfernen',
-        danger: true,
-      }))
-    ) {
-      return;
-    }
-
-    this.api.deleteCourseGradeScale(courseId).subscribe({
-      next: () => {
-        this.toasts.success('Für diesen Kurs gilt wieder der allgemeine Notenschlüssel.');
-        this.switchScaleTarget(false);
-        this.refreshScoreboard();
-      },
-      error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht entfernt werden.'),
-    });
   }
 
   saveSettings(partial: Partial<AppSettings>): void {

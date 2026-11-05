@@ -122,12 +122,11 @@ export interface StudentScore {
   studentId: number;
   firstName: string;
   lastName: string;
-  points: number;
+  /** Mitarbeitsnote: Durchschnitt der Tagesnoten (1–5); null ohne Bewertung. */
+  average: number | null;
   ratingCount: number;
-  pointsToday: number;
-  grade: string | null;
-  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
-  currentLessonValue: number | null;
+  /** Die Tagesnote von heute (1–5); null, wenn heute nicht bewertet. */
+  todayGrade: number | null;
 }
 
 export interface CourseScoreboard {
@@ -197,6 +196,19 @@ export function ratingSymbol(value: number): string {
     default:
       return String(value);
   }
+}
+
+/**
+ * Tagesnote aus der Summe der Bewertungen eines Tages: ++ = 1, + = 2, 0 = 3,
+ * − = 4, −− = 5. Die Summe wird vorher auf -2 bis +2 begrenzt.
+ */
+export function dayGrade(daySum: number): number {
+  return 3 - Math.max(-2, Math.min(2, daySum));
+}
+
+/** Eine Durchschnittsnote mit einer Nachkommastelle, etwa „2,3"; „–" ohne Wert. */
+export function formatAverage(value: number | null | undefined): string {
+  return value === null || value === undefined ? '–' : value.toFixed(1).replace('.', ',');
 }
 
 export function fullName(student: { firstName: string; lastName: string }): string {

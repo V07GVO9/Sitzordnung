@@ -9,6 +9,7 @@ import {
   initials,
   ratingClass,
   ratingSymbol,
+  formatAverage,
 } from '../../core/models';
 import { toDateKey } from '../../core/store/time';
 import { Icon } from '../../core/ui/icon';
@@ -69,13 +70,10 @@ type Period = 'alles' | 'monat' | 'woche';
               <span class="muted small">{{ subjectName() }}</span>
               <strong
                 class="points"
-                [class.pos]="(score()?.points ?? 0) > 0"
-                [class.neg]="(score()?.points ?? 0) < 0"
-                >{{ signed(score()?.points ?? 0) }}</strong
+                [class.pos]="(score()?.average ?? 3) < 3"
+                [class.neg]="(score()?.average ?? 3) > 3"
+                >{{ scoreText(score()?.average) }}</strong
               >
-              @if (score()?.grade) {
-                <span class="small">Note {{ score()!.grade }}</span>
-              }
             </span>
             <button
               class="btn ghost icon"
@@ -373,7 +371,7 @@ export class ParticipationSheet {
       });
   });
 
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  scoreText(value: number | null | undefined): string {
+    return formatAverage(value);
   }
 }

@@ -35,6 +35,7 @@ import {
   initials,
   ratingClass,
   ratingSymbol,
+  formatAverage,
 } from '../../core/models';
 import { isValidDateKey, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
@@ -715,7 +716,7 @@ export class CoursePage implements OnDestroy {
     const date = new Date(`${rating.lessonDate}T12:00:00`).toLocaleDateString('de-DE');
     const confirmed = await this.confirm.ask({
       title: `Bewertung ${ratingSymbol(rating.value)} vom ${date} löschen?`,
-      message: 'Der Punktestand wird sofort neu berechnet.',
+      message: 'Die Mitarbeitsnote wird sofort neu berechnet.',
       confirmLabel: 'Löschen',
       danger: true,
     });
@@ -743,9 +744,9 @@ export class CoursePage implements OnDestroy {
     });
   }
 
-  /** Punkte mit Vorzeichen: +3, 0, −2. */
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
+  /** Mitarbeitsnote mit einer Nachkommastelle, etwa 2,3. */
+  scoreText(value: number | null | undefined): string {
+    return formatAverage(value);
   }
 
   // --- Kachel auswählen ---
@@ -819,7 +820,7 @@ export class CoursePage implements OnDestroy {
   private refreshScores(): void {
     this.api.getScoreboard(this.courseId()).subscribe({
       next: (board) => this.scores.set(board.students),
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+      error: (err) => this.toasts.error(err, 'Die Mitarbeitsnoten konnten nicht geladen werden.'),
     });
     this.refreshToday();
     if (this.sheetStudentId() !== null) {

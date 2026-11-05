@@ -283,16 +283,16 @@
                         @if (!editMode()) {
                           <span
                             class="score"
-                            [class.pos]="(cell.score?.points ?? 0) > 0"
-                            [class.neg]="(cell.score?.points ?? 0) < 0"
+                            [class.pos]="(cell.score?.average ?? 3) < 3"
+                            [class.neg]="(cell.score?.average ?? 3) > 3"
                             [title]="
-                              'Punktestand ' +
-                              (cell.score?.points ?? 0) +
+                              'Mitarbeitsnote ' +
+                              scoreText(cell.score?.average) +
                               ', heute ' +
-                              (cell.score?.pointsToday ?? 0)
+                              scoreText(cell.score?.todayGrade)
                             "
                           >
-                            {{ signed(cell.score?.points ?? 0) }}
+                            {{ scoreText(cell.score?.average) }}
                           </span>
                         }
 
@@ -385,10 +385,10 @@
                     @if (!editMode()) {
                       <span
                         class="points"
-                        [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
-                        [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
+                        [class.pos]="(scoreFor(student.id)?.average ?? 3) < 3"
+                        [class.neg]="(scoreFor(student.id)?.average ?? 3) > 3"
                       >
-                        {{ signed(scoreFor(student.id)?.points ?? 0) }}
+                        {{ scoreText(scoreFor(student.id)?.average) }}
                       </span>
                       <span class="mini-actions">
                         <ng-container

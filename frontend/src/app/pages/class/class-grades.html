@@ -21,8 +21,7 @@
 
   <div class="page-bar">
     <span class="muted small">
-      Ø {{ signed(+average().toFixed(1)) }} Punkte · Notenschlüssel unter
-      <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">Einstellungen</a>
+      Klassenschnitt {{ scoreText(average()) }} · ++ = 1, + = 2, 0 = 3, − = 4, −− = 5
     </span>
     <span class="spacer"></span>
     @if (courseId() !== null) {
@@ -62,14 +61,10 @@
         </span>
 
         <span class="grade-box">
-          <span class="box-label">Punkte</span>
-          <span class="box-value" [class]="pointsClass(row.score)">{{
-            signed(row.score.points)
-          }}</span>
-        </span>
-        <span class="grade-box">
           <span class="box-label">Note</span>
-          <span class="box-value note">{{ row.score.grade ?? '–' }}</span>
+          <span class="box-value" [class]="pointsClass(row.score)">{{
+            scoreText(row.score.average)
+          }}</span>
         </span>
       </div>
     } @empty {

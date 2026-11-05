@@ -44,6 +44,8 @@ import {
   TimetableImportResult,
   TimetableImportRow,
   WEEKDAY_NAMES,
+  dayGrade,
+  formatAverage,
 } from '../models';
 import { AppError } from './app-error';
 import {
@@ -67,7 +69,7 @@ import {
   resultGrade,
 } from './assessment.logic';
 import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
-import { effectiveScale, resolveGrade } from './grading.logic';
+import { effectiveScale } from './grading.logic';
 import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
 import {
   Clock,
@@ -853,28 +855,26 @@ export class LocalStore {
   }
 
   /**
-   * Punktestand aller Schüler des Kurses. Jeder startet bei 0; die Punkte sind
-   * die Summe aller Bewertungen im gewählten Zeitraum.
+   * Mitarbeitsnoten aller Schüler des Kurses. Jeder bewertete Tag ergibt eine
+   * Tagesnote (++ = 1, + = 2, 0 = 3, − = 4, −− = 5); die Note ist der
+   * Durchschnitt der Tagesnoten im gewählten Zeitraum.
    */
   getScoreboard(courseId: number, range?: DateRange): CourseScoreboard {
     const course = this.requireCourse(courseId);
     const today = toDateKey(this.clock.now());
     const ratings = this.ratingsInRange(courseId, range);
-    const scale = effectiveScale(this.database.gradeScales, courseId);
 
-    // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
       const own = ratings.filter((r) => r.studentId === s.id);
-      const points = own.reduce((sum, r) => sum + r.value, 0);
+      const days = LocalStore.dayGrades(own);
 
       return {
         studentId: s.id,
         firstName: s.firstName,
         lastName: s.lastName,
-        points,
+        average: average([...days.values()]),
         ratingCount: own.length,
-        pointsToday: own.filter((r) => r.lessonDate === today).reduce((sum, r) => sum + r.value, 0),
-        grade: resolveGrade(scale, points),
+        todayGrade: days.get(today) ?? null,
       };
     });
 
@@ -885,6 +885,15 @@ export class LocalStore {
       date: today,
       students,
     };
+  }
+
+  /** Die Tagesnoten (1–5) je Unterrichtstag aus den Bewertungen eines Schülers. */
+  private static dayGrades(ratings: { lessonDate: string; value: number }[]): Map<string, number> {
+    const sums = new Map<string, number>();
+    for (const r of ratings) {
+      sums.set(r.lessonDate, (sums.get(r.lessonDate) ?? 0) + r.value);
+    }
+    return new Map([...sums].map(([date, sum]) => [date, dayGrade(sum)]));
   }
 
   // --- Notenschlüssel -----------------------------------------------------
@@ -1877,24 +1886,22 @@ export class LocalStore {
     }
 
     const csv = new CsvBuilder();
-    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Note');
+    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Note (Schnitt)', 'Anzahl Bewertungen');
 
     for (const course of courses) {
       const ratings = this.ratingsInRange(course.id, range);
-      const scale = effectiveScale(this.database.gradeScales, course.id);
 
       for (const student of this.studentsOfCourse(course.id)) {
         const own = ratings.filter((r) => r.studentId === student.id);
-        const points = own.reduce((sum, r) => sum + r.value, 0);
+        const grade = average([...LocalStore.dayGrades(own).values()]);
 
         csv.addRow(
           course.schoolClassName,
           course.subjectName,
           student.lastName,
           student.firstName,
-          points,
+          grade === null ? '' : formatAverage(grade),
           own.length,
-          resolveGrade(scale, points),
         );
       }
     }
