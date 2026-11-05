@@ -71,35 +71,37 @@
         </label>
 
         @if (activeTab() === 'punkte') {
-          <label>
-            Von
-            <input
-              type="date"
-              [ngModel]="from()"
-              (ngModelChange)="from.set($event); refreshScoreboard()"
-              name="from"
-            />
-          </label>
-
-          <label>
-            Bis
-            <input
-              type="date"
-              [ngModel]="to()"
-              (ngModelChange)="to.set($event); refreshScoreboard()"
-              name="to"
-            />
-          </label>
-
-          @if (from() || to()) {
-            <button class="btn ghost" type="button" (click)="clearRange()">
-              <app-icon name="x" /> Zeitraum zurücksetzen
+          <div class="chips quarters" role="group" aria-label="Zeitraum">
+            <button
+              type="button"
+              class="chip"
+              [class.active]="quarter() === null"
+              (click)="selectQuarter(null)"
+            >
+              Gesamt
             </button>
-          }
+            @for (q of quarters; track q) {
+              <button
+                type="button"
+                class="chip"
+                [class.active]="quarter() === q"
+                [title]="quarterLabel(q)"
+                (click)="selectQuarter(q)"
+              >
+                Q{{ q }}
+              </button>
+            }
+          </div>
         }
       </div>
       @if (activeTab() === 'punkte') {
-        <p class="muted small hint">Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet.</p>
+        <p class="muted small hint">
+          @if (quarter(); as q) {
+            Ausgewertet wird {{ quarterLabel(q) }}.
+          } @else {
+            Ausgewertet wird der gesamte Zeitraum.
+          }
+        </p>
       }
     </section>
   }

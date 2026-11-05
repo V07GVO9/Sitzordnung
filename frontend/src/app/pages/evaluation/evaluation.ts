@@ -61,8 +61,9 @@ export class EvaluationPage {
   readonly courses = signal<Course[]>([]);
   readonly selectedCourseId = signal<number | null>(null);
   readonly scoreboard = signal<CourseScoreboard | null>(null);
-  readonly from = signal('');
-  readonly to = signal('');
+  /** Gewähltes Quartal (1–4) des laufenden Kalenderjahres; null = gesamter Zeitraum. */
+  readonly quarter = signal<number | null>(null);
+  readonly quarters = [1, 2, 3, 4];
 
   /** Der Schlüssel, der gerade bearbeitet wird. */
   readonly scaleName = signal('Standard-Notenschlüssel');
@@ -81,7 +82,24 @@ export class EvaluationPage {
   );
 
   private get range(): DateRange {
-    return { from: this.from() || null, to: this.to() || null };
+    const q = this.quarter();
+    if (q === null) {
+      return { from: null, to: null };
+    }
+    const year = new Date().getFullYear();
+    const startMonth = (q - 1) * 3 + 1;
+    const endMonth = startMonth + 2;
+    const lastDay = new Date(year, endMonth, 0).getDate();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      from: `${year}-${pad(startMonth)}-01`,
+      to: `${year}-${pad(endMonth)}-${pad(lastDay)}`,
+    };
+  }
+
+  quarterLabel(q: number): string {
+    const months = ['Januar–März', 'April–Juni', 'Juli–September', 'Oktober–Dezember'];
+    return `Q${q} ${new Date().getFullYear()} (${months[q - 1]})`;
   }
 
   constructor() {
@@ -121,9 +139,8 @@ export class EvaluationPage {
     this.selectCourse(this.selectedCourseId());
   }
 
-  clearRange(): void {
-    this.from.set('');
-    this.to.set('');
+  selectQuarter(q: number | null): void {
+    this.quarter.set(q);
     this.refreshScoreboard();
   }
 
