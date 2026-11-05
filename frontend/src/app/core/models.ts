@@ -372,8 +372,8 @@ export interface AssessmentDetail {
 /** Eine Doppelstunde aus Sicht eines Schülers. */
 export interface LessonGrade {
   date: string;
-  /** Summe der Bewertungen, begrenzt auf -2 bis +2; null = nicht bewertet. */
-  value: number | null;
+  /** Summe der Bewertungen, begrenzt auf -2 bis +2; ohne Bewertung 0. */
+  value: number;
   /** Die Note, die sich aus den Bewertungen ergibt. */
   autoGrade: number;
   /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */

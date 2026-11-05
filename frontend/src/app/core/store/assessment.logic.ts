@@ -94,7 +94,8 @@ export function resultGrade(
 }
 
 /**
- * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde.
+ * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde. Ohne
+ * eigene Bewertung zählt die Stunde für ihn als 0.
  *
  * @param lessonDates die Tage, an denen der Kurs Unterricht hatte
  * @param ratings die Bewertungen dieses Schülers in diesem Kurs
@@ -107,8 +108,9 @@ export function participationLessons(
   grades: ParticipationGradesRecord,
 ): LessonGrade[] {
   return lessonDates.map((date) => {
+    // Wer in einer gehaltenen Stunde nicht bewertet wurde, bekommt die Bewertung 0.
     const own = ratings.filter((r) => r.lessonDate === date);
-    const value = own.length ? clampLessonValue(own.reduce((sum, r) => sum + r.value, 0)) : null;
+    const value = clampLessonValue(own.reduce((sum, r) => sum + r.value, 0));
     const autoGrade = lessonGradeFor(grades, value);
     const override = overrides.find((o) => o.lessonDate === date) ?? null;
 
