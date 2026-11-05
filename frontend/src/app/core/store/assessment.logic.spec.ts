@@ -78,15 +78,15 @@ describe('Mitarbeit je Doppelstunde', () => {
     expect(lessonGradeFor({ ...grades, neutral: 3.5 }, null)).toBe(3.5);
   });
 
-  it('addiert die Bewertungen einer Stunde und begrenzt sie', () => {
+  it('nimmt je Stunde die letzte Bewertung, ohne Bewertung die 0', () => {
     expect(clampLessonValue(4)).toBe(2);
     expect(clampLessonValue(-3)).toBe(-2);
 
     const lessons = participationLessons(
       ['2026-10-05', '2026-10-12'],
       [
-        { lessonDate: '2026-10-05', value: 1 },
-        { lessonDate: '2026-10-05', value: -1 },
+        { id: 2, lessonDate: '2026-10-05', value: 0 },
+        { id: 1, lessonDate: '2026-10-05', value: 2 },
       ],
       [],
       grades,
@@ -94,14 +94,14 @@ describe('Mitarbeit je Doppelstunde', () => {
 
     expect(lessons[0].value).toBe(0);
     expect(lessons[0].grade).toBe(3);
-    expect(lessons[1].value).toBeNull();
+    expect(lessons[1].value).toBe(0);
     expect(lessons[1].grade).toBe(3);
   });
 
   it('lässt eine von Hand gesetzte Note gelten - auch "fehlte"', () => {
     const lessons = participationLessons(
       ['2026-10-05', '2026-10-12'],
-      [{ lessonDate: '2026-10-05', value: 2 }],
+      [{ id: 1, lessonDate: '2026-10-05', value: 2 }],
       [
         { courseId: 1, studentId: 1, lessonDate: '2026-10-05', grade: 1.5, reason: null },
         { courseId: 1, studentId: 1, lessonDate: '2026-10-12', grade: null, reason: 'krank' },

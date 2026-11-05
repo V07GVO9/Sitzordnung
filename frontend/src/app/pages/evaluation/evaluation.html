@@ -113,6 +113,7 @@
                   <th>Name</th>
                   <th class="num">Punkte</th>
                   <th class="num">Bewertungen</th>
+                  <th class="num">Mittelwert</th>
                   <th class="num">Heute</th>
                   <th>Note</th>
                 </tr>
@@ -134,6 +135,7 @@
                       </span>
                     </td>
                     <td class="num muted">{{ student.ratingCount }}</td>
+                    <td class="num">{{ formatAverage(student.average) }}</td>
                     <td class="num muted">{{ student.pointsToday }}</td>
                     <td>
                       @if (student.grade) {
@@ -145,7 +147,7 @@
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
+                    <td colspan="6" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
                   </tr>
                 }
               </tbody>

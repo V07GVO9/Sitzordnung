@@ -123,7 +123,10 @@ export interface StudentScore {
   firstName: string;
   lastName: string;
   points: number;
+  /** Gehaltene Unterrichtseinheiten - bei allen Schülern des Kurses gleich. */
   ratingCount: number;
+  /** Mittelwert der Tagesbewertungen (ohne Bewertung 0); null ohne Unterricht. */
+  average: number | null;
   pointsToday: number;
   grade: string | null;
   /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
@@ -372,8 +375,8 @@ export interface AssessmentDetail {
 /** Eine Doppelstunde aus Sicht eines Schülers. */
 export interface LessonGrade {
   date: string;
-  /** Summe der Bewertungen, begrenzt auf -2 bis +2; null = nicht bewertet. */
-  value: number | null;
+  /** Summe der Bewertungen, begrenzt auf -2 bis +2; ohne Bewertung 0. */
+  value: number;
   /** Die Note, die sich aus den Bewertungen ergibt. */
   autoGrade: number;
   /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */

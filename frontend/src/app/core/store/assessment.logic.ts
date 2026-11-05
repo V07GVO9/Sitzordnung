@@ -4,10 +4,9 @@
  * prüfen.
  *
  * Der Weg zur Note eines Kurses (Lernfeld oder Fach):
- * - Jede Doppelstunde bringt eine Mitarbeitsnote: die Summe der Bewertungen
- *   dieser Stunde, begrenzt auf -2 bis +2, übersetzt über das Schema. Wer in
- *   einer gehaltenen Stunde keine Bewertung bekommt, zählt mit 0 (Standard
- *   3,0). Eine Stunde gilt als gehalten, sobald irgendein Schüler des Kurses
+ * - Jede Doppelstunde bringt eine Mitarbeitsnote: die letzte Bewertung
+ *   dieser Stunde, übersetzt über das Schema. Wer in einer gehaltenen Stunde
+ *   keine Bewertung bekommt, hat dort die Bewertung 0 (Standard 3,0). Eine Stunde gilt als gehalten, sobald irgendein Schüler des Kurses
  *   an dem Tag bewertet wurde - Tage ohne jede Bewertung zählen gar nicht.
  * - Die Mitarbeit ist der Durchschnitt dieser Stundennoten und zählt im
  *   mündlichen Bereich mit ihrem Gewicht als eine Einzelnote.
@@ -33,6 +32,25 @@ export const WORST_GRADE = 6;
 /** Begrenzt die Summe der Bewertungen einer Stunde auf -2 bis +2. */
 export function clampLessonValue(sum: number): number {
   return Math.max(-2, Math.min(2, sum));
+}
+
+/**
+ * Die Bewertung je Unterrichtstag: gibt es mehrere, zählt nur die zuletzt
+ * vergebene (höchste Id). Frühere werden nicht addiert.
+ */
+export function lastRatingPerDay(
+  ratings: { id: number; lessonDate: string; value: number }[],
+): Map<string, number> {
+  const latest = new Map<string, { id: number; value: number }>();
+
+  for (const r of ratings) {
+    const known = latest.get(r.lessonDate);
+    if (!known || r.id > known.id) {
+      latest.set(r.lessonDate, { id: r.id, value: r.value });
+    }
+  }
+
+  return new Map([...latest].map(([date, r]) => [date, r.value]));
 }
 
 /** Die Note einer Doppelstunde. value null = in dieser Stunde nicht bewertet. */
@@ -94,7 +112,8 @@ export function resultGrade(
 }
 
 /**
- * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde.
+ * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde. Ohne
+ * eigene Bewertung zählt die Stunde für ihn als 0.
  *
  * @param lessonDates die Tage, an denen der Kurs Unterricht hatte
  * @param ratings die Bewertungen dieses Schülers in diesem Kurs
@@ -102,13 +121,15 @@ export function resultGrade(
  */
 export function participationLessons(
   lessonDates: string[],
-  ratings: { lessonDate: string; value: number }[],
+  ratings: { id: number; lessonDate: string; value: number }[],
   overrides: ParticipationOverrideRecord[],
   grades: ParticipationGradesRecord,
 ): LessonGrade[] {
+  const perDay = lastRatingPerDay(ratings);
+
   return lessonDates.map((date) => {
-    const own = ratings.filter((r) => r.lessonDate === date);
-    const value = own.length ? clampLessonValue(own.reduce((sum, r) => sum + r.value, 0)) : null;
+    // Es zählt die letzte Bewertung; wer nicht bewertet wurde, bekommt die 0.
+    const value = clampLessonValue(perDay.get(date) ?? 0);
     const autoGrade = lessonGradeFor(grades, value);
     const override = overrides.find((o) => o.lessonDate === date) ?? null;
 

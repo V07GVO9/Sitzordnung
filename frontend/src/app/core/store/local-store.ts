@@ -65,6 +65,7 @@ import {
   average,
   combineGrades,
   formatGrade,
+  lastRatingPerDay,
   gradeFromPercent,
   isValidGrade,
   participationLessons,
@@ -880,27 +881,45 @@ export class LocalStore {
   }
 
   /**
-   * Punktestand aller Schüler des Kurses. Jeder startet bei 0; die Punkte sind
-   * die Summe aller Bewertungen im gewählten Zeitraum.
+   * Wie viele Unterrichtseinheiten gehalten wurden: jeder Tag, an dem
+   * mindestens ein Schüler bewertet wurde. Wer an so einem Tag keine
+   * Bewertung hat, bekommt dort die 0 - deshalb hat jeder Schüler gleich
+   * viele Bewertungen.
+   */
+  private static lessonCount(ratings: { lessonDate: string }[]): number {
+    return new Set(ratings.map((r) => r.lessonDate)).size;
+  }
+
+  /** Summe der Tagesbewertungen - je Tag zählt nur die letzte. */
+  private static sumOf(perDay: Map<string, number>): number {
+    return [...perDay.values()].reduce((sum, v) => sum + v, 0);
+  }
+
+  /**
+   * Punktestand aller Schüler des Kurses. Je Unterrichtseinheit zählt nur die
+   * letzte Bewertung, ohne Bewertung die 0. Die Punkte sind die Summe dieser
+   * Tagesbewertungen, der Mittelwert teilt sie durch die gehaltenen Einheiten.
    */
   getScoreboard(courseId: number, range?: DateRange): CourseScoreboard {
     const course = this.requireCourse(courseId);
     const today = toDateKey(this.clock.now());
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
+    const lessonCount = LocalStore.lessonCount(ratings);
 
     // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
-      const own = ratings.filter((r) => r.studentId === s.id);
-      const points = own.reduce((sum, r) => sum + r.value, 0);
+      const perDay = lastRatingPerDay(ratings.filter((r) => r.studentId === s.id));
+      const points = LocalStore.sumOf(perDay);
 
       return {
         studentId: s.id,
         firstName: s.firstName,
         lastName: s.lastName,
         points,
-        ratingCount: own.length,
-        pointsToday: own.filter((r) => r.lessonDate === today).reduce((sum, r) => sum + r.value, 0),
+        ratingCount: lessonCount,
+        average: lessonCount ? points / lessonCount : null,
+        pointsToday: perDay.get(today) ?? 0,
         grade: resolveGrade(scale, points),
       };
     });
@@ -2031,15 +2050,17 @@ export class LocalStore {
     }
 
     const csv = new CsvBuilder();
-    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Note');
+    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Mittelwert', 'Note');
 
     for (const course of courses) {
       const ratings = this.ratingsInRange(course.id, range);
       const scale = effectiveScale(this.database.gradeScales, course.id);
+      const lessonCount = LocalStore.lessonCount(ratings);
 
       for (const student of this.studentsOfCourse(course.id)) {
-        const own = ratings.filter((r) => r.studentId === student.id);
-        const points = own.reduce((sum, r) => sum + r.value, 0);
+        const points = LocalStore.sumOf(
+          lastRatingPerDay(ratings.filter((r) => r.studentId === student.id)),
+        );
 
         csv.addRow(
           course.schoolClassName,
@@ -2047,7 +2068,8 @@ export class LocalStore {
           student.lastName,
           student.firstName,
           points,
-          own.length,
+          lessonCount,
+          lessonCount ? formatGrade(points / lessonCount, 2) : '',
           resolveGrade(scale, points),
         );
       }
