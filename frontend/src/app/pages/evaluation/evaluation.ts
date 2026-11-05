@@ -117,7 +117,12 @@ export class EvaluationPage {
     });
   }
 
-  refreshScoreboard(): void {
+  /** Mittelwert mit zwei Nachkommastellen, etwa 0,50 - ohne Unterricht ein Strich. */
+  formatAverage(value: number | null): string {
+    return value === null ? '–' : value.toFixed(2).replace('.', ',');
+  }
+
+    refreshScoreboard(): void {
     this.loadScoreboard(this.selectedCourseId());
   }
 

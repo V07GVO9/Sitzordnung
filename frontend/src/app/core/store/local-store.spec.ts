@@ -358,7 +358,7 @@ describe('LocalStore - Bewertungen', () => {
     expect(() => store.undoLastRating(course.id, student.id)).toThrowError(AppError);
   });
 
-  it('rechnet Punkte, Anzahl und Note zusammen', () => {
+  it('zählt je Unterrichtseinheit nur die letzte Bewertung', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.rate(course.id, student.id, 2);
@@ -366,12 +366,11 @@ describe('LocalStore - Bewertungen', () => {
 
     const row = store.getScoreboard(course.id).students[0];
 
-    expect(row.points).toBe(4);
-    // Beide Bewertungen fallen in dieselbe Unterrichtseinheit.
+    // Beide Bewertungen fallen in dieselbe Unterrichtseinheit - es zählt nur die letzte.
+    expect(row.points).toBe(2);
     expect(row.ratingCount).toBe(1);
-    expect(row.pointsToday).toBe(4);
-    // Der mitgelieferte Standardschlüssel vergibt ab 4 Punkten die Note 3.
-    expect(row.grade).toBe('3');
+    expect(row.average).toBe(2);
+    expect(row.pointsToday).toBe(2);
   });
 
   it('führt einen Schüler ohne Bewertung mit null Punkten', () => {
@@ -395,6 +394,7 @@ describe('LocalStore - Bewertungen', () => {
 
     expect(rows.map((r) => r.ratingCount)).toEqual([1, 1]);
     expect(rows.find((r) => r.studentId !== student.id)!.points).toBe(0);
+    expect(rows.find((r) => r.studentId !== student.id)!.average).toBe(0);
   });
 
   it('grenzt den Punktestand auf einen Zeitraum ein', () => {
