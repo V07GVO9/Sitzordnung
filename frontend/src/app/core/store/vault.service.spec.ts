@@ -102,7 +102,7 @@ class FakeCloudHandle extends FakeHandle {
 
 /** Wartet, bis der Entprellzeitgeber gelaufen und die Schreibung durch ist. */
 async function warteAufAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 3_400));
+  await new Promise((resolve) => setTimeout(resolve, 2_400));
 }
 
 /** Legt einen leeren Bestand an und schiebt den Dateigriff unter. */
@@ -177,6 +177,24 @@ describe('VaultService', () => {
       await warteAufAutosave();
 
       expect(handle.geschrieben.length - vorher).toBe(1);
+    });
+
+    it('zählt eine Änderung während des Schreibens nicht als gespeichert', async () => {
+      await warteAufAutosave();
+
+      const speichern = vault.save();
+      store.createClass('10b');
+      await speichern;
+
+      // Die Datei kennt 10b noch nicht - also darf nichts „gespeichert“ melden.
+      expect(store.hasUnsavedChanges()).toBeTrue();
+
+      // Gleich danach wird von selbst nachgeschrieben.
+      await warteAufAutosave();
+      expect(store.hasUnsavedChanges()).toBeFalse();
+      const inhalt = await handle.geschrieben[handle.geschrieben.length - 1].text();
+      const bestand = await decryptDatabase(inhalt, PASSWORT);
+      expect(bestand.schoolClasses.map((c) => c.name)).toEqual(['10b']);
     });
 
     it('haelt den Bestand als ungespeichert, wenn die Datei nicht erreichbar ist', async () => {

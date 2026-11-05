@@ -272,12 +272,17 @@ export class App implements OnDestroy {
     this.mode.finishEdit();
   }
 
-  /** Merkt sich die Seite; auf einer Kursseite wird deren Fach das aktive. */
+  /**
+   * Merkt sich die Seite; auf einer Kursseite wird deren Fach das aktive.
+   * Im Wochenplan ist kein Fach aktiv - dort wird erst eine Stunde gewählt.
+   */
   private readUrl(url: string): void {
     const path = url.split('?')[0].split('/').filter(Boolean);
     this.path.set(path);
 
-    if (path[0] === 'kurs' && path[1]) {
+    if (path.length === 0) {
+      this.active.clear();
+    } else if (path[0] === 'kurs' && path[1]) {
       this.active.select(Number(path[1]));
     }
   }

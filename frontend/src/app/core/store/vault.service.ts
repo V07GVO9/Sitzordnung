@@ -44,8 +44,12 @@ import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-cr
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
 const AUTOSAVE_DELAY_MS = 2_000;
 
-/** So lange nach der letzten Änderung wird automatisch in die Datei geschrieben. */
-const FILE_AUTOSAVE_DELAY_MS = 3_000;
+/**
+ * So kurz nach einer Änderung wird automatisch in die Datei geschrieben -
+ * praktisch sofort. Die kleine Pause fasst nur schnelle Folgen (Ziehen,
+ * mehrere Klicks) zu einem Schreibvorgang zusammen.
+ */
+const FILE_AUTOSAVE_DELAY_MS = 300;
 
 /** Die Wahl „automatisch speichern“ gilt je Gerät und liegt deshalb im Browser. */
 const AUTOSAVE_PREF_KEY = 'sitzordnung.autoSaveToFile';
@@ -71,6 +75,8 @@ export class VaultService {
   private handle: FileHandle | null = null;
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   private fileAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Eine Änderung kam während einer Speicherung - danach gleich noch einmal schreiben. */
+  private pendingAutoSave = false;
 
   /** Name der geöffneten Datei, zur Anzeige in der Kopfzeile. */
   readonly fileName = signal<string | null>(null);
@@ -122,6 +128,15 @@ export class VaultService {
       void readLastFileHandle<FileHandle>().then((handle) => this.lastLocalFile.set(handle));
     }
 
+    // Wird die Seite verlassen oder die App weggeschaltet, sofort schreiben.
+    const flush = () => this.flushAutoSave();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        flush();
+      }
+    });
+
     window.addEventListener('beforeunload', (event) => {
       if (this.store.isOpen() && this.store.hasUnsavedChanges()) {
         event.preventDefault();
@@ -140,13 +155,31 @@ export class VaultService {
       }
       this.autosaveTimer = setTimeout(() => void this.writeAutosaveEntry(), AUTOSAVE_DELAY_MS);
 
-      if (this.fileAutosaveTimer) {
-        clearTimeout(this.fileAutosaveTimer);
-      }
       if (this.autoSaveToFile()) {
-        this.fileAutosaveTimer = setTimeout(() => void this.autoSave(), FILE_AUTOSAVE_DELAY_MS);
+        this.scheduleAutoSave();
       }
     });
+  }
+
+  private scheduleAutoSave(): void {
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+    }
+    this.fileAutosaveTimer = setTimeout(() => {
+      this.fileAutosaveTimer = null;
+      void this.autoSave();
+    }, FILE_AUTOSAVE_DELAY_MS);
+  }
+
+  /** Schreibt eine anstehende automatische Speicherung ohne Wartezeit. */
+  private flushAutoSave(): void {
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+      this.fileAutosaveTimer = null;
+    }
+    if (this.autoSaveToFile()) {
+      void this.autoSave();
+    }
   }
 
   setAutoSaveToFile(enabled: boolean): void {
@@ -164,9 +197,13 @@ export class VaultService {
    */
   private async autoSave(): Promise<void> {
     const handle = this.handle;
+    if (this.isSaving()) {
+      // Läuft gerade eine Speicherung, kommt diese Änderung gleich danach dran.
+      this.pendingAutoSave = true;
+      return;
+    }
     if (
       !handle ||
-      this.isSaving() ||
       !this.store.isOpen() ||
       !this.store.hasUnsavedChanges() ||
       this.saveConflict() ||
@@ -224,18 +261,36 @@ export class VaultService {
         await this.save();
         await this.rememberLocalFile(this.handle);
         return;
-      } catch {
-        // Der Bestand steht bereits - wählt die Lehrkraft jetzt keine Datei,
-        // geht es ohne weiter und das Speichern läuft über einen Download.
+      } catch (error) {
+        if (error instanceof FilePickerCancelled) {
+          // Ohne gewählte Datei entsteht kein Bestand - sonst arbeitete man an
+          // etwas, das nirgends liegt, und öffnete später die alte Datei.
+          this.password = null;
+          this.setHandle(null);
+          this.store.close();
+          throw error;
+        }
+        // Der Browser lässt die Datei nicht anlegen: weiter ohne Datei,
+        // gespeichert wird dann über einen Download.
         this.setHandle(null);
       }
     }
 
     this.fileName.set(DEFAULT_FILE_NAME);
 
+    // Die zuletzt benutzte Datei ist nicht diese - sie darf beim nächsten
+    // Start nicht als „letzte Datei“ angeboten werden.
+    await this.forgetLastLocalFile();
+
     // Ohne Datei steht noch nichts auf der Festplatte. Das zählt als
     // ungesicherte Änderung, damit die App zum Speichern auffordert.
     this.store.revision.update((value) => value + 1);
+
+    if (!this.canWriteInPlace) {
+      // Ohne Dateizugriff (z. B. Firefox, Safari) gleich einmal herunterladen,
+      // damit die neue Datei sofort existiert.
+      await this.save().catch(() => undefined);
+    }
   }
 
   /** Öffnet eine Datei und entschlüsselt sie. */
@@ -537,12 +592,16 @@ export class VaultService {
     }
 
     this.isSaving.set(true);
+    // Der Stand, der jetzt geschrieben wird - spätere Änderungen gelten nicht als gesichert.
+    // Stand und Inhalt gehören zusammen, deshalb beides vor dem ersten Warten.
+    const revision = this.store.revision();
+    const snapshot = this.store.snapshot();
     try {
       // Vor dem Verschlüsseln, damit ein Anmeldefenster noch als Folge des Klicks gilt.
       await this.handle?.prepare?.(options.interactive ?? true);
 
       const previousName = this.fileName();
-      const blob = await encryptDatabase(this.store.snapshot(), this.password);
+      const blob = await encryptDatabase(snapshot, this.password);
 
       if (this.handle) {
         try {
@@ -560,12 +619,21 @@ export class VaultService {
       }
 
       this.baseHash = await fingerprint(await blob.text());
-      this.store.markSaved();
+      this.store.markSaved(revision);
       this.lastSavedAt.set(new Date());
       await this.writeAutosaveEntry();
       await this.dropAutosaveOf(previousName);
     } finally {
       this.isSaving.set(false);
+      // Kam während des Schreibens etwas dazu, gleich hinterher speichern.
+      // (Nicht nach einem Fehler ohne neue Änderung - sonst liefe es endlos.)
+      const changedMeanwhile = this.store.revision() > revision;
+      if (this.pendingAutoSave || changedMeanwhile) {
+        this.pendingAutoSave = false;
+        if (this.autoSaveToFile() && this.store.isOpen()) {
+          this.scheduleAutoSave();
+        }
+      }
     }
   }
 
