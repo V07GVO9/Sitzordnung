@@ -367,7 +367,8 @@ describe('LocalStore - Bewertungen', () => {
     const row = store.getScoreboard(course.id).students[0];
 
     expect(row.points).toBe(4);
-    expect(row.ratingCount).toBe(2);
+    // Beide Bewertungen fallen in dieselbe Unterrichtseinheit.
+    expect(row.ratingCount).toBe(1);
     expect(row.pointsToday).toBe(4);
     // Der mitgelieferte Standardschlüssel vergibt ab 4 Punkten die Note 3.
     expect(row.grade).toBe('3');
@@ -382,6 +383,18 @@ describe('LocalStore - Bewertungen', () => {
 
     expect(rows.length).toBe(2);
     expect(rows.every((r) => r.ratingCount === 0 || r.points === 0)).toBe(true);
+  });
+
+  it('gibt allen Unbewerteten einer gehaltenen Stunde die 0', () => {
+    const store = setup();
+    const { schoolClass, course, student } = withCourse(store);
+    store.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.rate(course.id, student.id, 2);
+
+    const rows = store.getScoreboard(course.id).students;
+
+    expect(rows.map((r) => r.ratingCount)).toEqual([1, 1]);
+    expect(rows.find((r) => r.studentId !== student.id)!.points).toBe(0);
   });
 
   it('grenzt den Punktestand auf einen Zeitraum ein', () => {
