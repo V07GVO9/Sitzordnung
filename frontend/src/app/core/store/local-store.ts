@@ -139,9 +139,10 @@ export class LocalStore {
     return structuredClone(this.database);
   }
 
-  /** Merkt sich, dass der aktuelle Stand gesichert ist. */
-  markSaved(): void {
-    this.savedRevision.set(this.revision());
+  /** Merkt sich, dass der (übergebene) Stand gesichert ist. */
+  markSaved(revision = this.revision()): void {
+    // Mit Stand: Was während des Schreibens dazukam, bleibt ungesichert.
+    this.savedRevision.set(Math.max(this.savedRevision(), revision));
   }
 
   private changed(): void {

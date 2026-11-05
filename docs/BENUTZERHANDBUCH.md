@@ -475,7 +475,7 @@ die Datei schreibt, müssen drei Dinge stimmen.
 2. Der Browser fragt, ob die Seite Änderungen an der Datei speichern darf.
 3. **„Änderungen speichern“** bzw. **„Zulassen“** klicken.
 
-Ab jetzt speichert die App etwa **3 Sekunden nach jeder Änderung** von selbst.
+Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Datei.
 
 **Schritt 4 (nur falls nötig): Den Schalter prüfen**
 
