@@ -20,3 +20,17 @@ Erfundene Daten zum Ausprobieren der App. Alle Namen sind frei erfunden.
 
 Die Stunden laufen wöchentlich bis Ende Januar 2027. Zeiten:
 1. Block 07:45–09:15 · 2. Block 09:35–11:05 · 3. Block 11:25–12:55 · 4. Block 13:35–15:05
+
+## Schneller: fertige Datei öffnen
+
+`demo.sitzordnung` enthält alles oben schon importiert (Stundenplan, 3 Klassen,
+49 Schüler). In der App **Datei öffnen** → `demo.sitzordnung` wählen.
+
+**Passwort:** `Demo-Sitzordnung-2026`
+
+Neu erzeugen (nach Änderungen an den Demo-Daten):
+
+```bash
+frontend/node_modules/.bin/esbuild demo-daten/tools/erzeuge-demo-datei.ts --bundle --platform=node --format=esm --outfile=/tmp/demo-gen.mjs
+node /tmp/demo-gen.mjs demo-daten
+```

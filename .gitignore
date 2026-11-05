@@ -23,3 +23,5 @@ npm-debug.log*
 
 # Zugangsdaten des Servers - gehoeren nicht ins Repository
 deploy/.env
+# Ausnahme: erfundene Demo-Daten zum Ausprobieren
+!demo-daten/demo.sitzordnung
