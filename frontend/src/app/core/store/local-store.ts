@@ -880,6 +880,16 @@ export class LocalStore {
   }
 
   /**
+   * Wie viele Unterrichtseinheiten gehalten wurden: jeder Tag, an dem
+   * mindestens ein Schüler bewertet wurde. Wer an so einem Tag keine
+   * Bewertung hat, bekommt dort die 0 - deshalb hat jeder Schüler gleich
+   * viele Bewertungen.
+   */
+  private static lessonCount(ratings: { lessonDate: string }[]): number {
+    return new Set(ratings.map((r) => r.lessonDate)).size;
+  }
+
+  /**
    * Punktestand aller Schüler des Kurses. Jeder startet bei 0; die Punkte sind
    * die Summe aller Bewertungen im gewählten Zeitraum.
    */
@@ -888,6 +898,7 @@ export class LocalStore {
     const today = toDateKey(this.clock.now());
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
+    const lessonCount = LocalStore.lessonCount(ratings);
 
     // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
@@ -899,7 +910,7 @@ export class LocalStore {
         firstName: s.firstName,
         lastName: s.lastName,
         points,
-        ratingCount: own.length,
+        ratingCount: lessonCount,
         pointsToday: own.filter((r) => r.lessonDate === today).reduce((sum, r) => sum + r.value, 0),
         grade: resolveGrade(scale, points),
       };
@@ -2036,6 +2047,7 @@ export class LocalStore {
     for (const course of courses) {
       const ratings = this.ratingsInRange(course.id, range);
       const scale = effectiveScale(this.database.gradeScales, course.id);
+      const lessonCount = LocalStore.lessonCount(ratings);
 
       for (const student of this.studentsOfCourse(course.id)) {
         const own = ratings.filter((r) => r.studentId === student.id);
@@ -2047,7 +2059,7 @@ export class LocalStore {
           student.lastName,
           student.firstName,
           points,
-          own.length,
+          lessonCount,
           resolveGrade(scale, points),
         );
       }
