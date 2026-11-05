@@ -16,6 +16,7 @@ import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
+import { formatGrade } from '../../core/store/assessment.logic';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
 import { OneDriveService } from '../../core/store/onedrive.service';
 import { isStrongPassword } from '../../core/store/password-policy';
@@ -117,9 +118,9 @@ export class EvaluationPage {
     });
   }
 
-  /** Mittelwert mit zwei Nachkommastellen, etwa 0,50 - ohne Unterricht ein Strich. */
+  /** Mittelwert mit einer Nachkommastelle, etwa 0,7 - ohne Unterricht ein Strich. */
   formatAverage(value: number | null): string {
-    return value === null ? '–' : value.toFixed(2).replace('.', ',');
+    return formatGrade(value, 1);
   }
 
     refreshScoreboard(): void {
