@@ -19,12 +19,13 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
   Course,
   CurrentLesson,
+  QuarterGrade,
   Rating,
   RatingValue,
   SeatingPlan,
@@ -132,17 +133,6 @@ export class CoursePage implements OnDestroy {
   /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
   readonly lessonTime = signal<{ from: string; to: string } | null>(null);
   readonly isToday = computed(() => this.lessonDate() === toDateKey(new Date()));
-  /** Für Hinweise wie „keine Bewertung heute“ bzw. „… am 05.10.“. */
-  readonly dayWord = computed(() =>
-    this.isToday()
-      ? 'heute'
-      : 'am ' +
-        new Date(`${this.lessonDate()}T12:00:00`).toLocaleDateString('de-DE', {
-          day: '2-digit',
-          month: '2-digit',
-        }),
-  );
-
   readonly courseId = signal(0);
   readonly loading = signal(true);
   readonly course = signal<Course | null>(null);
@@ -150,6 +140,9 @@ export class CoursePage implements OnDestroy {
   readonly plans = signal<SeatingPlan[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
+  /** Quartalsnoten für die Listenansicht. */
+  readonly quarterGrades = signal<QuarterGrade[]>([]);
+
   readonly saving = signal(false);
 
   /** Die anderen Fächer derselben Klasse - als Reiter oben. */
@@ -368,9 +361,11 @@ export class CoursePage implements OnDestroy {
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
       scoreboard: this.api.getScoreboard(courseId),
+      quarterGrades: this.api.getQuarterGrades(courseId),
     }).subscribe({
-      next: ({ course, students, plans, scoreboard }) => {
+      next: ({ course, students, plans, scoreboard, quarterGrades }) => {
         this.course.set(course);
+        this.quarterGrades.set(quarterGrades);
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
@@ -666,6 +661,7 @@ export class CoursePage implements OnDestroy {
     this.rate(request.student, request.value);
   }
 
+  /** Je Schüler und Tag eine Bewertung - der letzte Klick ersetzt die vorige. */
   rate(student: Student, value: RatingValue): void {
     if (this.editMode()) {
       return;
@@ -673,8 +669,11 @@ export class CoursePage implements OnDestroy {
     // Nach dem Bewerten klappt die Kachel wieder zusammen.
     this.selectedId.set(null);
     const courseId = this.courseId();
+    // Merken, was vorher galt - „Rückgängig“ stellt es wieder her.
+    const previous = (this.todayRatings().get(student.id)?.at(-1)?.value ??
+      null) as RatingValue | null;
 
-    this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
+    this.api.rate(courseId, student.id, value, undefined, this.lessonDate(), true).subscribe({
       next: (rating) => {
         this.refreshScores();
         this.flashTile(student.id, value);
@@ -688,17 +687,31 @@ export class CoursePage implements OnDestroy {
           `${fullName(student)}: ${ratingSymbol(value)}`,
           'success',
           6000,
-          { label: 'Rückgängig', run: () => this.undoRating(rating.id) },
+          { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
         );
       },
       error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
-  /** Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. */
-  private undoRating(ratingId: number): void {
+  /**
+   * Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. Hat sie
+   * eine frühere ersetzt, gilt danach wieder diese.
+   */
+  private undoRating(rating: Rating, previous: RatingValue | null): void {
     this.undoToastId = null;
-    this.api.deleteRating(ratingId).subscribe({
+    const undo$: Observable<unknown> =
+      previous === null
+        ? this.api.deleteRating(rating.id)
+        : this.api.rate(
+            rating.courseId,
+            rating.studentId,
+            previous,
+            undefined,
+            rating.lessonDate,
+            true,
+          );
+    undo$.subscribe({
       next: () => {
         this.toasts.show('Die Bewertung wurde zurückgenommen.');
         this.refreshScores();
@@ -817,6 +830,10 @@ export class CoursePage implements OnDestroy {
     this.api.getScoreboard(this.courseId()).subscribe({
       next: (board) => this.scores.set(board.students),
       error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    });
+    // Der mündliche Vorschlag (Ø Mitarbeit) ändert sich mit jeder Bewertung.
+    this.api.getQuarterGrades(this.courseId()).subscribe({
+      next: (grades) => this.quarterGrades.set(grades),
     });
     this.refreshToday();
     if (this.sheetStudentId() !== null) {

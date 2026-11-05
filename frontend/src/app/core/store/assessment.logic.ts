@@ -6,9 +6,9 @@
  * Der Weg zur Note eines Kurses (Lernfeld oder Fach):
  * - Jede Doppelstunde bringt eine Mitarbeitsnote: die Summe der Bewertungen
  *   dieser Stunde, begrenzt auf -2 bis +2, übersetzt über das Schema. Wer in
- *   einer gehaltenen Stunde keine Bewertung bekommt, erhält die Note für
- *   "unbewertet" (Standard 3,0). Eine Stunde gilt als gehalten, sobald
- *   irgendein Schüler des Kurses an dem Tag bewertet wurde.
+ *   einer gehaltenen Stunde keine Bewertung bekommt, zählt mit 0 (Standard
+ *   3,0). Eine Stunde gilt als gehalten, sobald irgendein Schüler des Kurses
+ *   an dem Tag bewertet wurde - Tage ohne jede Bewertung zählen gar nicht.
  * - Die Mitarbeit ist der Durchschnitt dieser Stundennoten und zählt im
  *   mündlichen Bereich mit ihrem Gewicht als eine Einzelnote.
  * - Ein Bereich ist der gewichtete Durchschnitt seiner Einzelnoten.
@@ -37,8 +37,9 @@ export function clampLessonValue(sum: number): number {
 
 /** Die Note einer Doppelstunde. value null = in dieser Stunde nicht bewertet. */
 export function lessonGradeFor(grades: ParticipationGradesRecord, value: number | null): number {
+  // In einer gehaltenen Stunde nicht bewertet zählt wie eine 0.
   if (value === null) {
-    return grades.unrated;
+    return grades.neutral;
   }
 
   switch (clampLessonValue(value)) {
@@ -93,7 +94,8 @@ export function resultGrade(
 }
 
 /**
- * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde.
+ * Die Mitarbeitsnoten eines Schülers für jede gehaltene Doppelstunde. Ohne
+ * eigene Bewertung zählt die Stunde für ihn als 0.
  *
  * @param lessonDates die Tage, an denen der Kurs Unterricht hatte
  * @param ratings die Bewertungen dieses Schülers in diesem Kurs
@@ -106,8 +108,9 @@ export function participationLessons(
   grades: ParticipationGradesRecord,
 ): LessonGrade[] {
   return lessonDates.map((date) => {
+    // Wer in einer gehaltenen Stunde nicht bewertet wurde, bekommt die Bewertung 0.
     const own = ratings.filter((r) => r.lessonDate === date);
-    const value = own.length ? clampLessonValue(own.reduce((sum, r) => sum + r.value, 0)) : null;
+    const value = clampLessonValue(own.reduce((sum, r) => sum + r.value, 0));
     const autoGrade = lessonGradeFor(grades, value);
     const override = overrides.find((o) => o.lessonDate === date) ?? null;
 

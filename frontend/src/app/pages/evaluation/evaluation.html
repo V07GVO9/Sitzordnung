@@ -1,6 +1,9 @@
 <div class="stack">
   <div class="page-head">
     <div>
+      @if (selectedCourse(); as course) {
+        <p class="eyebrow">{{ course.subjectName }} · {{ course.schoolClassName }}</p>
+      }
       <h1>Auswertung</h1>
       <p class="muted small">
         @if (isEdit()) {
@@ -49,58 +52,37 @@
     }
   </div>
 
-  <!-- Kurswahl für Punktestand und kursbezogenen Notenschlüssel -->
-  @if (activeTab() === 'punkte' || activeTab() === 'noten') {
+  <!-- Zeitraum für den Punktestand; das Fach kommt aus dem Wochenplan. -->
+  @if (activeTab() === 'punkte' && selectedCourse()) {
     <section class="card">
       <div class="filter">
-        <label class="course-select">
-          Kurs
-          <select
-            [ngModel]="selectedCourseId()"
-            (ngModelChange)="selectCourse($event)"
-            name="course"
-          >
-            @for (course of courses(); track course.id) {
-              <option [ngValue]="course.id">
-                {{ course.subjectName }} · {{ course.schoolClassName }}
-              </option>
-            } @empty {
-              <option [ngValue]="null">Noch keine Kurse</option>
-            }
-          </select>
+        <label>
+          Von
+          <input
+            type="date"
+            [ngModel]="from()"
+            (ngModelChange)="from.set($event); refreshScoreboard()"
+            name="from"
+          />
         </label>
 
-        @if (activeTab() === 'punkte') {
-          <label>
-            Von
-            <input
-              type="date"
-              [ngModel]="from()"
-              (ngModelChange)="from.set($event); refreshScoreboard()"
-              name="from"
-            />
-          </label>
+        <label>
+          Bis
+          <input
+            type="date"
+            [ngModel]="to()"
+            (ngModelChange)="to.set($event); refreshScoreboard()"
+            name="to"
+          />
+        </label>
 
-          <label>
-            Bis
-            <input
-              type="date"
-              [ngModel]="to()"
-              (ngModelChange)="to.set($event); refreshScoreboard()"
-              name="to"
-            />
-          </label>
-
-          @if (from() || to()) {
-            <button class="btn ghost" type="button" (click)="clearRange()">
-              <app-icon name="x" /> Zeitraum zurücksetzen
-            </button>
-          }
+        @if (from() || to()) {
+          <button class="btn ghost" type="button" (click)="clearRange()">
+            <app-icon name="x" /> Zeitraum zurücksetzen
+          </button>
         }
       </div>
-      @if (activeTab() === 'punkte') {
-        <p class="muted small hint">Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet.</p>
-      }
+      <p class="muted small hint">Ohne Datumsangabe wird der gesamte Zeitraum ausgewertet.</p>
     </section>
   }
 
@@ -173,8 +155,8 @@
             Die CSV-Dateien öffnen sich direkt in Excel oder LibreOffice.
           </p>
         </section>
-      } @else if (courses().length === 0) {
-        <div class="empty"><p>Noch keine Kurse angelegt.</p></div>
+      } @else if (!selectedCourse()) {
+        <div class="empty"><p>Bitte zuerst im Wochenplan eine Stunde wählen.</p></div>
       }
     }
 

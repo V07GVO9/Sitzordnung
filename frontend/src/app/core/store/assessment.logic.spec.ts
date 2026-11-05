@@ -74,8 +74,8 @@ describe('Mitarbeit je Doppelstunde', () => {
     expect(lessonGradeFor(grades, -2)).toBe(5);
   });
 
-  it('gibt ohne Bewertung 3,0', () => {
-    expect(lessonGradeFor(grades, null)).toBe(3);
+  it('wertet "ohne Bewertung" wie eine 0', () => {
+    expect(lessonGradeFor({ ...grades, neutral: 3.5 }, null)).toBe(3.5);
   });
 
   it('addiert die Bewertungen einer Stunde und begrenzt sie', () => {
@@ -94,7 +94,7 @@ describe('Mitarbeit je Doppelstunde', () => {
 
     expect(lessons[0].value).toBe(0);
     expect(lessons[0].grade).toBe(3);
-    expect(lessons[1].value).toBeNull();
+    expect(lessons[1].value).toBe(0);
     expect(lessons[1].grade).toBe(3);
   });
 

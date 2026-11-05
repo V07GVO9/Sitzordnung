@@ -117,8 +117,6 @@ export interface ParticipationGradesRecord {
   neutral: number;
   minus: number;
   minusMinus: number;
-  /** Für Schüler, die in einer gehaltenen Stunde keine Bewertung bekommen haben. */
-  unrated: number;
 }
 
 /** Das Bewertungsschema eines Kurses - also eines Lernfelds oder Fachs. */
@@ -165,6 +163,16 @@ export interface ParticipationOverrideRecord {
   lessonDate: string;
   grade: number | null;
   reason: string | null;
+}
+
+/** Eine Quartalsnote (schriftlich oder mündlich) - in Prozent und als Note. */
+export interface QuarterGradeRecord {
+  courseId: number;
+  studentId: number;
+  quarter: 1 | 2 | 3 | 4;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
 }
 
 /** Ein Eintrag im Änderungsprotokoll - geändert wird nie stillschweigend. */
@@ -230,6 +238,7 @@ export interface Database {
   assessments: AssessmentRecord[];
   assessmentResults: AssessmentResultRecord[];
   participationOverrides: ParticipationOverrideRecord[];
+  quarterGrades: QuarterGradeRecord[];
   gradeChanges: GradeChangeRecord[];
   gradeReports: GradeReportRecord[];
   settings: AppSettingsRecord;
@@ -273,6 +282,7 @@ export function createEmptyDatabase(): Database {
     assessments: [],
     assessmentResults: [],
     participationOverrides: [],
+    quarterGrades: [],
     gradeChanges: [],
     gradeReports: [],
     settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false },
@@ -317,6 +327,6 @@ export function createDefaultScheme(courseId: number): GradingSchemeRecord {
       { minPercent: 0, grade: 6 },
     ],
     participationWeight: 2,
-    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5, unrated: 3 },
+    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5 },
   };
 }

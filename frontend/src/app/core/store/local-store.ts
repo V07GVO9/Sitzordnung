@@ -9,6 +9,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
   AREA_LABELS,
+  GradeArea,
   AppSettings,
   Assessment,
   AssessmentDetail,
@@ -43,6 +44,8 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  Quarter,
+  QuarterGrade,
   WEEKDAY_NAMES,
 } from '../models';
 import { AppError } from './app-error';
@@ -62,12 +65,15 @@ import {
   average,
   combineGrades,
   formatGrade,
+  gradeFromPercent,
   isValidGrade,
   participationLessons,
   resultGrade,
+  roundGrade,
 } from './assessment.logic';
 import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
 import { effectiveScale, resolveGrade } from './grading.logic';
+import { quarterRange } from './quarter.logic';
 import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
 import {
   Clock,
@@ -437,6 +443,9 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => o.courseId !== courseId,
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter(
+      (q) => q.courseId !== courseId,
+    );
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => c.courseId !== courseId);
     this.database.gradeReports = this.database.gradeReports.filter((r) => r.courseId !== courseId);
   }
@@ -455,6 +464,7 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => !gone.has(o.studentId),
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !gone.has(q.studentId));
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => !gone.has(c.studentId));
     this.database.gradeReports = this.database.gradeReports.filter((r) => !gone.has(r.studentId));
     for (const plan of this.database.seatingPlans) {
@@ -777,9 +787,12 @@ export class LocalStore {
     value: RatingValue,
     comment?: string,
     lessonDate?: string,
+    replaceSameDay = false,
   ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
-      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
+      throw new AppError(
+        'Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).',
+      );
     }
 
     const course = this.requireCourse(courseId);
@@ -808,6 +821,19 @@ export class LocalStore {
       createdAt: now.toISOString(),
       comment: comment?.trim() ? comment.trim() : null,
     };
+
+    // Listenansicht: je Schüler und Tag nur eine Bewertung - der letzte
+    // Klick ersetzt die vorige.
+    if (replaceSameDay) {
+      this.database.ratings = this.database.ratings.filter(
+        (r) =>
+          !(
+            r.courseId === courseId &&
+            r.studentId === studentId &&
+            r.lessonDate === record.lessonDate
+          ),
+      );
+    }
 
     this.database.ratings.push(record);
     this.changed();
@@ -1539,6 +1565,133 @@ export class LocalStore {
       ),
       scheme.participationGrades,
     );
+  }
+
+  // --- Quartalsnoten -----------------------------------------------------
+
+  /**
+   * Alle Quartalsnoten eines Kurses. Ist für mündlich nichts eingetragen,
+   * steht dort als Vorschlag der Durchschnitt der Mitarbeitsnoten im Quartal.
+   */
+  getQuarterGrades(courseId: number): QuarterGrade[] {
+    this.requireCourse(courseId);
+    const stored: QuarterGrade[] = this.database.quarterGrades
+      .filter((q) => q.courseId === courseId)
+      .map(({ studentId, quarter, area, percent, grade }) => ({
+        studentId,
+        quarter,
+        area,
+        percent,
+        grade,
+        suggested: false,
+      }));
+
+    const hasOral = new Set(
+      stored.filter((q) => q.area === 'oral').map((q) => `${q.studentId}:${q.quarter}`),
+    );
+    const scheme = this.schemeRecord(courseId);
+    const today = this.clock.now();
+    const suggestions: QuarterGrade[] = [];
+
+    for (const quarter of [1, 2, 3, 4] as Quarter[]) {
+      const dates = this.lessonDates(courseId, quarterRange(quarter, today));
+      if (dates.length === 0) {
+        continue;
+      }
+      for (const student of this.getCourseStudents(courseId)) {
+        if (hasOral.has(`${student.id}:${quarter}`)) {
+          continue;
+        }
+        const avg = average(
+          this.participationFor(courseId, student.id, dates, scheme).map((l) => l.grade),
+        );
+        if (avg !== null) {
+          suggestions.push({
+            studentId: student.id,
+            quarter,
+            area: 'oral',
+            percent: null,
+            grade: roundGrade(avg, 1),
+            suggested: true,
+          });
+        }
+      }
+    }
+
+    return [...stored, ...suggestions];
+  }
+
+  /**
+   * Trägt eine Quartalsnote ein: schriftlich in Prozent (die Note folgt aus
+   * dem Prozentschlüssel), mündlich direkt als Note. null löscht den Eintrag -
+   * mündlich gilt dann wieder der Durchschnitt der Mitarbeit.
+   */
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    value: number | null,
+  ): QuarterGrade {
+    const course = this.requireCourse(courseId);
+    const student = this.requireStudent(studentId);
+    if (student.schoolClassId !== course.schoolClassId) {
+      throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+    }
+    if (![1, 2, 3, 4].includes(quarter)) {
+      throw new AppError('Es gibt nur die Quartale 1 bis 4.');
+    }
+
+    let percent: number | null = null;
+    let grade: number | null = null;
+    if (area === 'written') {
+      if (value !== null && !(Number.isFinite(value) && value >= 0 && value <= 100)) {
+        throw new AppError('Die Prozentzahl muss zwischen 0 und 100 liegen.');
+      }
+      percent = value;
+      grade =
+        value === null ? null : gradeFromPercent(this.schemeRecord(courseId).percentScale, value);
+    } else {
+      if (value !== null && !isValidGrade(value)) {
+        throw new AppError('Die Note muss zwischen 1,0 und 6,0 liegen.');
+      }
+      grade = value === null ? null : roundGrade(value, 1);
+    }
+
+    const matches = (q: { courseId: number; studentId: number; quarter: number; area: string }) =>
+      q.courseId === courseId &&
+      q.studentId === studentId &&
+      q.quarter === quarter &&
+      q.area === area;
+    const before = this.database.quarterGrades.find(matches);
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !matches(q));
+
+    if (grade !== null || percent !== null) {
+      this.database.quarterGrades.push({ courseId, studentId, quarter, area, percent, grade });
+    }
+
+    const describe = (p: number | null, g: number | null) =>
+      p === null && g === null
+        ? '–'
+        : p === null
+          ? formatGrade(g, 1)
+          : `${String(p).replace('.', ',')} % / ${formatGrade(g, 1)}`;
+    const oldText = describe(before?.percent ?? null, before?.grade ?? null);
+    const newText = describe(percent, grade);
+    if (oldText !== newText) {
+      this.logChange(
+        courseId,
+        studentId,
+        `${quarter}. Quartal ${AREA_LABELS[area]}`,
+        oldText,
+        newText,
+        null,
+        this.clock.now().toISOString(),
+      );
+    }
+    this.changed();
+
+    return { studentId, quarter, area, percent, grade, suggested: false };
   }
 
   // --- Notenübersicht -----------------------------------------------------

@@ -35,7 +35,7 @@ describe('LocalStore - Bewertungsschema', () => {
 
     expect(scheme.isDefault).toBeTrue();
     expect(scheme.writtenPercent).toBe(50);
-    expect(scheme.participationGrades.unrated).toBe(3);
+    expect(scheme.participationGrades.neutral).toBe(3);
   });
 
   it('speichert ein eigenes Schema je Lernfeld', () => {
@@ -175,6 +175,16 @@ describe('LocalStore - Mitarbeit und Gesamtnote', () => {
     expect(benRow.participation).toBe(3);
   });
 
+  it('ersetzt in der Listenansicht die Bewertung desselben Tages', () => {
+    const { store, course, anna } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-10-05', true);
+    store.rate(course.id, anna.id, -1, undefined, '2026-10-05', true);
+
+    const ratings = store.getRatings(course.id, { from: '2026-10-05', to: '2026-10-05' });
+    expect(ratings.length).toBe(1);
+    expect(ratings[0].value).toBe(-1);
+  });
+
   it('nimmt eine als "fehlte" markierte Stunde aus dem Durchschnitt', () => {
     const { store, course, anna, ben } = setup();
     store.rate(course.id, anna.id, 2);
@@ -280,5 +290,57 @@ describe('LocalStore - Notenbogen', () => {
 
     expect(store.snapshot().assessments).toEqual([]);
     expect(store.snapshot().nextIds.assessment).toBe(1);
+  });
+});
+
+describe('Quartalsnoten', () => {
+  it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
+    const { store, course, anna } = setup();
+
+    const saved = store.setQuarterGrade(course.id, anna.id, 1, 'written', 85);
+    expect(saved.percent).toBe(85);
+    expect(saved.grade).toBe(2);
+  });
+
+  it('nimmt mündlich eine Note und schlägt sonst den Ø der Mitarbeit vor', () => {
+    const { store, course, anna, ben } = setup();
+    // Montag, 05.10.2026 liegt im 1. Quartal.
+    store.rate(course.id, anna.id, 2);
+
+    const oralQ1 = (id: number) =>
+      store
+        .getQuarterGrades(course.id)
+        .find((g) => g.studentId === id && g.quarter === 1 && g.area === 'oral');
+
+    expect(oralQ1(anna.id)).toEqual(
+      jasmine.objectContaining({ grade: 1, suggested: true, percent: null }),
+    );
+    // Ben wurde in der Stunde nicht bewertet - zählt wie 0 (Note 3).
+    expect(oralQ1(ben.id)?.grade).toBe(3);
+
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', 2.5);
+    expect(oralQ1(anna.id)).toEqual(jasmine.objectContaining({ grade: 2.5, suggested: false }));
+
+    // Löschen führt zurück auf den Vorschlag.
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', null);
+    expect(oralQ1(anna.id)?.suggested).toBeTrue();
+  });
+
+  it('löscht den schriftlichen Eintrag, wenn das Feld geleert wird', () => {
+    const { store, course, anna } = setup();
+
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', 50);
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', null);
+
+    expect(store.getQuarterGrades(course.id).filter((g) => g.area === 'written')).toEqual([]);
+  });
+
+  it('weist ungültige Werte ab', () => {
+    const { store, course, anna } = setup();
+
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120)).toThrowError(
+      AppError,
+    );
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', 7)).toThrowError(AppError);
   });
 });

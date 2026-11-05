@@ -32,6 +32,9 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  GradeArea,
+  Quarter,
+  QuarterGrade,
 } from './models';
 import { DateRange, LocalStore } from './store/local-store';
 import { readPhoto } from './store/photo';
@@ -242,8 +245,11 @@ export class ApiService {
     value: RatingValue,
     comment?: string,
     lessonDate?: string,
+    replaceSameDay = false,
   ): Observable<Rating> {
-    return this.run(() => this.store.rate(courseId, studentId, value, comment, lessonDate));
+    return this.run(() =>
+      this.store.rate(courseId, studentId, value, comment, lessonDate, replaceSameDay),
+    );
   }
 
   /** Nimmt genau diese Bewertung zurück - etwa nach einem Vertipper. */
@@ -309,6 +315,20 @@ export class ApiService {
 
   copyScheme(fromCourseId: number, toCourseIds: number[]): Observable<void> {
     return this.run(() => this.store.copyScheme(fromCourseId, toCourseIds));
+  }
+
+  getQuarterGrades(courseId: number): Observable<QuarterGrade[]> {
+    return this.run(() => this.store.getQuarterGrades(courseId));
+  }
+
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    value: number | null,
+  ): Observable<QuarterGrade> {
+    return this.run(() => this.store.setQuarterGrade(courseId, studentId, quarter, area, value));
   }
 
   getGradeBook(courseId: number, range?: DateRange): Observable<GradeBook> {

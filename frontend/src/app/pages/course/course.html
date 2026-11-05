@@ -137,7 +137,7 @@
         [scores]="scoresById()"
         [today]="todayRatings()"
         [flashId]="flash()?.studentId ?? null"
-        [dayLabel]="dayWord()"
+        [quarterGrades]="quarterGrades()"
         (rate)="onRate($event)"
         (openStudent)="openSheet($event)"
       />

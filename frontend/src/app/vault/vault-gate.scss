@@ -122,24 +122,6 @@ app-password-rules {
   border-top: 1px solid var(--border);
 }
 
-.autosave {
-  margin-top: 1.35rem;
-  padding: 0.95rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface-muted);
-
-  strong {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  p {
-    margin: 0.3rem 0 0.75rem;
-  }
-}
-
 .tabs.sub {
   margin-bottom: 1rem;
   font-size: 0.9rem;

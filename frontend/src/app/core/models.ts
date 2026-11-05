@@ -307,7 +307,6 @@ export interface ParticipationGrades {
   neutral: number;
   minus: number;
   minusMinus: number;
-  unrated: number;
 }
 
 export interface GradingSchemeInput {
@@ -373,8 +372,8 @@ export interface AssessmentDetail {
 /** Eine Doppelstunde aus Sicht eines Schülers. */
 export interface LessonGrade {
   date: string;
-  /** Summe der Bewertungen, begrenzt auf -2 bis +2; null = nicht bewertet. */
-  value: number | null;
+  /** Summe der Bewertungen, begrenzt auf -2 bis +2; ohne Bewertung 0. */
+  value: number;
   /** Die Note, die sich aus den Bewertungen ergibt. */
   autoGrade: number;
   /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */
@@ -464,6 +463,24 @@ export interface StudentReport {
   oral: number | null;
   overall: number | null;
   partial: boolean;
+}
+
+/** Die vier Quartale des Schuljahres. */
+export type Quarter = 1 | 2 | 3 | 4;
+
+export const QUARTERS: Quarter[] = [1, 2, 3, 4];
+
+/**
+ * Eine Quartalsnote. Schriftlich mit Prozent und Note, mündlich nur als Note.
+ * suggested = nicht eingetragen, sondern der Durchschnitt der Mitarbeit.
+ */
+export interface QuarterGrade {
+  studentId: number;
+  quarter: Quarter;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+  suggested: boolean;
 }
 
 /** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */
