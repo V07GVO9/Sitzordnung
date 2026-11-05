@@ -500,7 +500,7 @@
                           [attr.aria-label]="s.lastName + ', ' + formatDate(lesson.date)"
                         >
                           <option value="auto" [selected]="lessonChoice(lesson) === 'auto'">
-                            {{ lesson.value === null ? '·' : ratingSymbol(lesson.value) }}
+                            {{ ratingSymbol(lesson.value) }}
                             {{ formatGrade(lesson.autoGrade, 1) }}
                           </option>
                           @for (g of overrideGrades; track g) {

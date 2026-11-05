@@ -94,7 +94,7 @@ describe('Mitarbeit je Doppelstunde', () => {
 
     expect(lessons[0].value).toBe(0);
     expect(lessons[0].grade).toBe(3);
-    expect(lessons[1].value).toBeNull();
+    expect(lessons[1].value).toBe(0);
     expect(lessons[1].grade).toBe(3);
   });
 
