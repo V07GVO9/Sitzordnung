@@ -9,6 +9,8 @@ backend/Sitzordnung.Host/wwwroot/
 
 # Datenbestände der App bleiben lokal und gehören nie in die Versionsverwaltung
 *.sitzordnung
+# Ausnahme: der erfundene Demo-Bestand
+!demo-daten/demo.sitzordnung
 
 # Node
 node_modules/
