@@ -460,15 +460,20 @@ describe('LocalStore - Export', () => {
     expect(content).toContain('Musterfrau;Anna;2;1;');
   });
 
-  it('schreibt jede Bewertung einzeln', async () => {
+  it('legt die Einzelbewertungen als Querformat-Tabelle an: Schüler je Zeile, Tage je Spalte', async () => {
     const store = setup();
     const { course, student } = withCourse(store);
+    store.rate(course.id, student.id, 1);
     store.rate(course.id, student.id, -2, 'stört');
 
-    const content = await store.exportRatings(course.id).blob.text();
+    const result = store.exportRatings(course.id);
+    const content = await result.blob.text();
 
-    expect(content).toContain('31.08.2026');
-    expect(content).toContain('--');
+    expect(result.fileName).toMatch(/^bewertungen-10a-Mathematik-.*\.html$/);
+    expect(content).toContain('size: A4 landscape');
+    expect(content).toContain('31.08.');
+    expect(content).toContain('Musterfrau</strong>, Anna');
+    expect(content).toContain('<span class="old">+</span> <span>−−</span>');
     expect(content).toContain('stört');
   });
 

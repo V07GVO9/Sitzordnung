@@ -94,13 +94,13 @@
             <h2>{{ board.subjectName }} · {{ board.schoolClassName }}</h2>
             <span class="spacer"></span>
             <div class="exports">
-              <button class="btn primary small" type="button" (click)="exportCsv('summary', false)">
+              <button class="btn primary small" type="button" (click)="exportCsv(false)">
                 <app-icon name="file-down" /> Punktestand (CSV)
               </button>
-              <button class="btn small" type="button" (click)="exportCsv('ratings', false)">
-                <app-icon name="download" /> Einzelbewertungen
+              <button class="btn small" type="button" (click)="exportRatings()">
+                <app-icon name="file-down" /> Einzelbewertungen
               </button>
-              <button class="btn small" type="button" (click)="exportCsv('summary', true)">
+              <button class="btn small" type="button" (click)="exportCsv(true)">
                 <app-icon name="download" /> Alle Kurse
               </button>
               <button class="btn small" type="button" (click)="exportLessonSheets(false)">

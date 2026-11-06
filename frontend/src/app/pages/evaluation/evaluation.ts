@@ -314,14 +314,22 @@ export class EvaluationPage {
   // --- Export ---
 
   /** Baut die CSV-Datei im Browser und legt sie in den Download-Ordner. */
-  exportCsv(kind: 'ratings' | 'summary', allCourses: boolean): void {
-    this.api.exportCsv(kind, allCourses ? null : this.selectedCourseId(), this.range).subscribe({
+  exportCsv(allCourses: boolean): void {
+    this.api.exportCsv(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
       next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
       error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
     });
   }
 
   /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
+  /** Einzelbewertungen im Querformat: Schüler in Zeilen, Bewertungstage in Spalten. */
+  exportRatings(): void {
+    this.api.exportRatings(this.selectedCourseId(), this.range).subscribe({
+      next: () => this.toasts.success('Die Einzelbewertungen wurden erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
+  }
+
   exportLessonSheets(allCourses: boolean): void {
     this.api.exportLessonSheets(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
       next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),
