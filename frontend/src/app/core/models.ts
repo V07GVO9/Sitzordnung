@@ -431,7 +431,10 @@ export interface LessonSheetCell {
   autoGrade: number;
   /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */
   override: { grade: number | null; reason: string | null } | null;
-  /** Die Note, die zählt - null, wenn die Stunde nicht zählt. */
+  /**
+   * Die Note, die zählt - null, wenn die Stunde nicht zählt (fehlte, oder in
+   * der Stundenübersicht: an diesem Tag wurde im Kurs niemand bewertet).
+   */
   grade: number | null;
 }
 

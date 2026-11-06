@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { freeDayReason } from '../../core/store/school-calendar';
@@ -20,7 +20,6 @@ interface Cell {
   entry: TimetableEntry;
   date: string;
   short: string;
-  ratingCount: number;
   running: boolean;
 }
 
@@ -51,7 +50,6 @@ export class WeekPage {
   readonly courses = signal<Course[]>([]);
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Bewertungen je "Kurs|Datum" in der gezeigten Woche. */
-  readonly ratingCounts = signal<Map<string, number>>(new Map());
 
   /** 0 = diese Woche, -1 = letzte, 1 = nächste. */
   readonly weekOffset = signal(0);
@@ -130,7 +128,6 @@ export class WeekPage {
   readonly cells = computed(() => {
     const map = new Map<string, Cell[]>();
     const dates = new Map(this.days().map((d) => [d.dayOfWeek, d.key] as const));
-    const counts = this.ratingCounts();
     const lesson = this.lesson();
 
     for (const entry of this.entries()) {
@@ -144,7 +141,6 @@ export class WeekPage {
         date,
         short:
           this.shortBySubject().get(entry.courseId) ?? abbreviate('', entry.subjectName),
-        ratingCount: counts.get(`${entry.courseId}|${date}`) ?? 0,
         running:
           date === this.todayKey &&
           !!lesson?.hasLesson &&
@@ -172,7 +168,6 @@ export class WeekPage {
         this.entries.set(entries);
         this.courses.set(courses);
         this.loading.set(false);
-        this.loadRatings();
       },
       error: (err) => {
         this.toasts.error(err, 'Der Stundenplan konnte nicht geladen werden.');
@@ -193,7 +188,6 @@ export class WeekPage {
   shiftWeek(step: number): void {
     this.slideDirection.set(step > 0 ? 'next' : 'prev');
     this.weekOffset.update((offset) => offset + step);
-    this.loadRatings();
   }
 
   thisWeek(): void {
@@ -203,7 +197,6 @@ export class WeekPage {
     }
     this.slideDirection.set(offset > 0 ? 'prev' : 'next');
     this.weekOffset.set(0);
-    this.loadRatings();
   }
 
   /** CSS-Klasse für die Einblende-Animation beim Wochenwechsel. */
@@ -230,28 +223,6 @@ export class WeekPage {
     }
   }
 
-  /** Wie viele Bewertungen in welcher Stunde der Woche schon stehen. */
-  private loadRatings(): void {
-    const days = this.days();
-    if (days.length === 0) {
-      this.ratingCounts.set(new Map());
-      return;
-    }
-    const range = { from: days[0].key, to: days[days.length - 1].key };
-    const courseIds = [...new Set(this.entries().map((e) => e.courseId))];
-
-    const requests = courseIds.map((id) => this.api.getRatings(id, range));
-    (requests.length ? forkJoin(requests) : of([])).subscribe({
-      next: (lists) => {
-        const counts = new Map<string, number>();
-        for (const rating of lists.flat()) {
-          const key = `${rating.courseId}|${rating.lessonDate}`;
-          counts.set(key, (counts.get(key) ?? 0) + 1);
-        }
-        this.ratingCounts.set(counts);
-      },
-    });
-  }
 }
 
 /** Das Kürzel eines Fachs: das hinterlegte, sonst die ersten Buchstaben ("Informatik" → "INF"). */

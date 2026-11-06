@@ -85,19 +85,13 @@
                           ': ' +
                           cell.entry.subjectName +
                           ', ' +
-                          cell.entry.schoolClassName +
-                          (cell.ratingCount ? ', ' + cell.ratingCount + ' Bewertungen' : '')
+                          cell.entry.schoolClassName
                         "
                       >
                         <strong>{{ cell.short }}</strong>
                         <span class="cls">{{ cell.entry.schoolClassName }}</span>
                         @if (cell.entry.room) {
                           <span class="room">{{ cell.entry.room }}</span>
-                        }
-                        @if (cell.ratingCount) {
-                          <span class="count" title="Bewertungen in dieser Stunde">{{
-                            cell.ratingCount
-                          }}</span>
                         }
                       </a>
                     }

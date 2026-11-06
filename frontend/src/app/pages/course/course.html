@@ -314,22 +314,6 @@
                           {{ fullName(student) }}
                         </div>
 
-                        @if (!editMode()) {
-                          <span
-                            class="score"
-                            [class.pos]="(cell.score?.points ?? 0) > 0"
-                            [class.neg]="(cell.score?.points ?? 0) < 0"
-                            [title]="
-                              'Punktestand ' +
-                              (cell.score?.points ?? 0) +
-                              ', heute ' +
-                              (cell.score?.pointsToday ?? 0)
-                            "
-                          >
-                            {{ signed(cell.score?.points ?? 0) }}
-                          </span>
-                        }
-
                         <button
                           class="tile-who"
                           type="button"
@@ -417,13 +401,6 @@
                     </button>
 
                     @if (!editMode()) {
-                      <span
-                        class="points"
-                        [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
-                        [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
-                      >
-                        {{ signed(scoreFor(student.id)?.points ?? 0) }}
-                      </span>
                       <span class="mini-actions">
                         <ng-container
                           *ngTemplateOutlet="

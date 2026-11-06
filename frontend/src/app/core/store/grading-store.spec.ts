@@ -401,7 +401,7 @@ describe('LocalStore - Übernahme aus anderem Werkzeug', () => {
 });
 
 describe('LocalStore - Noten je Stunde', () => {
-  it('zeigt jeden Unterrichtstag - auch ohne Bewertung - mit automatischer Note', () => {
+  it('zeigt jeden Unterrichtstag - Tage ganz ohne Bewertung zählen nicht', () => {
     const { store, course, anna, ben } = setup();
     store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
     store.setParticipationOverride(course.id, ben.id, '2026-09-28', null, 'krank');
@@ -417,11 +417,22 @@ describe('LocalStore - Noten je Stunde', () => {
 
     const annaRow = sheet.students.find((s) => s.studentId === anna.id)!;
     expect(annaRow.cells.map((c) => c.rated)).toEqual([false, true, false]);
-    expect(annaRow.cells.map((c) => c.grade)).toEqual([3, 1, 3]);
+    expect(annaRow.cells.map((c) => c.grade)).toEqual([null, 1, null]);
+    expect(annaRow.average).toBe(1);
 
     const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
     expect(benRow.cells[1].grade).toBeNull();
-    expect(benRow.average).toBe(3);
+    expect(benRow.average).toBeNull();
+  });
+
+  it('zählt einen nicht bewerteten Schüler an einem bewerteten Tag automatisch', () => {
+    const { store, course, anna, ben } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
+
+    const [sheet] = store.getLessonSheets(course.id, { from: '2026-09-28', to: '2026-09-28' });
+    const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
+    expect(benRow.cells[0].rated).toBeFalse();
+    expect(benRow.cells[0].grade).toBe(3);
   });
 
   it('lässt Ferien aus und liefert je Kurs eine Seite', () => {

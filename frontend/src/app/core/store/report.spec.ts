@@ -62,7 +62,8 @@ describe('renderLessonSheets', () => {
           from: '2026-09-21',
           to: '2026-09-28',
           dates: [
-            { date: '2026-09-21', rated: false },
+            { date: '2026-09-14', rated: false },
+            { date: '2026-09-21', rated: true },
             { date: '2026-09-28', rated: true },
           ],
           students: [
@@ -72,6 +73,14 @@ describe('renderLessonSheets', () => {
               lastName: 'Adler',
               average: 2,
               cells: [
+                {
+                  date: '2026-09-14',
+                  rated: false,
+                  value: 0,
+                  autoGrade: 3,
+                  override: null,
+                  grade: null,
+                },
                 {
                   date: '2026-09-21',
                   rated: false,
@@ -99,6 +108,7 @@ describe('renderLessonSheets', () => {
     expect(html).toContain('&lt;LF3&gt;');
     expect(html).toContain('<td class="num auto">3,0</td>');
     expect(html).toContain('class="num absent" title="krank">f</td>');
-    expect(html).toContain('2 Unterrichtstage, davon 1 ohne Bewertung');
+    expect(html).toContain('<td class="num none">–</td>');
+    expect(html).toContain('3 Unterrichtstage, davon 1 ohne Bewertung');
   });
 });

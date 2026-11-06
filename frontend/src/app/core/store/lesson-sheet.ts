@@ -21,6 +21,11 @@ function cell(c: LessonSheetCell): string {
       : `<td class="num manual"${reason}>${formatGrade(c.override.grade, 1)}<sup>H</sup></td>`;
   }
 
+  // Im Kurs an diesem Tag gar nicht bewertet: zählt nicht.
+  if (c.grade === null) {
+    return '<td class="num none">–</td>';
+  }
+
   if (!c.rated) {
     return `<td class="num auto">${formatGrade(c.autoGrade, 1)}</td>`;
   }
@@ -90,7 +95,8 @@ function page(sheet: LessonSheet, issued: string): string {
     ${body}
     <p class="legend">
       <span><b>2,0<small>+</small></b> bewertet (Zeichen = Bewertung des Tages)</span>
-      <span><b class="auto">3,0</b> automatisch – an diesem Tag nicht bewertet</span>
+      <span><b class="auto">3,0</b> automatisch – Schüler an diesem Tag nicht bewertet</span>
+      <span><b class="none">–</b> niemand bewertet – zählt nicht</span>
       <span><b class="manual">2,0<sup>H</sup></b> von Hand gesetzt</span>
       <span><b class="absent">f</b> fehlte – zählt nicht</span>
       <span><b class="unrated-key">Datum</b> Tag ganz ohne Bewertung im Kurs</span>
@@ -133,6 +139,7 @@ export function renderLessonSheets(sheets: LessonSheet[], issued: string): strin
   td.auto, b.auto { color: #6b7685; font-style: italic; }
   td.manual, b.manual { font-weight: 700; color: #2f5d8a; }
   sup { font-size: 0.6em; }
+  td.none, b.none { color: #6b7685; }
   td.absent, b.absent { color: #a33; font-weight: 600; }
   .avg { font-weight: 700; background: #e8f0f8; }
   .muted { color: #6b7685; }
