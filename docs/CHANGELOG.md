@@ -13,6 +13,9 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 **Geändert**
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
+- Die **Titelleiste ist ausgeblendet**; der Menüknopf ☰ sitzt links oben im Inhalt
+  auf Höhe der KW-Auswahl und zeigt Menü und Titelleiste zusammen. Der Seitenrand
+  ist halb so breit – mehr Platz für Sitzplan und Wochenplan.
 - Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
 
 ## 05.11.2026

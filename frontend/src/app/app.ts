@@ -70,7 +70,7 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
-    '(document:keydown.escape)': 'menuOpen.set(false)',
+    '(document:keydown.escape)': 'closeMenu()',
     '(document:keydown)': 'onKeydown($event)',
   },
 })
@@ -118,6 +118,8 @@ export class App implements OnDestroy {
     return PAGE_TITLES[page] ?? '';
   });
   readonly menuOpen = signal(false);
+  /** Die Titelleiste ist verborgen und erscheint erst mit dem Menüknopf. */
+  readonly chromeOpen = signal(false);
   readonly passwordDialogOpen = signal(false);
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
@@ -178,7 +180,7 @@ export class App implements OnDestroy {
     });
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
-      this.menuOpen.set(false);
+      this.closeMenu();
       this.readUrl(e.urlAfterRedirects);
       this.refreshLesson();
     });
@@ -190,6 +192,7 @@ export class App implements OnDestroy {
 
   /** Öffnet das Menü - im Unterricht nur, wenn ein Fach gewählt ist. */
   openMenu(): void {
+    this.chromeOpen.set(true);
     if (this.menuLocked()) {
       this.toasts.show('Bitte zuerst im Wochenplan eine Stunde wählen.', 'info');
       return;
@@ -197,8 +200,14 @@ export class App implements OnDestroy {
     this.menuOpen.set(true);
   }
 
-  install(): void {
+  /** Schließt Menü und Titelleiste gemeinsam. */
+  closeMenu(): void {
     this.menuOpen.set(false);
+    this.chromeOpen.set(false);
+  }
+
+  install(): void {
+    this.closeMenu();
     void this.pwa.install();
   }
 
@@ -218,7 +227,7 @@ export class App implements OnDestroy {
 
   /** Schreibt den Datenbestand in die Datei. */
   async save(): Promise<void> {
-    this.menuOpen.set(false);
+    this.closeMenu();
     try {
       await this.vault.save();
       this.toasts.success('Gespeichert.');
@@ -230,7 +239,7 @@ export class App implements OnDestroy {
   }
 
   openPasswordDialog(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     this.passwordDialogOpen.set(true);
   }
 
@@ -263,12 +272,12 @@ export class App implements OnDestroy {
   }
 
   startEdit(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     void this.mode.requestEdit();
   }
 
   finishEdit(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     this.mode.finishEdit();
   }
 
