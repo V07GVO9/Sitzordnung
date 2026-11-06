@@ -2068,12 +2068,29 @@ export class LocalStore {
   }
 
   /** Die Stundenübersicht als druckfertiges HTML - je Kurs eine Seite. */
-  exportLessonSheets(courseId: number | null, range?: DateRange): { blob: Blob; fileName: string } {
-    const sheets = this.getLessonSheets(courseId, range);
+  exportLessonSheets(
+    courseId: number | null,
+    range?: DateRange,
+    studentId?: number,
+  ): { blob: Blob; fileName: string } {
+    let sheets = this.getLessonSheets(courseId, range);
+    let studentPart = '';
+    if (studentId !== undefined) {
+      sheets = sheets.map((sheet) => ({
+        ...sheet,
+        students: sheet.students.filter((s) => s.studentId === studentId),
+      }));
+      const student = sheets[0]?.students[0];
+      if (!student) {
+        throw new AppError('Der Schüler gehört nicht zu diesem Kurs.');
+      }
+      studentPart = `-${LocalStore.fileNamePart(`${student.lastName}-${student.firstName}`)}`;
+    }
     const suffix =
       sheets.length === 1
         ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
-          LocalStore.fileNamePart(sheets[0].subjectName)
+          LocalStore.fileNamePart(sheets[0].subjectName) +
+          studentPart
         : 'alle-kurse';
 
     return {

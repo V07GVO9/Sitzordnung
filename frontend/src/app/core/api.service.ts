@@ -443,9 +443,13 @@ export class ApiService {
     });
   }
 
-  exportLessonSheets(courseId: number | null, range?: DateRange): Observable<void> {
+  exportLessonSheets(
+    courseId: number | null,
+    range?: DateRange,
+    studentId?: number,
+  ): Observable<void> {
     return this.fromPromise(() => {
-      const result = this.store.exportLessonSheets(courseId, range);
+      const result = this.store.exportLessonSheets(courseId, range, studentId);
       return download(result.blob, result.fileName, { share: true });
     });
   }
