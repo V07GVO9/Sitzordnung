@@ -140,6 +140,16 @@ interface Row {
     </div>
   `,
   styles: `
+    /* Dezente dunkelgraue Spaltentrenner, damit die Spalten gut unterscheidbar sind. */
+    th + th,
+    td + td {
+      border-left: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
+    }
+
+    thead th {
+      border-bottom: 1px solid color-mix(in srgb, var(--text) 35%, transparent);
+    }
+
     .num {
       text-align: center;
     }
