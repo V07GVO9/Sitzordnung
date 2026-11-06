@@ -21,7 +21,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
@@ -140,6 +140,8 @@ export class CoursePage implements OnDestroy {
   readonly course = signal<Course | null>(null);
   readonly students = signal<Student[]>([]);
   readonly plans = signal<SeatingPlan[]>([]);
+  /** Sitzordnungen derselben Klasse aus anderen Fächern - zum Übernehmen. */
+  readonly classPlans = signal<{ course: Course; plans: SeatingPlan[] }[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
   /** Quartalsnoten für die Listenansicht. */
@@ -372,6 +374,7 @@ export class CoursePage implements OnDestroy {
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
         this.selectPlan(plans[0]?.id ?? null);
+        this.loadClassPlans(course);
         this.refreshToday();
         this.refreshLesson();
         this.loading.set(false);
@@ -380,6 +383,32 @@ export class CoursePage implements OnDestroy {
         this.toasts.error(err, 'Der Kurs konnte nicht geladen werden.');
         this.loading.set(false);
       },
+    });
+  }
+
+  /** Lädt die Sitzordnungen der anderen Fächer derselben Klasse. */
+  private loadClassPlans(course: Course): void {
+    this.classPlans.set([]);
+    this.api.getCourses().subscribe({
+      next: (courses) => {
+        const others = courses.filter(
+          (c) => c.schoolClassId === course.schoolClassId && c.id !== course.id && c.seatingPlanCount > 0,
+        );
+        if (!others.length) {
+          return;
+        }
+        forkJoin(others.map((c) => this.api.getSeatingPlans(c.id))).subscribe({
+          next: (lists) =>
+            this.classPlans.set(
+              others
+                .map((c, i) => ({ course: c, plans: lists[i] }))
+                .filter((g) => g.plans.length > 0)
+                .sort((a, b) => a.course.subjectName.localeCompare(b.course.subjectName, 'de')),
+            ),
+          error: () => this.classPlans.set([]),
+        });
+      },
+      error: () => this.classPlans.set([]),
     });
   }
 
@@ -594,10 +623,15 @@ export class CoursePage implements OnDestroy {
 
   /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen oder eine neue anlegen. */
   onPlanSelect(select: HTMLSelectElement): void {
-    if (select.value === 'new') {
+    const value = select.value;
+    if (value === 'new' || value.startsWith('copy:')) {
       // Bis die neue da ist, bleibt die bisherige gewählt.
       select.value = String(this.activePlanId() ?? '');
-      this.addPlan();
+      if (value === 'new') {
+        this.addPlan();
+      } else {
+        this.copyPlan(Number(value.slice('copy:'.length)));
+      }
       return;
     }
     this.selectPlan(Number(select.value));
@@ -627,6 +661,37 @@ export class CoursePage implements OnDestroy {
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
     });
+  }
+
+  /** Übernimmt eine Sitzordnung aus einem anderen Fach derselben Klasse als Kopie. */
+  copyPlan(sourceId: number): void {
+    const group = this.classPlans().find((g) => g.plans.some((p) => p.id === sourceId));
+    const source = group?.plans.find((p) => p.id === sourceId);
+    if (!group || !source) {
+      return;
+    }
+
+    const courseId = this.courseId();
+    const name = `${source.name} (${group.course.subjectShortName || group.course.subjectName})`;
+    // Nur Schüler übernehmen, die es in diesem Kurs gibt.
+    const known = new Set(this.students().map((s) => s.id));
+    const seats = source.seats.filter((s) => known.has(s.studentId));
+
+    this.api
+      .createSeatingPlan(courseId, name, source.rows, source.columns)
+      .pipe(
+        switchMap((plan) =>
+          this.api.saveLayout(plan.id, { rows: source.rows, columns: source.columns, seats }),
+        ),
+      )
+      .subscribe({
+        next: (plan) => {
+          this.plans.update((list) => [...list, plan]);
+          this.selectPlan(plan.id);
+          this.toasts.success(`„${source.name}" aus ${group.course.subjectName} übernommen.`);
+        },
+        error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht übernommen werden.'),
+      });
   }
 
   renamePlan(name: string): void {

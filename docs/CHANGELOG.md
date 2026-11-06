@@ -16,6 +16,8 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 - Die **Titelleiste ist ausgeblendet**; der Menüknopf ☰ sitzt links oben im Inhalt
   auf Höhe der KW-Auswahl und zeigt Menü und Titelleiste zusammen. Der Seitenrand
   ist halb so breit – mehr Platz für Sitzplan und Wochenplan.
+- Das Dropdown zeigt auch die Sitzordnungen der **anderen Fächer und Lernfelder
+  der Klasse**; eine Auswahl übernimmt sie als Kopie in das aktuelle Fach.
 - Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
 
 ## 05.11.2026
