@@ -435,4 +435,14 @@ describe('LocalStore - Noten je Stunde', () => {
 
     expect(store.exportLessonSheets(null).fileName).toContain('noten-je-stunde');
   });
+
+  it('exportiert auf Wunsch nur einen Schüler', async () => {
+    const { store, course, anna, ben } = setup();
+    const result = store.exportLessonSheets(course.id, undefined, anna.id);
+
+    const html = await result.blob.text();
+    expect(html).toContain(anna.lastName);
+    expect(html).not.toContain(ben.lastName);
+    expect(result.fileName).toContain(anna.lastName);
+  });
 });

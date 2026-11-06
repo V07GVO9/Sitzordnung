@@ -11,8 +11,9 @@ import { ActiveCourseService } from '../../core/active-course.service';
 import { ApiService } from '../../core/api.service';
 import { GradeArea, QUARTERS, Quarter, QuarterGrade, Student, fullName } from '../../core/models';
 import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
-import { quarterOf } from '../../core/store/quarter.logic';
+import { quarterOf, quarterRange } from '../../core/store/quarter.logic';
 import { ToastService } from '../../core/toast.service';
+import { Icon } from '../../core/ui/icon';
 
 interface Row {
   student: Student;
@@ -28,6 +29,7 @@ interface Row {
 @Component({
   selector: 'app-quarter-grades',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [Icon],
   template: `
     <div class="stack">
       <div class="page-head">
@@ -67,6 +69,7 @@ interface Row {
                 <th class="num">Schriftlich %</th>
                 <th class="num">Note</th>
                 <th class="num">Mündlich (Note)</th>
+                <th class="num">Export</th>
               </tr>
             </thead>
             <tbody>
@@ -110,10 +113,20 @@ interface Row {
                       </button>
                     }
                   </td>
+                  <td class="num">
+                    <button
+                      type="button"
+                      class="btn small"
+                      title="Noten je Stunde dieses Schülers im gewählten Quartal"
+                      (click)="exportLessonSheet(row.student)"
+                    >
+                      <app-icon name="file-down" /> Noten je Stunde
+                    </button>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="4" class="muted">Keine Schüler in diesem Kurs.</td>
+                  <td colspan="5" class="muted">Keine Schüler in diesem Kurs.</td>
                 </tr>
               }
             </tbody>
@@ -246,6 +259,19 @@ export class QuarterGradesPage {
       return;
     }
     this.save(student, 'oral', grade);
+  }
+
+  /** Noten je Stunde eines Schülers im gewählten Quartal. */
+  exportLessonSheet(student: Student): void {
+    const courseId = this.courseId();
+    if (courseId === null) {
+      return;
+    }
+    const range = quarterRange(this.quarter(), new Date());
+    this.api.exportLessonSheets(courseId, range, student.id).subscribe({
+      next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
   }
 
   resetOral(student: Student): void {
