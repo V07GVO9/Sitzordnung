@@ -344,3 +344,40 @@ describe('Quartalsnoten', () => {
     expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', 7)).toThrowError(AppError);
   });
 });
+
+describe('LocalStore - Noten je Stunde', () => {
+  it('zeigt jeden Unterrichtstag - auch ohne Bewertung - mit automatischer Note', () => {
+    const { store, course, anna, ben } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
+    store.setParticipationOverride(course.id, ben.id, '2026-09-28', null, 'krank');
+
+    // 21.09. bis 05.10.: drei Montage, keine Ferien.
+    const [sheet] = store.getLessonSheets(course.id, { from: '2026-09-21', to: '2026-10-05' });
+
+    expect(sheet.dates).toEqual([
+      { date: '2026-09-21', rated: false },
+      { date: '2026-09-28', rated: true },
+      { date: '2026-10-05', rated: false },
+    ]);
+
+    const annaRow = sheet.students.find((s) => s.studentId === anna.id)!;
+    expect(annaRow.cells.map((c) => c.rated)).toEqual([false, true, false]);
+    expect(annaRow.cells.map((c) => c.grade)).toEqual([3, 1, 3]);
+
+    const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
+    expect(benRow.cells[1].grade).toBeNull();
+    expect(benRow.average).toBe(3);
+  });
+
+  it('lässt Ferien aus und liefert je Kurs eine Seite', () => {
+    const { store, course } = setup();
+    // Herbstferien 12.10.-24.10.2026: der Montag 19.10. fällt weg.
+    store.clock.setFixed(new Date('2026-10-26T12:00:00'));
+    const [sheet] = store.getLessonSheets(null, { from: '2026-10-05', to: '2026-10-26' });
+
+    expect(sheet.courseId).toBe(course.id);
+    expect(sheet.dates.map((d) => d.date)).toEqual(['2026-10-05', '2026-10-26']);
+
+    expect(store.exportLessonSheets(null).fileName).toContain('noten-je-stunde');
+  });
+});
