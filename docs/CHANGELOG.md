@@ -8,6 +8,12 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 06.11.2026
+
+**Geändert**
+- Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
+  dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
+
 ## 05.11.2026
 
 **Geändert**

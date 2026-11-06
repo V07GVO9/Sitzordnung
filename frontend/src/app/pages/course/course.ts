@@ -7,6 +7,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import {
   ChangeDetectionStrategy,
+  ElementRef,
   Component,
   HostListener,
   OnDestroy,
@@ -15,6 +16,7 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -190,6 +192,7 @@ export class CoursePage implements OnDestroy {
   readonly columns = signal(8);
 
   readonly maxPlans = 2;
+  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   readonly fullName = fullName;
   readonly initials = initials;
 
@@ -590,15 +593,38 @@ export class CoursePage implements OnDestroy {
 
   // --- Sitzordnungen verwalten ---
 
+  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen oder eine neue anlegen. */
+  onPlanSelect(select: HTMLSelectElement): void {
+    if (select.value === 'new') {
+      // Bis die neue da ist, bleibt die bisherige gewählt.
+      select.value = String(this.activePlanId() ?? '');
+      this.addPlan();
+      return;
+    }
+    this.selectPlan(Number(select.value));
+  }
+
   addPlan(): void {
     const courseId = this.courseId();
-    const name = this.plans().length === 0 ? 'Sitzordnung 1' : 'Sitzordnung 2';
+    // Der erste freie Name „Sitzordnung n“.
+    const names = new Set(this.plans().map((p) => p.name));
+    let n = 1;
+    while (names.has(`Sitzordnung ${n}`)) {
+      n++;
+    }
+    const name = `Sitzordnung ${n}`;
 
     this.api.createSeatingPlan(courseId, name, this.rows(), this.columns()).subscribe({
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
+        // Gleich benennen: Namensfeld markieren.
+        setTimeout(() => {
+          const input = this.nameInput()?.nativeElement;
+          input?.focus();
+          input?.select();
+        });
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
     });

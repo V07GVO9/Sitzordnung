@@ -78,7 +78,7 @@
           </div>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 1) {
+        @if (view() === 'sitzplan' && plans().length > 1 && !editMode()) {
           <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
             @for (plan of plans(); track plan.id) {
               <button
@@ -162,9 +162,24 @@
         @if (editMode()) {
           <section class="card toolbar">
             <div class="fields">
+              <label class="plan-field">
+                Sitzordnung
+                <select #planSelect (change)="onPlanSelect(planSelect)">
+                  @for (plan of plans(); track plan.id) {
+                    <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                      {{ plan.name }}
+                    </option>
+                  }
+                  <option disabled>──────────</option>
+                  <option value="new" [disabled]="plans().length >= maxPlans">
+                    ＋ Neue Sitzordnung{{ plans().length >= maxPlans ? ` (max. ${maxPlans})` : '' }}
+                  </option>
+                </select>
+              </label>
               <label class="name-field">
                 Name
                 <input
+                  #nameInput
                   type="text"
                   [value]="activePlan()?.name ?? ''"
                   (change)="renamePlan($any($event.target).value)"
@@ -220,11 +235,6 @@
               <button class="btn small" type="button" (click)="clearSeats()">
                 <app-icon name="eraser" /> Leeren
               </button>
-              @if (plans().length < maxPlans) {
-                <button class="btn small" type="button" (click)="addPlan()">
-                  <app-icon name="plus" /> Zweite Sitzordnung
-                </button>
-              }
               <button class="btn small danger" type="button" (click)="deletePlan()">
                 <app-icon name="trash-2" /> Löschen
               </button>
