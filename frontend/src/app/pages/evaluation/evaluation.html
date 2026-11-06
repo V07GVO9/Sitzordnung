@@ -103,6 +103,12 @@
               <button class="btn small" type="button" (click)="exportCsv('summary', true)">
                 <app-icon name="download" /> Alle Kurse
               </button>
+              <button class="btn small" type="button" (click)="exportLessonSheets(false)">
+                <app-icon name="file-down" /> Noten je Stunde
+              </button>
+              <button class="btn small" type="button" (click)="exportLessonSheets(true)">
+                <app-icon name="file-down" /> Noten je Stunde (alle Kurse)
+              </button>
             </div>
           </div>
 

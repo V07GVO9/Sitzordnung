@@ -2,6 +2,7 @@
 
 import { StudentReport } from '../models';
 import { escapeHtml, renderReports } from './report';
+import { renderLessonSheets } from './lesson-sheet';
 
 const report: StudentReport = {
   studentId: 1,
@@ -47,5 +48,57 @@ describe('renderReports', () => {
   it('legt je Schüler eine eigene Seite an', () => {
     const html = renderReports([report, { ...report, studentId: 2 }]);
     expect(html.match(/class="sheet"/g)?.length).toBe(2);
+  });
+});
+
+describe('renderLessonSheets', () => {
+  it('kennzeichnet automatische, händische und fehlende Noten', () => {
+    const html = renderLessonSheets(
+      [
+        {
+          courseId: 1,
+          schoolClassName: 'KDM261',
+          subjectName: '<LF3>',
+          from: '2026-09-21',
+          to: '2026-09-28',
+          dates: [
+            { date: '2026-09-21', rated: false },
+            { date: '2026-09-28', rated: true },
+          ],
+          students: [
+            {
+              studentId: 1,
+              firstName: 'Anna',
+              lastName: 'Adler',
+              average: 2,
+              cells: [
+                {
+                  date: '2026-09-21',
+                  rated: false,
+                  value: 0,
+                  autoGrade: 3,
+                  override: null,
+                  grade: 3,
+                },
+                {
+                  date: '2026-09-28',
+                  rated: true,
+                  value: 2,
+                  autoGrade: 1,
+                  override: { grade: null, reason: 'krank' },
+                  grade: null,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      '2026-10-05',
+    );
+
+    expect(html).toContain('&lt;LF3&gt;');
+    expect(html).toContain('<td class="num auto">3,0</td>');
+    expect(html).toContain('class="num absent" title="krank">f</td>');
+    expect(html).toContain('2 Unterrichtstage, davon 1 ohne Bewertung');
   });
 });
