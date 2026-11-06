@@ -1187,3 +1187,9 @@ app-password-field > input {
 app-password-field > input::-ms-reveal {
   display: none;
 }
+
+/* Platz für den Menüknopf links oben im Inhalt: Die erste Zeile einer Seite
+   rückt ein. Die mittige KW-Auswahl im Wochenplan braucht das nicht. */
+.app-main > router-outlet + * > .stack:first-child > :first-child {
+  margin-left: 3rem;
+}

@@ -66,9 +66,11 @@
   gap: 0.6rem;
   flex: 1 1 100%;
 
+  .plan-field,
   .name-field {
     flex: 1 1 100%;
 
+    select,
     input {
       width: 100%;
     }
@@ -89,6 +91,7 @@
   .fields {
     flex: 0 1 auto;
 
+    .plan-field,
     .name-field {
       flex: 0 1 14rem;
     }
@@ -630,4 +633,9 @@
 .nachtrag {
   color: var(--warning-text);
   font-weight: 600;
+}
+
+.plan-select {
+  width: auto;
+  max-width: 14rem;
 }

@@ -3,20 +3,9 @@
 } @else {
   <div class="shell">
     <div class="main-col">
-      <header class="titlebar" [class.editing]="isEdit()">
+      <!-- Die Titelleiste ist verborgen; der Menüknopf im Inhalt blendet sie mit dem Menü ein. -->
+      <header class="titlebar" [class.editing]="isEdit()" [class.open]="chromeOpen()" [attr.inert]="chromeOpen() ? null : ''">
         <div class="title-left">
-          <button
-            class="round-btn menu-btn"
-            type="button"
-            [class.locked]="menuLocked()"
-            [attr.aria-disabled]="menuLocked()"
-            [attr.aria-label]="menuLocked() ? 'Menü – zuerst eine Stunde wählen' : 'Menü'"
-            [title]="menuLocked() ? 'Zuerst im Wochenplan eine Stunde wählen' : 'Menü'"
-            [attr.aria-expanded]="menuOpen()"
-            (click)="openMenu()"
-          >
-            <app-icon name="menu" />
-          </button>
           <a
             class="round-btn"
             routerLink="/"
@@ -95,14 +84,27 @@
         </div>
       }
 
-      <main>
+      <main class="app-main">
+        <button
+          class="round-btn menu-btn"
+          type="button"
+          [class.locked]="menuLocked()"
+          [attr.aria-label]="menuLocked() ? 'Menü – zuerst eine Stunde wählen' : 'Menü'"
+          [title]="menuLocked() ? 'Zuerst im Wochenplan eine Stunde wählen' : 'Menü'"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="openMenu()"
+        >
+          <app-icon name="menu" />
+        </button>
         <router-outlet />
       </main>
     </div>
 
     <!-- Das Menü hinter den drei Balken - dunkel, wie in der Klassenmappe -->
+    @if (chromeOpen()) {
+      <div class="menu-scrim" (click)="closeMenu()" aria-hidden="true"></div>
+    }
     @if (menuOpen()) {
-      <div class="menu-scrim" (click)="menuOpen.set(false)" aria-hidden="true"></div>
       <div class="app-menu" role="dialog" aria-label="Menü">
         <div class="menu-head">
           <span class="brand-mark"><app-icon name="school" /></span>
@@ -112,7 +114,7 @@
             class="menu-close"
             type="button"
             aria-label="Menü schließen"
-            (click)="menuOpen.set(false)"
+            (click)="closeMenu()"
           >
             <app-icon name="x" />
           </button>

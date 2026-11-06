@@ -1,15 +1,16 @@
 # Betrieb auf einem Server (Hetzner Cloud)
 
-Diese Anleitung richtet zwei Umgebungen auf **einem** Server ein:
+Diese Anleitung richtet drei Umgebungen auf **einem** Server ein:
 
 | Umgebung | Branch | Beispieladresse |
 | --- | --- | --- |
 | Produktion | `master` | `sitzordnung.celik-soft.de` |
 | Test | `test` | `test.sitzordnung.celik-soft.de` |
+| Entwicklung | `develop` | `develop.sitzordnung.celik-soft.de` |
 
 Davor sitzt Caddy als Reverse-Proxy und holt die HTTPS-Zertifikate automatisch
 von Let's Encrypt. Beide Umgebungen haben **getrennte Daten** – auf der
-Testumgebung gehören keine echten Schülerdaten.
+Test- und Entwicklungsumgebung gehören keine echten Schülerdaten.
 
 ## Bevor es losgeht
 
@@ -37,11 +38,12 @@ Notieren Sie die IPv4-Adresse des Servers.
 
 ## 2. DNS eintragen
 
-Beim Domain-Anbieter zwei A-Einträge auf die IP des Servers setzen:
+Beim Domain-Anbieter drei A-Einträge auf die IP des Servers setzen:
 
 ```
 sitzordnung.celik-soft.de.        A    <IP des Servers>
 test.sitzordnung.celik-soft.de.   A    <IP des Servers>
+develop.sitzordnung.celik-soft.de.   A    <IP des Servers>
 ```
 
 Erst wenn die Namen auflösen, kann Caddy Zertifikate holen. Prüfen mit
@@ -119,8 +121,8 @@ docker compose -f deploy/docker-compose.yml logs app-prod | grep Startpasswort
 
 ## 6. Automatisch ausrollen einrichten
 
-Die Pipeline in `.github/workflows/deploy.yml` baut bei jedem Push auf `test`
-beziehungsweise `master` ein Image, lädt es in die GitHub-Registry und startet
+Die Pipeline in `.github/workflows/deploy.yml` baut bei jedem Push auf `develop`,
+`test` beziehungsweise `master` ein Image, lädt es in die GitHub-Registry und startet
 auf dem Server `deploy/deploy.sh`.
 
 Dafür im Repository unter **Settings → Secrets and variables → Actions** anlegen:
@@ -137,7 +139,7 @@ Legen Sie für die Pipeline am besten ein **eigenes Schlüsselpaar** an
 `/home/deploy/.ssh/authorized_keys` ein und hinterlegen Sie nur den privaten
 Teil als Secret.
 
-Zusätzlich unter **Settings → Environments** die Umgebungen `test` und
+Zusätzlich unter **Settings → Environments** die Umgebungen `develop`, `test` und
 `produktion` anlegen. Für `produktion` lohnt sich ein *Required reviewer* –
 dann wird erst nach Ihrer Bestätigung produktiv ausgerollt.
 
@@ -151,7 +153,7 @@ Von Hand geht das genauso:
 
 ```bash
 cd /home/deploy/sitzordnung
-./deploy/deploy.sh test    # oder: prod
+./deploy/deploy.sh test    # oder: prod, dev
 ```
 
 ## 7. Sicherungen einrichten
