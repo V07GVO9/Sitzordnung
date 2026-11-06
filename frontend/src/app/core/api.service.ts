@@ -5,6 +5,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
@@ -357,6 +358,10 @@ export class ApiService {
     reason?: string | null,
   ): Observable<AssessmentDetail> {
     return this.run(() => this.store.saveResults(id, results, reason));
+  }
+
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Observable<Assessment> {
+    return this.run(() => this.store.importAssessment(courseId, input));
   }
 
   setAssessmentReleased(id: number, released: boolean): Observable<Assessment> {

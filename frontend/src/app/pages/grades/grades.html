@@ -404,6 +404,153 @@
         </section>
 
         <section class="card">
+          <h2>Mitarbeit aus anderem Werkzeug übernehmen</h2>
+          @if (importReports(); as reports) {
+            <p class="muted small">
+              {{ importFileName() }}: {{ reports.length }} Seiten. Die Übersicht enthält nur Summen
+              je Fach, deshalb entsteht ein mündlicher Leistungsnachweis. Note = Durchschnitt der
+              Bewertungen mit den Mitarbeitsnoten aus dem Bewertungsschema (++
+              {{ formatGrade(b.scheme.participationGrades.plusPlus, 1) }} · +
+              {{ formatGrade(b.scheme.participationGrades.plus, 1) }} · o
+              {{ formatGrade(b.scheme.participationGrades.neutral, 1) }} · -
+              {{ formatGrade(b.scheme.participationGrades.minus, 1) }} · --
+              {{ formatGrade(b.scheme.participationGrades.minusMinus, 1) }}).
+            </p>
+            <div class="filter">
+              <label>
+                Fach in der Übersicht
+                <select
+                  [ngModel]="importLabel()"
+                  (ngModelChange)="selectImportLabel($event)"
+                  name="importLabel"
+                >
+                  @for (l of importLabels(); track l) {
+                    <option [value]="l">{{ l }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Art
+                <select
+                  [ngModel]="importForm().typeKey"
+                  (ngModelChange)="updateImportForm({ typeKey: $event })"
+                  name="importType"
+                >
+                  @for (t of oralTypes(); track t.key) {
+                    <option [value]="t.key">{{ t.label }} (Gewicht {{ t.weight }})</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Titel
+                <input
+                  type="text"
+                  [ngModel]="importForm().title"
+                  (ngModelChange)="updateImportForm({ title: $event })"
+                  name="importTitle"
+                />
+              </label>
+              <label>
+                Datum
+                <input
+                  type="date"
+                  [ngModel]="importForm().date"
+                  (ngModelChange)="updateImportForm({ date: $event })"
+                  name="importDate"
+                />
+              </label>
+            </div>
+            @if (oralTypes().length === 0) {
+              <p class="small">
+                <strong>Das Bewertungsschema hat keine mündliche Art.</strong> Bitte unter
+                „Bewertungsschema" eine anlegen, etwa „Mitarbeit (übernommen)".
+              </p>
+            }
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name in der Übersicht</th>
+                    <th>Bewertungen</th>
+                    <th class="num">Note</th>
+                    <th>Schüler in der App</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of importRows(); track row.index) {
+                    <tr [class.muted]="row.grade === null">
+                      <td>{{ row.name }}</td>
+                      <td>{{ row.summary || 'keine Bewertungen' }}</td>
+                      <td class="num">{{ formatGrade(row.grade, 1) }}</td>
+                      <td>
+                        @if (row.grade !== null) {
+                          <select
+                            [ngModel]="row.studentId === null ? '' : '' + row.studentId"
+                            (ngModelChange)="assignImport(row.index, $event)"
+                            [name]="'importStudent' + row.index"
+                          >
+                            <option value="">– nicht übernehmen –</option>
+                            @for (s of b.students; track s.studentId) {
+                              <option [value]="'' + s.studentId">
+                                {{ s.lastName }}, {{ s.firstName }}
+                              </option>
+                            }
+                          </select>
+                          @if (row.studentId !== null && importDuplicates().has(row.studentId)) {
+                            <span class="badge">doppelt</span>
+                          }
+                        } @else {
+                          <span class="muted small">wird übersprungen</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="actions">
+              <button
+                class="btn primary"
+                type="button"
+                [disabled]="
+                  importReady().length === 0 || importDuplicates().size > 0 || !importForm().typeKey
+                "
+                (click)="applyImport()"
+              >
+                {{ importReady().length }} Noten übernehmen
+              </button>
+              <button class="btn" type="button" (click)="cancelImport()">Abbrechen</button>
+            </div>
+            <p class="muted small">
+              Der Nachweis wird gleich freigegeben. Die Anzahlen stehen als Kommentar bei jeder
+              Note. Bitte das Gewicht der Art im Bewertungsschema prüfen.
+            </p>
+          } @else {
+            <p class="muted small">
+              PDF-Übersicht aus der Schul-App (eine Seite je Schüler mit den Anzahlen --, -, o, +,
+              ++ je Fach). Die Namen werden den Schülern dieses Kurses zugeordnet; vor dem Speichern
+              siehst du eine Vorschau.
+            </p>
+            <label class="btn">
+              @if (importBusy()) {
+                PDF wird gelesen …
+              } @else {
+                PDF auswählen
+              }
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                hidden
+                [disabled]="importBusy()"
+                (change)="importFileChosen($event)"
+              />
+            </label>
+          }
+        </section>
+
+        <section class="card">
           <h2>Leistungsnachweise im Zeitraum</h2>
           <div class="table-wrap">
             <table>

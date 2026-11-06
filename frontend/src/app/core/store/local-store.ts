@@ -14,6 +14,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
@@ -1479,6 +1480,59 @@ export class LocalStore {
     return this.toAssessment(record, this.schemeRecord(record.courseId));
   }
 
+  /**
+   * Legt einen Leistungsnachweis mit fertigen Noten an und gibt ihn frei - für
+   * Mitarbeitsnoten, die aus einem anderen Werkzeug übernommen werden. Alles
+   * wird vorab geprüft, damit kein halber Nachweis zurückbleibt.
+   */
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Assessment {
+    const course = this.requireCourse(courseId);
+    this.validateAssessment(courseId, { ...input, maxPoints: null });
+
+    if (input.results.length === 0) {
+      throw new AppError('Es gibt keine Noten, die übernommen werden können.');
+    }
+
+    const seen = new Set<number>();
+    for (const result of input.results) {
+      const student = this.requireStudent(result.studentId);
+      if (student.schoolClassId !== course.schoolClassId) {
+        throw new AppError('Mindestens ein Schüler gehört nicht zur Klasse dieses Kurses.');
+      }
+      if (seen.has(result.studentId)) {
+        throw new AppError(
+          `${student.firstName} ${student.lastName} ist mehreren Zeilen zugeordnet.`,
+        );
+      }
+      seen.add(result.studentId);
+      if (!isValidGrade(result.grade)) {
+        throw new AppError(
+          `Die Note für ${student.firstName} ${student.lastName} liegt nicht zwischen 1,0 und 6,0.`,
+        );
+      }
+    }
+
+    const assessment = this.createAssessment(courseId, {
+      typeKey: input.typeKey,
+      title: input.title,
+      date: input.date,
+      maxPoints: null,
+      comment: input.comment,
+    });
+    this.saveResults(
+      assessment.id,
+      input.results.map((r) => ({
+        studentId: r.studentId,
+        points: null,
+        grade: r.grade,
+        status: 'graded' as const,
+        comment: r.comment,
+      })),
+    );
+
+    return this.setAssessmentReleased(assessment.id, true);
+  }
+
   private logChange(
     courseId: number,
     studentId: number,
@@ -2045,7 +2099,16 @@ export class LocalStore {
     }
 
     const csv = new CsvBuilder();
-    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Mittelwert', 'Note');
+    csv.addRow(
+      'Klasse',
+      'Fach',
+      'Nachname',
+      'Vorname',
+      'Punkte',
+      'Anzahl Bewertungen',
+      'Mittelwert',
+      'Note',
+    );
 
     for (const course of courses) {
       const ratings = this.ratingsInRange(course.id, range);

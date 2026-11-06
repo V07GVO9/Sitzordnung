@@ -345,6 +345,28 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
 6. Änderungen nach der Freigabe brauchen eine **Begründung** (landet im
    Protokoll). **Freigabe zurücknehmen** und **Löschen** sind möglich.
 
+### Mitarbeit aus anderem Werkzeug übernehmen (PDF)
+
+Für Mitarbeitsübersichten aus der Schul-App (PDF mit einer Seite je Schüler und
+den Anzahlen `--`, `-`, `o`, `+`, `++` je Fach):
+
+1. Im Kurs unter **Noten → Leistungsnachweise** bei *Mitarbeit aus anderem
+   Werkzeug übernehmen* **PDF auswählen**.
+2. **Fach in der Übersicht** prüfen (z. B. „LF3 B104" für den Kurs LF3) sowie
+   **Art** (nur mündliche Arten), **Titel** und **Datum** (Ende des Zeitraums).
+3. Die Vorschau zeigt je Name die Bewertungen, die errechnete Note und den
+   zugeordneten Schüler. Rollenkürzel wie *KS1* oder *KV2* werden entfernt.
+   Nicht erkannte Namen von Hand zuordnen oder *nicht übernehmen* lassen;
+   Zeilen ohne Bewertungen werden übersprungen.
+4. **Noten übernehmen** – es entsteht ein freigegebener, mündlicher
+   Leistungsnachweis. Die Anzahlen stehen als Bemerkung bei jeder Note.
+
+Note = Durchschnitt der Bewertungen mit den Mitarbeitsnoten des Schemas
+(Standard ++ 1,0 · + 2,0 · o 3,0 · − 4,0 · −− 5,0), eine Nachkommastelle.
+Die Übersicht enthält nur Summen, keine einzelnen Stunden – deshalb wird kein
+Eintrag je Doppelstunde erzeugt. Das **Gewicht** der gewählten Art im
+Bewertungsschema prüfen.
+
 ### Mitarbeit je Doppelstunde
 
 - Eine Doppelstunde zählt, sobald an dem Tag im Kurs jemand bewertet wurde.
