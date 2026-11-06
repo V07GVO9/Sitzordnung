@@ -457,7 +457,8 @@ describe('LocalStore - Export', () => {
     const content = await result.blob.text();
 
     expect(result.fileName).toContain('10a-Mathematik');
-    expect(content).toContain('Musterfrau;Anna;2;1;');
+    expect(content).toContain('Musterfrau;Anna;1;1;1,00');
+    expect(content).not.toContain('Punkte');
   });
 
   it('schreibt jede Bewertung einzeln', async () => {
@@ -468,7 +469,7 @@ describe('LocalStore - Export', () => {
     const content = await store.exportRatings(course.id).blob.text();
 
     expect(content).toContain('31.08.2026');
-    expect(content).toContain('--');
+    expect(content).toContain('--;5,0;');
     expect(content).toContain('stört');
   });
 

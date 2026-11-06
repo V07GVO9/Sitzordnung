@@ -67,6 +67,7 @@ import {
   combineGrades,
   formatGrade,
   lastRatingPerDay,
+  lessonGradeFor,
   gradeFromPercent,
   isValidGrade,
   participationLessons,
@@ -905,11 +906,14 @@ export class LocalStore {
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
     const lessonCount = LocalStore.lessonCount(ratings);
+    const scheme = this.schemeRecord(courseId);
+    const dates = this.lessonDates(courseId, range);
 
     // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
       const perDay = lastRatingPerDay(ratings.filter((r) => r.studentId === s.id));
       const points = LocalStore.sumOf(perDay);
+      const lessonGrades = this.participationFor(courseId, s.id, dates, scheme).map((l) => l.grade);
 
       return {
         studentId: s.id,
@@ -920,6 +924,8 @@ export class LocalStore {
         average: lessonCount ? points / lessonCount : null,
         pointsToday: perDay.get(today) ?? 0,
         grade: resolveGrade(scale, points),
+        participationGrade: average(lessonGrades),
+        countedLessons: lessonGrades.filter((g) => g !== null).length,
       };
     });
 
@@ -2139,7 +2145,7 @@ export class LocalStore {
       'Nachname',
       'Vorname',
       'Bewertung',
-      'Punkte',
+      'Note',
       'Kommentar',
     );
 
@@ -2171,7 +2177,10 @@ export class LocalStore {
         row.student?.lastName,
         row.student?.firstName,
         LocalStore.symbol(row.rating.value),
-        row.rating.value,
+        formatGrade(
+          lessonGradeFor(this.schemeRecord(row.rating.courseId).participationGrades, row.rating.value),
+          1,
+        ),
         row.rating.comment,
       );
     }
@@ -2199,20 +2208,18 @@ export class LocalStore {
       'Fach',
       'Nachname',
       'Vorname',
-      'Punkte',
-      'Anzahl Bewertungen',
-      'Mittelwert',
-      'Note',
+      'Doppelstunden',
+      'davon gezählt',
+      'Mitarbeitsnote',
     );
 
     for (const course of courses) {
-      const ratings = this.ratingsInRange(course.id, range);
-      const scale = effectiveScale(this.database.gradeScales, course.id);
-      const lessonCount = LocalStore.lessonCount(ratings);
+      const scheme = this.schemeRecord(course.id);
+      const dates = this.lessonDates(course.id, range);
 
       for (const student of this.studentsOfCourse(course.id)) {
-        const points = LocalStore.sumOf(
-          lastRatingPerDay(ratings.filter((r) => r.studentId === student.id)),
+        const grades = this.participationFor(course.id, student.id, dates, scheme).map(
+          (l) => l.grade,
         );
 
         csv.addRow(
@@ -2220,10 +2227,9 @@ export class LocalStore {
           course.subjectName,
           student.lastName,
           student.firstName,
-          points,
-          lessonCount,
-          lessonCount ? formatGrade(points / lessonCount, 2) : '',
-          resolveGrade(scale, points),
+          dates.length,
+          grades.filter((g) => g !== null).length,
+          average(grades) === null ? '' : formatGrade(average(grades), 2),
         );
       }
     }

@@ -29,7 +29,7 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
-| Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
+| Export | Mitarbeitsnoten und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
 | Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
 
 ## Noten

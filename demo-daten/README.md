@@ -26,7 +26,7 @@ Enthalten (Stand 06.11.2026):
   Projektmanagement KDM12 mit 40 % schriftlich
 - einige von Hand gesetzte Mitarbeitsnoten („fehlte") samt Protokolleinträgen
 
-Gut zum Ausprobieren: *Auswertung* (Punktestand/Einzelbewertungen als CSV),
+Gut zum Ausprobieren: *Auswertung* (Mitarbeitsnoten/Einzelbewertungen als CSV),
 *Kurs → Noten* (Übersicht, Notenbögen, Protokoll, Notenübersicht als CSV).
 
 Neu erzeugen: `node demo-daten/demo-datenbestand-erzeugen.mjs`

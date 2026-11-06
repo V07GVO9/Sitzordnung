@@ -115,13 +115,13 @@ export class EvaluationPage {
 
     this.api.getScoreboard(courseId, this.range).subscribe({
       next: (board) => this.scoreboard.set(board),
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+      error: (err) => this.toasts.error(err, 'Die Mitarbeitsnoten konnten nicht geladen werden.'),
     });
   }
 
-  /** Mittelwert mit einer Nachkommastelle, etwa 0,7 - ohne Unterricht ein Strich. */
+  /** Mitarbeitsnote mit zwei Nachkommastellen, etwa 2,45 - ohne Unterricht ein Strich. */
   formatAverage(value: number | null): string {
-    return formatGrade(value, 1);
+    return formatGrade(value, 2);
   }
 
   refreshScoreboard(): void {

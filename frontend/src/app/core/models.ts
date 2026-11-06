@@ -129,6 +129,13 @@ export interface StudentScore {
   average: number | null;
   pointsToday: number;
   grade: string | null;
+  /**
+   * Mitarbeitsnote: Durchschnitt der Noten je Doppelstunde (++ = 1 ... −− = 5,
+   * laut Bewertungsschema). null, wenn keine Stunde zählt.
+   */
+  participationGrade: number | null;
+  /** Doppelstunden, die in die Mitarbeitsnote eingehen (ohne „fehlte“). */
+  countedLessons: number;
   /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
   currentLessonValue: number | null;
 }

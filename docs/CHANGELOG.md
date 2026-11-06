@@ -18,6 +18,10 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   mit Vorschau vor dem Speichern.
 
 **Geändert**
+- **Auswertung zeigt Noten statt Punkte:** Die Tabelle und die CSV-Exporte
+  zeigen je Schüler die **Mitarbeitsnote** (Durchschnitt der Doppelstunden,
+  ++ = 1 · + = 2 · 0 = 3 · − = 4 · −− = 5). Punkte und Punkte-Mittelwert
+  entfallen dort; die Einzelbewertungen enthalten statt der Punkte die Note.
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
 - Die **Titelleiste ist ausgeblendet** und erscheint am Rechner, sobald die Maus an

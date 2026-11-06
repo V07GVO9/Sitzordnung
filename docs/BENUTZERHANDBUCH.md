@@ -418,15 +418,18 @@ einzeln verschicken – nie als Klassenliste.
 
 Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
 
-### Reiter „Punkte & Export“
+### Reiter „Mitarbeit & Export“
 
 1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
    **Von/Bis** (leer = gesamter Zeitraum).
-2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
+2. Tabelle: Name, gezählte Doppelstunden, **Mitarbeitsnote** – der Durchschnitt
+   der Noten je Doppelstunde (++ = 1, + = 2, ohne Bewertung 3, − = 4, −− = 5;
+   einstellbar im Bewertungsschema). „fehlte“ zählt nicht. Punkte werden hier
+   nicht angezeigt.
 3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – das gewählte Fach,
-   - **Einzelbewertungen** – jede Bewertung einzeln,
-   - **Alle Kurse** – Punktestände aller Kurse.
+   - **Mitarbeitsnoten (CSV)** – das gewählte Fach,
+   - **Einzelbewertungen** – jede Bewertung einzeln mit ihrer Note,
+   - **Alle Kurse** – Mitarbeitsnoten aller Kurse.
 
 ### Reiter „Notenschlüssel“ *(Bearbeitungsmodus)*
 
