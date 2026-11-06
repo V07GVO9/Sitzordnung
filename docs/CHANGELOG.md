@@ -11,6 +11,9 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 06.11.2026
 
 **Neu**
+- **Automatische Sperre:** Nach 15 Minuten ohne Eingabe schließt sich der
+  Datenbestand. Ungesicherte Änderungen bleiben verschlüsselt im Browser und
+  kommen beim erneuten Öffnen derselben Datei zurück.
 - **Mitarbeit aus anderem Werkzeug übernehmen:** Unter *Noten →
   Leistungsnachweise* lässt sich die PDF-Mitarbeitsübersicht der Schul-App
   einlesen. Je Fach entsteht ein mündlicher Leistungsnachweis; die Note ist der
@@ -18,6 +21,10 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   mit Vorschau vor dem Speichern.
 
 **Geändert**
+- **Stärkere Verschlüsselung:** Neue und neu gespeicherte Dateien nutzen
+  600 000 statt 310 000 Runden zur Schlüsselableitung. Ältere Dateien lassen
+  sich weiter öffnen.
+- Die **OneDrive-Anmeldung** gilt nur noch bis zum Schließen des Tabs.
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
 - Die **Titelleiste ist ausgeblendet** und erscheint am Rechner, sobald die Maus an

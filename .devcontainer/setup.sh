@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wird von Codespaces einmal nach dem Erstellen des Containers ausgeführt:
-# Abhängigkeiten holen und das Frontend ins wwwroot des Backends bauen.
+# Abhängigkeiten holen und das Frontend nach frontend/dist bauen.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

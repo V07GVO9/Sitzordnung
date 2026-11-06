@@ -8,6 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { createEmptyDatabase } from './database';
 import { ConfirmService } from '../ui/confirm.service';
 import { FileHandle, SaveConflictError } from './file-system';
+import { readAutosave } from './browser-storage';
 import { LocalStore } from './local-store';
 import { OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
@@ -538,6 +539,49 @@ describe('VaultService', () => {
 
       expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a', '10b']);
       expect(store.hasUnsavedChanges()).toBeTrue();
+    });
+  });
+
+  describe('VaultService - Sperre bei Untätigkeit', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+
+    beforeEach(async () => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+      await oeffne(vault, null);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+    });
+
+    it('schließt den Bestand und meldet die Sperre', async () => {
+      await vault.lock();
+
+      expect(store.isOpen()).toBeFalse();
+      expect(vault.lockedByIdle()).toBeTrue();
+      expect((vault as unknown as { password: string | null }).password).toBeNull();
+    });
+
+    it('legt ungesicherte Änderungen verschlüsselt im Zwischenspeicher ab', async () => {
+      store.createClass('BFI10A');
+      const name = vault.fileName();
+      await vault.lock();
+
+      const entry = await readAutosave(name);
+      expect(entry?.dirty).toBeTrue();
+      expect(entry?.content).not.toContain('BFI10A');
+      const restored = await decryptDatabase(entry!.content, PASSWORT);
+      expect(restored.schoolClasses.map((c) => c.name)).toEqual(['BFI10A']);
+    });
+
+    it('hebt die Meldung beim nächsten Öffnen wieder auf', async () => {
+      await vault.lock();
+      await vault.createNew(PASSWORT);
+
+      expect(vault.lockedByIdle()).toBeFalse();
     });
   });
 });

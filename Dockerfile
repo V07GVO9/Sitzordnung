@@ -9,7 +9,8 @@ RUN npm run build
 # Statischer File Server - nur die dist-Dateien servieren
 FROM node:22-bookworm-slim
 WORKDIR /app
-RUN npm install -g serve
+# Feste Fassung, damit kein ungeprüftes Update mit ins Image rutscht.
+RUN npm install -g serve@14.2.6
 COPY --from=frontend /build/frontend/dist ./dist
 
 USER node

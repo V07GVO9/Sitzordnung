@@ -75,9 +75,11 @@ export class OneDriveService {
           authority: `https://login.microsoftonline.com/${ONEDRIVE_CONFIG.tenant}`,
           redirectUri: location.origin + AUTH_REDIRECT_PATH,
         },
-        // Die Anmeldung soll ein Neuladen überstehen. Sie gibt nur Zugriff auf
-        // OneDrive - der Datenbestand bleibt ohne Passwort verschlossen.
-        cache: { cacheLocation: lib.BrowserCacheLocation.LocalStorage },
+        // Die Anmeldung liegt nur im sessionStorage dieses Tabs: Sie übersteht
+        // ein Neuladen, ist aber nach dem Schließen weg und lässt sich nicht
+        // dauerhaft aus dem Browser auslesen. Ist die Microsoft-Sitzung noch
+        // aktiv, meldet MSAL beim nächsten Mal still wieder an.
+        cache: { cacheLocation: lib.BrowserCacheLocation.SessionStorage },
       }),
     );
     return this.client;

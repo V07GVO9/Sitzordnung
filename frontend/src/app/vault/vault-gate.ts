@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
 import { OneDriveFile, OneDriveService } from '../core/store/onedrive.service';
 import { isStrongPassword } from '../core/store/password-policy';
-import { VaultService } from '../core/store/vault.service';
+import { IDLE_LOCK_MS, VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
 import { Icon } from '../core/ui/icon';
 import { ConfirmService } from '../core/ui/confirm.service';
@@ -45,6 +45,8 @@ export class VaultGate {
 
   /** Der gemerkte Bestand - und ob er gerade von selbst geöffnet wird. */
   readonly rememberedFile = this.vault.rememberedFile;
+  readonly lockedByIdle = this.vault.lockedByIdle;
+  readonly idleMinutes = IDLE_LOCK_MS / 60_000;
   readonly autoOpening = signal(false);
   /** Warum das Öffnen des gemerkten Bestands zuletzt nicht geklappt hat. */
   readonly rememberedError = signal<string | null>(null);
