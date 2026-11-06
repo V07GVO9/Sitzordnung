@@ -16,18 +16,18 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # Gleiche Prüfung wie bei Pull Requests (ci.yml). Nichts wird ausgerollt,
+  # was die Tests nicht besteht. Das Docker-Image baut danach "bauen".
+  # Die Rechte braucht der (hier übersprungene) Merge-Job in ci.yml -
+  # GitHub verlangt sie trotzdem beim Aufruf.
   testen:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      # Nichts wird ausgerollt, was die Tests nicht besteht.
-      - name: Backend testen
-        run: dotnet test backend/Sitzordnung.sln --configuration Release
+    uses: ./.github/workflows/ci.yml
+    with:
+      docker-bauen: false
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
 
   bauen:
     needs: testen
@@ -81,4 +81,5 @@ jobs:
             git checkout ${{ github.ref_name }}
             git reset --hard origin/${{ github.ref_name }}
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            ./deploy/deploy.sh ${{ github.ref_name == 'master' && 'prod' || github.ref_name == 'develop' && 'dev' || 'test' }}
+            # Genau das Image dieses Commits ausrollen (eindeutig, leicht zurückzurollen).
+            ./deploy/deploy.sh ${{ github.ref_name == 'master' && 'prod' || github.ref_name == 'develop' && 'dev' || 'test' }} ${{ github.sha }}
