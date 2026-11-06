@@ -10,6 +10,13 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ## 06.11.2026
 
+**Neu**
+- **Mitarbeit aus anderem Werkzeug übernehmen:** Unter *Noten →
+  Leistungsnachweise* lässt sich die PDF-Mitarbeitsübersicht der Schul-App
+  einlesen. Je Fach entsteht ein mündlicher Leistungsnachweis; die Note ist der
+  Durchschnitt der Bewertungen (++ bis −−). Namen werden automatisch zugeordnet,
+  mit Vorschau vor dem Speichern.
+
 **Geändert**
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.

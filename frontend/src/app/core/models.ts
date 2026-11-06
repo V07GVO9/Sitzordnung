@@ -352,6 +352,15 @@ export interface AssessmentInput {
   comment: string | null;
 }
 
+/** Ein Leistungsnachweis mit fertigen Noten - etwa aus einem anderen Werkzeug übernommen. */
+export interface ImportedAssessmentInput {
+  typeKey: string;
+  title: string;
+  date: string;
+  comment: string | null;
+  results: { studentId: number; grade: number; comment: string | null }[];
+}
+
 export interface AssessmentResultInput {
   studentId: number;
   points: number | null;

@@ -345,6 +345,61 @@ describe('Quartalsnoten', () => {
   });
 });
 
+describe('LocalStore - Übernahme aus anderem Werkzeug', () => {
+  function oralKey(store: LocalStore, courseId: number): string {
+    return store.getScheme(courseId).types.find((t) => t.area === 'oral')!.key;
+  }
+
+  it('legt einen freigegebenen Nachweis mit den Noten an', () => {
+    const { store, course, anna, ben } = setup();
+
+    const assessment = store.importAssessment(course.id, {
+      typeKey: oralKey(store, course.id),
+      title: 'Mitarbeit (übernommen) LF3',
+      date: '2026-11-05',
+      comment: 'Übernommen aus KDM261.pdf',
+      results: [
+        { studentId: anna.id, grade: 2.6, comment: '1× ++, 2× +, 3× o, 1× -' },
+        { studentId: ben.id, grade: 2, comment: '6× +' },
+      ],
+    });
+
+    expect(assessment.released).toBeTrue();
+    expect(assessment.area).toBe('oral');
+    const detail = store.getAssessmentDetail(assessment.id);
+    const annaResult = detail.results.find((r) => r.studentId === anna.id)!;
+    expect(annaResult.grade).toBe(2.6);
+    expect(annaResult.comment).toBe('1× ++, 2× +, 3× o, 1× -');
+    expect(store.getGradeChanges(course.id)).toEqual([]);
+  });
+
+  it('legt bei Fehlern nichts an', () => {
+    const { store, course, anna } = setup();
+    const other = store.createClass('BFI10A');
+    const stranger = store.createStudent(other.id, 'Fremd', 'Person');
+
+    const attempt = (results: { studentId: number; grade: number; comment: null }[]) => () =>
+      store.importAssessment(course.id, {
+        typeKey: oralKey(store, course.id),
+        title: 'Mitarbeit',
+        date: '2026-11-05',
+        comment: null,
+        results,
+      });
+
+    expect(attempt([{ studentId: anna.id, grade: 7, comment: null }])).toThrowError(AppError);
+    expect(attempt([{ studentId: stranger.id, grade: 2, comment: null }])).toThrowError(AppError);
+    expect(
+      attempt([
+        { studentId: anna.id, grade: 2, comment: null },
+        { studentId: anna.id, grade: 3, comment: null },
+      ]),
+    ).toThrowError(AppError);
+    expect(attempt([])).toThrowError(AppError);
+    expect(store.getAssessments(course.id)).toEqual([]);
+  });
+});
+
 describe('LocalStore - Noten je Stunde', () => {
   it('zeigt jeden Unterrichtstag - auch ohne Bewertung - mit automatischer Note', () => {
     const { store, course, anna, ben } = setup();
