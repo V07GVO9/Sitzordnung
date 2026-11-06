@@ -20,6 +20,7 @@ import {
   CurrentLesson,
   DayOfWeek,
   GradeBook,
+  LessonSheet,
   GradeChange,
   GradeReport,
   GradeScale,
@@ -85,6 +86,8 @@ import {
   toTimeKey,
 } from './time';
 import { parseTimetableIcs } from './timetable-import';
+import { freeDayReason } from './school-calendar';
+import { renderLessonSheets } from './lesson-sheet';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 export interface DateRange {
@@ -1931,6 +1934,98 @@ export class LocalStore {
         `noten-${LocalStore.fileNamePart(book.schoolClassName)}-` +
         `${LocalStore.fileNamePart(book.subjectShortName || book.subjectName)}-` +
         `${toDateKey(this.clock.now())}.csv`,
+    };
+  }
+
+  // --- Stundenübersicht --------------------------------------------------
+
+  /**
+   * Die Unterrichtstage eines Kurses laut Stundenplan - ohne Feiertage und
+   * Ferien, höchstens bis heute. Ohne Startdatum ab Beginn des Schuljahres
+   * (1. August) bzw. ab der ersten Bewertung, falls die früher liegt.
+   */
+  private scheduledDates(courseId: number, range?: DateRange): string[] {
+    const weekdays = new Set(
+      this.database.timetableEntries.filter((e) => e.courseId === courseId).map((e) => e.dayOfWeek),
+    );
+    if (weekdays.size === 0) {
+      return [];
+    }
+
+    const now = this.clock.now();
+    const today = toDateKey(now);
+    const yearStart = `${now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1}-08-01`;
+    const firstRating = this.lessonDates(courseId)[0];
+    const from =
+      range?.from || (firstRating && firstRating < yearStart ? firstRating : yearStart);
+    const to = range?.to && range.to < today ? range.to : today;
+
+    const dates: string[] = [];
+    const [y, m, d] = from.split('-').map(Number);
+    for (const day = new Date(y, m - 1, d); toDateKey(day) <= to; day.setDate(day.getDate() + 1)) {
+      const key = toDateKey(day);
+      if (weekdays.has(day.getDay() as DayOfWeek) && freeDayReason(key) === null) {
+        dates.push(key);
+      }
+    }
+    return dates;
+  }
+
+  /**
+   * Je Kurs eine Übersicht: für jeden Unterrichtstag die Mitarbeitsnote jedes
+   * Schülers - auch die automatische Note, wenn er nicht bewertet wurde.
+   */
+  getLessonSheets(courseId: number | null, range?: DateRange): LessonSheet[] {
+    const courses = this.getCourses().filter((c) => courseId === null || c.id === courseId);
+    if (courses.length === 0) {
+      throw new AppError('Es gibt keinen passenden Kurs zum Exportieren.');
+    }
+
+    return courses.map((course) => {
+      const scheme = this.schemeRecord(course.id);
+      const ratedDates = new Set(this.lessonDates(course.id, range));
+      const dates = [...new Set([...this.scheduledDates(course.id, range), ...ratedDates])].sort();
+      const ratings = this.ratingsInRange(course.id, range);
+
+      return {
+        courseId: course.id,
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        from: range?.from || dates[0] || null,
+        to: range?.to || dates.at(-1) || null,
+        dates: dates.map((date) => ({ date, rated: ratedDates.has(date) })),
+        students: this.studentsOfCourse(course.id).map((student) => {
+          const rated = new Set(
+            ratings.filter((r) => r.studentId === student.id).map((r) => r.lessonDate),
+          );
+          const lessons = this.participationFor(course.id, student.id, dates, scheme);
+
+          return {
+            studentId: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            cells: lessons.map((l) => ({ ...l, rated: rated.has(l.date) })),
+            average: average(lessons.map((l) => l.grade)),
+          };
+        }),
+      };
+    });
+  }
+
+  /** Die Stundenübersicht als druckfertiges HTML - je Kurs eine Seite. */
+  exportLessonSheets(courseId: number | null, range?: DateRange): { blob: Blob; fileName: string } {
+    const sheets = this.getLessonSheets(courseId, range);
+    const suffix =
+      sheets.length === 1
+        ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
+          LocalStore.fileNamePart(sheets[0].subjectName)
+        : 'alle-kurse';
+
+    return {
+      blob: new Blob([renderLessonSheets(sheets, toDateKey(this.clock.now()))], {
+        type: 'text/html;charset=utf-8',
+      }),
+      fileName: `noten-je-stunde-${suffix}-${toDateKey(this.clock.now())}.html`,
     };
   }
 

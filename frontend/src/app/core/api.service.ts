@@ -438,6 +438,14 @@ export class ApiService {
     });
   }
 
+  /** Die Noten je Unterrichtstag als HTML - je Kurs eine Druckseite. */
+  exportLessonSheets(courseId: number | null, range?: DateRange): Observable<void> {
+    return this.fromPromise(() => {
+      const result = this.store.exportLessonSheets(courseId, range);
+      return download(result.blob, result.fileName, { share: true });
+    });
+  }
+
   getNeighbourLessonSlot(courseId: number, lesson: any, direction: string): Observable<any> {
     return throwError(() => new Error('Navigationsfunktion nicht verfügbar'));
   }
