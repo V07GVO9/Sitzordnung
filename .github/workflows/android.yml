@@ -12,6 +12,11 @@ on:
 permissions:
   contents: write
 
+# Ein neuerer Push auf denselben Branch bricht den älteren Bau ab.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -30,6 +35,9 @@ jobs:
           java-version: "21"
 
       # Das Android-SDK ist auf ubuntu-latest bereits installiert (ANDROID_HOME).
+
+      # Cacht Gradle-Abhängigkeiten und Build-Ergebnisse zwischen den Läufen.
+      - uses: gradle/actions/setup-gradle@v4
 
       - name: Web-App bauen und in das Android-Projekt kopieren
         working-directory: frontend
@@ -64,7 +72,10 @@ jobs:
           name: Sitzordnung-apk
           path: Sitzordnung.apk
 
+      # Releases nur aus master und test. Andere Branches liefern die APK
+      # nur als Artefakt (unter "Actions" beim jeweiligen Lauf).
       - name: Als Release veröffentlichen
+        if: github.ref_name == 'master' || github.ref_name == 'test'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-${{ github.run_number }}
