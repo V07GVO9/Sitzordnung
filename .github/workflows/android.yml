@@ -1,9 +1,10 @@
 name: Android-App
 
-# Baut die Android-App (APK) und stellt sie als GitHub-Release zum Download bereit.
+# Baut die Android-App (APK) bei jedem Push auf master und stellt sie als
+# GitHub-Release bereit. Für andere Branches nur von Hand (workflow_dispatch).
 on:
   push:
-    branches: [master, test, "ccr-*", "claude/**"]
+    branches: [master]
     paths:
       - "frontend/**"
       - ".github/workflows/android.yml"
@@ -72,10 +73,10 @@ jobs:
           name: Sitzordnung-apk
           path: Sitzordnung.apk
 
-      # Releases nur aus master und test. Andere Branches liefern die APK
-      # nur als Artefakt (unter "Actions" beim jeweiligen Lauf).
+      # Releases nur aus master. Ein manueller Lauf auf einem anderen Branch
+      # liefert die APK nur als Artefakt (unter "Actions" beim jeweiligen Lauf).
       - name: Als Release veröffentlichen
-        if: github.ref_name == 'master' || github.ref_name == 'test'
+        if: github.ref_name == 'master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-${{ github.run_number }}

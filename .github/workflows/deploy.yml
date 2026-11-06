@@ -1,11 +1,11 @@
 name: Ausrollen
 
-# develop -> Entwicklungsumgebung (develop.sitzordnung.celik-soft.de)
+# develop -> Entwicklungsumgebung: nur noch von Hand (workflow_dispatch)
 # test    -> Testumgebung
 # master  -> Produktivumgebung
 on:
   push:
-    branches: [master, test, develop]
+    branches: [master, test]
   workflow_dispatch:
 
 concurrency:

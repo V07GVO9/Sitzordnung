@@ -1,7 +1,7 @@
 name: Tests
 
-# Läuft bei Pull Requests. Für master, test und develop ruft "Ausrollen"
-# (deploy.yml) diesen Workflow selbst auf - so wird pro Push nur einmal getestet.
+# Läuft bei Pull Requests. Für master und test ruft "Ausrollen" (deploy.yml)
+# diesen Workflow selbst auf - so wird pro Push nur einmal getestet.
 on:
   pull_request:
   workflow_dispatch:
@@ -36,8 +36,10 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: Backend testen
-        run: dotnet test backend/Sitzordnung.sln --configuration Release
+      # Baut den Host (liefert nur noch die Angular-App aus). Das alte
+      # API-Testprojekt ist nicht mehr in der Solution - Tests gibt es hier keine.
+      - name: Backend bauen
+        run: dotnet build backend/Sitzordnung.sln --configuration Release
 
       # Das Docker-Image baut das Frontend selbst (npm ci + npm run build),
       # ein eigener Frontend-Schritt wäre doppelte Arbeit.
@@ -54,11 +56,30 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Unit-Tests des Frontends (Karma/Jasmine, headless Chrome).
+  # Läuft parallel zu build-und-test, verlängert die Wartezeit also kaum.
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend testen
+        working-directory: frontend
+        run: |
+          npm ci
+          npx ng test --watch=false --no-progress
+
   # Pull Requests in den Branch "test" werden automatisch genehmigt und gemerged,
   # sobald alle Tests grün sind. Nach "master" wird weiterhin von Hand freigegeben.
   # Nur für Branches aus diesem Repository (keine Forks, keine Entwürfe).
   automatisch-mergen-test:
-    needs: build-und-test
+    needs: [build-und-test, frontend-tests]
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'test' &&
@@ -83,8 +104,7 @@ jobs:
         run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge
 
       # Merges mit dem GITHUB_TOKEN lösen keine push-Workflows aus,
-      # daher Ausrollen und Android-App hier ausdrücklich starten.
-      - name: Ausrollen und Android-App starten
-        run: |
-          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref test
-          gh workflow run android.yml --repo "$GITHUB_REPOSITORY" --ref test
+      # daher das Ausrollen hier ausdrücklich starten. (Die Android-App wird
+      # nur noch aus master gebaut.)
+      - name: Ausrollen starten
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref test
