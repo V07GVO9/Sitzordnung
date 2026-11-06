@@ -428,22 +428,21 @@ export class ApiService {
    * Baut die CSV-Datei und bietet sie zum Herunterladen an. Früher zeigte ein
    * Link auf das Backend; jetzt entsteht die Datei im Browser.
    */
-  exportCsv(
-    kind: 'ratings' | 'summary',
-    courseId?: number | null,
-    range?: DateRange,
-  ): Observable<void> {
+  exportCsv(courseId?: number | null, range?: DateRange): Observable<void> {
     return this.fromPromise(() => {
-      const result =
-        kind === 'ratings'
-          ? this.store.exportRatings(courseId ?? null, range)
-          : this.store.exportSummary(courseId ?? null, range);
-
+      const result = this.store.exportSummary(courseId ?? null, range);
       return download(result.blob, result.fileName, { share: true });
     });
   }
 
-  /** Die Noten je Unterrichtstag als HTML - je Kurs eine Druckseite. */
+  /** Die Einzelbewertungen als druckfertiges HTML im Querformat. */
+  exportRatings(courseId: number | null, range?: DateRange): Observable<void> {
+    return this.fromPromise(() => {
+      const result = this.store.exportRatings(courseId, range);
+      return download(result.blob, result.fileName, { share: true });
+    });
+  }
+
   exportLessonSheets(courseId: number | null, range?: DateRange): Observable<void> {
     return this.fromPromise(() => {
       const result = this.store.exportLessonSheets(courseId, range);

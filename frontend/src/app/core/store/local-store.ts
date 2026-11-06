@@ -73,7 +73,7 @@ import {
   resultGrade,
   roundGrade,
 } from './assessment.logic';
-import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
+import { CsvBuilder } from './csv';
 import { effectiveScale, resolveGrade } from './grading.logic';
 import { quarterRange } from './quarter.logic';
 import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
@@ -89,6 +89,7 @@ import {
 import { parseTimetableIcs } from './timetable-import';
 import { freeDayReason } from './school-calendar';
 import { renderLessonSheets } from './lesson-sheet';
+import { RatingsSheet, renderRatingsSheets } from './ratings-sheet';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 export interface DateRange {
@@ -2113,72 +2114,62 @@ export class LocalStore {
       .replace(/^-+|-+$/g, '');
   }
 
-  private static symbol(value: number): CsvLiteral {
-    switch (value) {
-      case 2:
-        return new CsvLiteral('++');
-      case 1:
-        return new CsvLiteral('+');
-      case -1:
-        return new CsvLiteral('-');
-      case -2:
-        return new CsvLiteral('--');
-      default:
-        return new CsvLiteral(String(value));
-    }
-  }
-
-  /** Jede einzelne Bewertung als eigene Zeile. */
+  /**
+   * Die Einzelbewertungen als druckfertiges HTML im Querformat: je Kurs eine
+   * Tabelle, Schüler in den Zeilen, Bewertungstage in den Spalten.
+   */
   exportRatings(courseId: number | null, range?: DateRange): { blob: Blob; fileName: string } {
-    const csv = new CsvBuilder();
-    csv.addRow(
-      'Datum',
-      'Uhrzeit',
-      'Klasse',
-      'Fach',
-      'Nachname',
-      'Vorname',
-      'Bewertung',
-      'Punkte',
-      'Kommentar',
+    const courses = this.getCourses().filter(
+      (c) =>
+        (courseId === null || c.id === courseId) &&
+        (courseId !== null || this.ratingsInRange(c.id, range).length > 0),
     );
-
-    const rows = this.ratingsInRange(courseId, range)
-      .map((rating) => {
-        const course = this.database.courses.find((c) => c.id === rating.courseId);
-        const student = this.database.students.find((s) => s.id === rating.studentId);
-        return {
-          rating,
-          className: course ? this.className(course.schoolClassId) : '',
-          subjectName: course ? (this.subject(course.subjectId)?.name ?? '') : '',
-          student,
-        };
-      })
-      .sort(
-        (a, b) =>
-          a.className.localeCompare(b.className, 'de') ||
-          a.subjectName.localeCompare(b.subjectName, 'de') ||
-          a.rating.lessonDate.localeCompare(b.rating.lessonDate) ||
-          (a.student?.lastName ?? '').localeCompare(b.student?.lastName ?? '', 'de'),
-      );
-
-    for (const row of rows) {
-      csv.addRow(
-        new CsvDate(row.rating.lessonDate),
-        toTimeKey(new Date(row.rating.createdAt)),
-        row.className,
-        row.subjectName,
-        row.student?.lastName,
-        row.student?.firstName,
-        LocalStore.symbol(row.rating.value),
-        row.rating.value,
-        row.rating.comment,
-      );
+    if (courses.length === 0) {
+      throw new AppError('Es gibt keinen passenden Kurs zum Exportieren.');
     }
+
+    const sheets: RatingsSheet[] = courses.map((course) => {
+      // Nach Eingabe sortiert - die letzte Bewertung eines Tages zählt.
+      const ratings = this.ratingsInRange(course.id, range).sort((a, b) => a.id - b.id);
+      const dates = [...new Set(ratings.map((r) => r.lessonDate))].sort();
+
+      return {
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        from: range?.from || dates[0] || null,
+        to: range?.to || dates.at(-1) || null,
+        dates,
+        students: this.studentsOfCourse(course.id).map((student) => {
+          const own = ratings.filter((r) => r.studentId === student.id);
+          return {
+            firstName: student.firstName,
+            lastName: student.lastName,
+            cells: dates.map((date) =>
+              own
+                .filter((r) => r.lessonDate === date)
+                .map((r) => ({
+                  value: r.value,
+                  time: toTimeKey(new Date(r.createdAt)),
+                  comment: r.comment || null,
+                })),
+            ),
+            points: LocalStore.sumOf(lastRatingPerDay(own)),
+          };
+        }),
+      };
+    });
+
+    const suffix =
+      sheets.length === 1
+        ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
+          LocalStore.fileNamePart(sheets[0].subjectName)
+        : 'alle-kurse';
 
     return {
-      blob: csv.toBlob(),
-      fileName: `bewertungen-${toDateKey(this.clock.now())}.csv`,
+      blob: new Blob([renderRatingsSheets(sheets, toDateKey(this.clock.now()))], {
+        type: 'text/html;charset=utf-8',
+      }),
+      fileName: `bewertungen-${suffix}-${toDateKey(this.clock.now())}.html`,
     };
   }
 
