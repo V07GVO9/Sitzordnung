@@ -16,6 +16,13 @@
       </div>
     </div>
 
+    @if (lockedByIdle()) {
+      <p class="hint warn">
+        <app-icon name="lock" /> Nach {{ idleMinutes }} Minuten ohne Eingabe gesperrt. Ungesicherte
+        Änderungen kommen beim erneuten Öffnen derselben Datei zurück.
+      </p>
+    }
+
     @if (autoOpening()) {
       <p class="remembered muted">
         <app-icon name="loader-circle" /> Öffne „{{ rememberedFile() }}“ aus OneDrive …

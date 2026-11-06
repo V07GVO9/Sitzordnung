@@ -202,19 +202,18 @@ wird dafür nicht gebraucht.
 
 ### Als fertige Anwendung
 
-Der Angular-Build legt seine Dateien in `wwwroot` des Hosts ab, der sie dann
-ausliefert:
+Der Angular-Build legt seine Dateien in `frontend/dist` ab; `./start.sh`
+(bzw. `.\start.ps1`) baut sie bei Bedarf und liefert sie über den Host aus:
 
 ```bash
-cd frontend && npm install && npm run build
-cd ../backend/Sitzordnung.Host && dotnet run
+./start.sh
 ```
 
 Danach ist die Anwendung unter <http://localhost:5099> erreichbar.
 
 Der Host ist austauschbar: Er liefert nur die gebauten Dateien aus und bekommt
 die Daten nie zu sehen. Statt `dotnet run` genügt auch jeder andere Webserver,
-der auf `backend/Sitzordnung.Host/wwwroot` zeigt – etwa `npx serve`. Ein
+der auf `frontend/dist` zeigt – etwa `npx serve -s frontend/dist`. Ein
 Doppelklick auf `index.html` reicht dagegen nicht: Über `file://` sperrt der
 Browser das Nachladen der Programmteile.
 

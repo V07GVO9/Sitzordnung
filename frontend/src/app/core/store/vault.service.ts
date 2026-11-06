@@ -56,6 +56,18 @@ const AUTOSAVE_PREF_KEY = 'sitzordnung.autoSaveToFile';
 
 const DEFAULT_FILE_NAME = 'sitzordnung' + VAULT_EXTENSION;
 
+/**
+ * Nach so langer Untätigkeit sperrt sich der Bestand von selbst. Schützt
+ * Schülerdaten, wenn ein Rechner im Klassenraum unbeaufsichtigt bleibt.
+ */
+export const IDLE_LOCK_MS = 15 * 60_000;
+
+/** So oft wird geprüft, ob die Sperrfrist abgelaufen ist. */
+const IDLE_CHECK_MS = 30_000;
+
+/** Diese Eingaben zählen als Tätigkeit und schieben die Sperre hinaus. */
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+
 /** Prüfsumme einer Datei, um zu erkennen, ob sie anderswo geändert wurde. */
 async function fingerprint(content: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
@@ -118,6 +130,10 @@ export class VaultService {
 
   /** Von selbst geöffnet wird nur einmal je Seitenaufruf - nicht nach dem Schließen. */
   private autoOpenDone = false;
+  private lastActivity = Date.now();
+
+  /** Wurde der Bestand wegen Untätigkeit gesperrt? Die Startseite sagt es dann. */
+  readonly lockedByIdle = signal(false);
 
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
@@ -137,12 +153,68 @@ export class VaultService {
       }
     });
 
+    this.watchIdle();
+
     window.addEventListener('beforeunload', (event) => {
       if (this.store.isOpen() && this.store.hasUnsavedChanges()) {
         event.preventDefault();
         event.returnValue = '';
       }
     });
+  }
+
+  /** Sperrt den Bestand nach {@link IDLE_LOCK_MS} ohne Eingabe. */
+  private watchIdle(): void {
+    const touch = () => (this.lastActivity = Date.now());
+    for (const name of ACTIVITY_EVENTS) {
+      document.addEventListener(name, touch, { passive: true, capture: true });
+    }
+
+    // Per Intervall statt eines langen Timers: Ein Timer in einem Tab im
+    // Hintergrund oder im Ruhezustand läuft nicht zuverlässig weiter.
+    setInterval(() => {
+      if (this.store.isOpen() && Date.now() - this.lastActivity >= IDLE_LOCK_MS) {
+        void this.lock();
+      }
+    }, IDLE_CHECK_MS);
+  }
+
+  /**
+   * Sperrt den Bestand: Ungesicherte Änderungen landen verschlüsselt im
+   * Zwischenspeicher, dann wird das Passwort aus dem Speicher genommen.
+   * Beim nächsten Öffnen derselben Datei kommen die Änderungen zurück.
+   */
+  async lock(): Promise<void> {
+    if (!this.store.isOpen() || this.isSaving()) {
+      // Eine laufende Speicherung erst abwarten - die nächste Prüfung sperrt.
+      return;
+    }
+
+    if (this.autosaveTimer) {
+      clearTimeout(this.autosaveTimer);
+      this.autosaveTimer = null;
+    }
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+      this.fileAutosaveTimer = null;
+    }
+
+    try {
+      if (this.store.hasUnsavedChanges()) {
+        await this.writeAutosaveEntry();
+      }
+    } catch {
+      // Ohne Zwischenspeicher lieber offen lassen als Änderungen verlieren.
+      return;
+    }
+
+    this.password = null;
+    this.baseHash = null;
+    this.setHandle(null);
+    this.fileName.set(null);
+    this.lastSavedAt.set(null);
+    this.store.close();
+    this.lockedByIdle.set(true);
   }
 
   private watchChanges(): void {
@@ -253,6 +325,8 @@ export class VaultService {
 
     this.password = password;
     this.store.load(createEmptyDatabase());
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
 
     if (this.canWriteInPlace) {
       try {
@@ -356,6 +430,8 @@ export class VaultService {
     this.baseHash = await fingerprint(await blob.text());
     this.password = password;
     this.store.load(database);
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
     this.setHandle(handle);
     this.fileName.set(handle.name);
     this.lastSavedAt.set(new Date());
@@ -524,6 +600,8 @@ export class VaultService {
     this.setHandle(handle);
     this.fileName.set(name);
     this.store.load(database);
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
     this.lastSavedAt.set(null);
 
     if (pending) {
