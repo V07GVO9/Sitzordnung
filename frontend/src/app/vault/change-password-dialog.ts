@@ -1,3 +1,4 @@
+import { PasswordField } from '../core/ui/password-field';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,7 +23,7 @@ import { PasswordRules } from './password-rules';
 @Component({
   selector: 'app-change-password-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, Icon, PasswordRules, PasswordField],
   template: `
     <dialog
       #dialog
@@ -36,37 +37,43 @@ import { PasswordRules } from './password-rules';
 
           <label>
             Bisheriges Passwort
-            <input
-              type="password"
-              autocomplete="current-password"
-              [ngModel]="current()"
-              (ngModelChange)="current.set($event)"
-              name="current"
-              autofocus
-            />
+            <app-password-field [value]="current()">
+              <input #passwordInput
+                type="password"
+                autocomplete="current-password"
+                [ngModel]="current()"
+                (ngModelChange)="current.set($event)"
+                name="current"
+                autofocus
+              />
+            </app-password-field>
           </label>
 
           <label>
             Neues Passwort
-            <input
-              type="password"
-              autocomplete="new-password"
-              [ngModel]="next()"
-              (ngModelChange)="next.set($event)"
-              name="next"
-            />
+            <app-password-field [value]="next()">
+              <input #passwordInput
+                type="password"
+                autocomplete="new-password"
+                [ngModel]="next()"
+                (ngModelChange)="next.set($event)"
+                name="next"
+              />
+            </app-password-field>
           </label>
           <app-password-rules [password]="next()" />
 
           <label>
             Neues Passwort wiederholen
-            <input
-              type="password"
-              autocomplete="new-password"
-              [ngModel]="repeat()"
-              (ngModelChange)="repeat.set($event)"
-              name="repeat"
-            />
+            <app-password-field [value]="repeat()">
+              <input #passwordInput
+                type="password"
+                autocomplete="new-password"
+                [ngModel]="repeat()"
+                (ngModelChange)="repeat.set($event)"
+                name="repeat"
+              />
+            </app-password-field>
           </label>
           @if (repeat() !== '' && !matches()) {
             <p class="error">Die beiden Passwörter stimmen nicht überein.</p>

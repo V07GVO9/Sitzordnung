@@ -8,6 +8,32 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 06.11.2026
+
+**Geändert**
+- Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
+  dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
+- Die **Titelleiste ist ausgeblendet**; der Menüknopf ☰ sitzt links oben im Inhalt
+  auf Höhe der KW-Auswahl und zeigt Menü und Titelleiste zusammen. Der Seitenrand
+  ist halb so breit – mehr Platz für Sitzplan und Wochenplan.
+- Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
+
+## 05.11.2026
+
+**Geändert**
+- Automatisches Speichern schreibt jetzt **sofort nach jeder Änderung** in die
+  Datei (vorher etwa 3 Sekunden später) – und zusätzlich, sobald die App
+  verlassen oder in den Hintergrund geschaltet wird.
+- Im **Wochenplan** ist kein Fach mehr aktiv; Menü, Noten und Auswertung
+  beziehen sich erst wieder auf eine dort gewählte Stunde.
+
+**Behoben**
+- Änderungen, die genau während eines Speichervorgangs entstanden, galten als
+  gespeichert, standen aber noch nicht in der Datei.
+- Wird beim Anlegen eines neuen Datenbestands der Dateidialog abgebrochen,
+  entsteht kein Bestand mehr ohne Datei. So kann man nicht versehentlich an
+  einer ungespeicherten Datei arbeiten und später die alte Version öffnen.
+
 ## 29.10.2026
 
 **Geändert**

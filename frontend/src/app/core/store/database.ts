@@ -246,7 +246,6 @@ export interface Database {
 }
 
 /** Höchstens so viele Sitzordnungen sind je Kurs vorgesehen. */
-export const MAX_PLANS_PER_COURSE = 2;
 
 /**
  * Ein frischer, leerer Datenbestand - mit demselben Vorschlag für den

@@ -165,14 +165,16 @@
 
         <label>
           <span>Passwort</span>
-          <input
-            type="password"
-            [attr.autocomplete]="isCreating() ? 'new-password' : 'current-password'"
-            [ngModel]="password()"
-            (ngModelChange)="password.set($event)"
-            name="password"
-            autofocus
-          />
+          <app-password-field [value]="password()">
+            <input #passwordInput
+              type="password"
+              [attr.autocomplete]="isCreating() ? 'new-password' : 'current-password'"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              name="password"
+              autofocus
+            />
+          </app-password-field>
         </label>
 
         @if (isCreating()) {
@@ -180,13 +182,15 @@
 
           <label>
             <span>Passwort wiederholen</span>
-            <input
-              type="password"
-              autocomplete="new-password"
-              [ngModel]="passwordRepeat()"
-              (ngModelChange)="passwordRepeat.set($event)"
-              name="passwordRepeat"
-            />
+            <app-password-field [value]="passwordRepeat()">
+              <input #passwordInput
+                type="password"
+                autocomplete="new-password"
+                [ngModel]="passwordRepeat()"
+                (ngModelChange)="passwordRepeat.set($event)"
+                name="passwordRepeat"
+              />
+            </app-password-field>
           </label>
 
           @if (!passwordsMatch()) {

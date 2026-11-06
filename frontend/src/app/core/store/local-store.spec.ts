@@ -124,13 +124,14 @@ describe('LocalStore - Sitzordnung', () => {
     expect(store.createSeatingPlan(course.id, '', 5, 8).name).toBe('Sitzordnung 1');
   });
 
-  it('lässt höchstens zwei Sitzordnungen je Kurs zu', () => {
+  it('lässt beliebig viele Sitzordnungen je Kurs zu', () => {
     const store = setup();
     const { course } = withCourse(store);
-    store.createSeatingPlan(course.id, 'A', 5, 8);
-    store.createSeatingPlan(course.id, 'B', 5, 8);
+    for (const name of ['A', 'B', 'C', 'D']) {
+      store.createSeatingPlan(course.id, name, 5, 8);
+    }
 
-    expect(() => store.createSeatingPlan(course.id, 'C', 5, 8)).toThrowError(AppError);
+    expect(store.getSeatingPlans(course.id).length).toBe(4);
   });
 
   it('speichert die Belegung', () => {
@@ -358,7 +359,7 @@ describe('LocalStore - Bewertungen', () => {
     expect(() => store.undoLastRating(course.id, student.id)).toThrowError(AppError);
   });
 
-  it('rechnet Punkte, Anzahl und Note zusammen', () => {
+  it('zählt je Unterrichtseinheit nur die letzte Bewertung', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.rate(course.id, student.id, 2);
@@ -366,11 +367,11 @@ describe('LocalStore - Bewertungen', () => {
 
     const row = store.getScoreboard(course.id).students[0];
 
-    expect(row.points).toBe(4);
-    expect(row.ratingCount).toBe(2);
-    expect(row.pointsToday).toBe(4);
-    // Der mitgelieferte Standardschlüssel vergibt ab 4 Punkten die Note 3.
-    expect(row.grade).toBe('3');
+    // Beide Bewertungen fallen in dieselbe Unterrichtseinheit - es zählt nur die letzte.
+    expect(row.points).toBe(2);
+    expect(row.ratingCount).toBe(1);
+    expect(row.average).toBe(2);
+    expect(row.pointsToday).toBe(2);
   });
 
   it('führt einen Schüler ohne Bewertung mit null Punkten', () => {
@@ -382,6 +383,19 @@ describe('LocalStore - Bewertungen', () => {
 
     expect(rows.length).toBe(2);
     expect(rows.every((r) => r.ratingCount === 0 || r.points === 0)).toBe(true);
+  });
+
+  it('gibt allen Unbewerteten einer gehaltenen Stunde die 0', () => {
+    const store = setup();
+    const { schoolClass, course, student } = withCourse(store);
+    store.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.rate(course.id, student.id, 2);
+
+    const rows = store.getScoreboard(course.id).students;
+
+    expect(rows.map((r) => r.ratingCount)).toEqual([1, 1]);
+    expect(rows.find((r) => r.studentId !== student.id)!.points).toBe(0);
+    expect(rows.find((r) => r.studentId !== student.id)!.average).toBe(0);
   });
 
   it('grenzt den Punktestand auf einen Zeitraum ein', () => {

@@ -82,9 +82,9 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Titelleiste** | Verborgen – erscheint erst zusammen mit dem Menü über den Knopf ☰ links oben im Inhalt (auf Höhe der KW-Auswahl). Enthält den Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links oben im Inhalt; ein Klick zeigt Menü und Titelleiste, Klick daneben oder <kbd>Esc</kbd> blendet beides wieder aus. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -197,7 +197,7 @@ Kurs öffnen → Ansicht **Sitzplan** → in den **Bearbeitungsmodus** wechseln.
 | Funktion | Bedienung |
 | --- | --- |
 | Sitzordnung anlegen | **Sitzordnung anlegen** (wenn noch keine existiert) |
-| Zweite Sitzordnung | **Zweite Sitzordnung** – z. B. für einen anderen Raum. Max. zwei je Kurs; Umschalten über die Reiter mit den Plan-Namen |
+| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Beliebig viele je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert |
 | Name ändern | Feld **Name** |
 | Raster | **Reihen** und **Spalten** (je 1–20). Plätze außerhalb eines verkleinerten Rasters werden frei |
 | Platzieren | Schüler aus *Ohne Platz* per Drag and Drop auf einen Platz ziehen |
@@ -475,7 +475,7 @@ die Datei schreibt, müssen drei Dinge stimmen.
 2. Der Browser fragt, ob die Seite Änderungen an der Datei speichern darf.
 3. **„Änderungen speichern“** bzw. **„Zulassen“** klicken.
 
-Ab jetzt speichert die App etwa **3 Sekunden nach jeder Änderung** von selbst.
+Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Datei.
 
 **Schritt 4 (nur falls nötig): Den Schalter prüfen**
 

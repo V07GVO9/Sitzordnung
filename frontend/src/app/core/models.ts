@@ -123,7 +123,10 @@ export interface StudentScore {
   firstName: string;
   lastName: string;
   points: number;
+  /** Gehaltene Unterrichtseinheiten - bei allen Schülern des Kurses gleich. */
   ratingCount: number;
+  /** Mittelwert der Tagesbewertungen (ohne Bewertung 0); null ohne Unterricht. */
+  average: number | null;
   pointsToday: number;
   grade: string | null;
   /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */

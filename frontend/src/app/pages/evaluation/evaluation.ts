@@ -1,3 +1,4 @@
+import { PasswordField } from '../../core/ui/password-field';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,6 +17,7 @@ import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
+import { formatGrade } from '../../core/store/assessment.logic';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
 import { OneDriveService } from '../../core/store/onedrive.service';
 import { isStrongPassword } from '../../core/store/password-policy';
@@ -31,7 +33,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, Icon, PasswordRules, PasswordField],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -117,7 +119,12 @@ export class EvaluationPage {
     });
   }
 
-  refreshScoreboard(): void {
+  /** Mittelwert mit einer Nachkommastelle, etwa 0,7 - ohne Unterricht ein Strich. */
+  formatAverage(value: number | null): string {
+    return formatGrade(value, 1);
+  }
+
+    refreshScoreboard(): void {
     this.loadScoreboard(this.selectedCourseId());
   }
 

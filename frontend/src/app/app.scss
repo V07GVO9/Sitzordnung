@@ -29,8 +29,14 @@
   }
 }
 
-/* Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
+/* Der Menüknopf steht links oben im Inhalt, auf Höhe der KW-Auswahl.
+   Die erste Zeile jeder Seite rückt dafür ein (siehe styles.scss).
+   Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
 .menu-btn {
+  position: absolute;
+  top: calc(var(--pad-main) + env(safe-area-inset-top));
+  left: var(--pad-main);
+  z-index: 5;
   transition:
     opacity 0.2s ease,
     transform 0.15s ease;
@@ -61,9 +67,22 @@
 }
 
 .titlebar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  /* Verborgen, bis der Menüknopf sie zusammen mit dem Menü einblendet. */
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 71;
+  visibility: hidden;
+  transform: translateY(-100%);
+  transition:
+    transform 0.2s ease,
+    visibility 0s linear 0.2s;
+
+  &.open {
+    visibility: visible;
+    transform: none;
+    transition: transform 0.2s ease;
+  }
+
   display: grid;
   grid-template-columns: minmax(2.6rem, 1fr) auto minmax(2.6rem, 1fr);
   align-items: center;
@@ -126,12 +145,16 @@
 }
 
 main {
+  position: relative;
   flex: 1 1 auto;
   width: 100%;
   max-width: 1300px;
   margin: 0 auto;
-  padding: var(--pad-seite);
-  padding-bottom: calc(var(--pad-seite) + env(safe-area-inset-bottom));
+  /* Halber Seitenabstand - mehr Platz für den Inhalt. */
+  --pad-main: calc(var(--pad-seite) / 2);
+  padding: var(--pad-main);
+  padding-top: calc(var(--pad-main) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--pad-main) + env(safe-area-inset-bottom));
 }
 
 /* --- Menü hinter den drei Balken --- */
@@ -146,7 +169,7 @@ main {
 .app-menu {
   position: fixed;
   inset: 0 auto 0 0;
-  z-index: 71;
+  z-index: 72;
   display: flex;
   flex-direction: column;
   width: min(19.5rem, 88vw);

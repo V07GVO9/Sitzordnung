@@ -19,6 +19,9 @@ export class ActiveCourseService {
   readonly courseId = computed(() => this.course()?.id ?? null);
   readonly hasCourse = computed(() => this.course() !== null);
 
+  /** Zählt die Anfragen mit, damit eine verspätete Antwort kein Fach zurückholt. */
+  private request = 0;
+
   constructor() {
     // Ein anderer Bestand oder ein gelöschter Kurs: das Fach neu nachschlagen.
     effect(() => {
@@ -42,14 +45,17 @@ export class ActiveCourseService {
     }
   }
 
+  /** Kein Fach mehr aktiv - etwa sobald der Wochenplan offen ist. */
   clear(): void {
+    this.request++;
     this.course.set(null);
   }
 
   private load(courseId: number): void {
+    const request = ++this.request;
     this.api.getCourse(courseId).subscribe({
-      next: (course) => this.course.set(course),
-      error: () => this.course.set(null),
+      next: (course) => request === this.request && this.course.set(course),
+      error: () => request === this.request && this.course.set(null),
     });
   }
 }

@@ -1176,3 +1176,20 @@ button.list-row:hover {
     cursor: pointer;
   }
 }
+
+/* Platz für den Schalter im Passwortfeld, auch bei eingeblendetem Text. */
+app-password-field > input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 3rem;
+}
+
+app-password-field > input::-ms-reveal {
+  display: none;
+}
+
+/* Platz für den Menüknopf links oben im Inhalt: Die erste Zeile einer Seite
+   rückt ein. Die mittige KW-Auswahl im Wochenplan braucht das nicht. */
+.app-main > router-outlet + * > .stack:first-child > :first-child {
+  margin-left: 3rem;
+}

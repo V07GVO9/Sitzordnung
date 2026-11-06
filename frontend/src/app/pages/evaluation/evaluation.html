@@ -113,8 +113,7 @@
                   <th>Name</th>
                   <th class="num">Punkte</th>
                   <th class="num">Bewertungen</th>
-                  <th class="num">Heute</th>
-                  <th>Note</th>
+                  <th class="num">Mittelwert</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,18 +133,11 @@
                       </span>
                     </td>
                     <td class="num muted">{{ student.ratingCount }}</td>
-                    <td class="num muted">{{ student.pointsToday }}</td>
-                    <td>
-                      @if (student.grade) {
-                        <span class="badge grade">{{ student.grade }}</span>
-                      } @else {
-                        <span class="muted small">–</span>
-                      }
-                    </td>
+                    <td class="num">{{ formatAverage(student.average) }}</td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
+                    <td colspan="4" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
                   </tr>
                 }
               </tbody>
@@ -399,23 +391,27 @@
         <h2><app-icon name="key-round" /> Passwort ändern</h2>
         <label class="full">
           Bisheriges Passwort
-          <input
-            type="password"
-            autocomplete="current-password"
-            [ngModel]="currentPassword()"
-            (ngModelChange)="currentPassword.set($event)"
-            name="currentPassword"
-          />
+          <app-password-field [value]="currentPassword()">
+            <input #passwordInput
+              type="password"
+              autocomplete="current-password"
+              [ngModel]="currentPassword()"
+              (ngModelChange)="currentPassword.set($event)"
+              name="currentPassword"
+            />
+          </app-password-field>
         </label>
         <label class="full">
           Neues Passwort
-          <input
-            type="password"
-            autocomplete="new-password"
-            [ngModel]="newPassword()"
-            (ngModelChange)="newPassword.set($event)"
-            name="newPassword"
-          />
+          <app-password-field [value]="newPassword()">
+            <input #passwordInput
+              type="password"
+              autocomplete="new-password"
+              [ngModel]="newPassword()"
+              (ngModelChange)="newPassword.set($event)"
+              name="newPassword"
+            />
+          </app-password-field>
         </label>
         <app-password-rules [password]="newPassword()" />
         <div class="row">
