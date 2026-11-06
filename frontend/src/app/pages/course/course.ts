@@ -843,11 +843,6 @@ export class CoursePage implements OnDestroy {
     });
   }
 
-  /** Punkte mit Vorzeichen: +3, 0, −2. */
-  signed(points: number): string {
-    return points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : '0';
-  }
-
   // --- Kachel auswählen ---
 
   /** Erster Tipp öffnet die Knöpfe als Overlay an der Kachel, zweiter Tipp schließt sie. */

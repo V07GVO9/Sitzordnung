@@ -2029,6 +2029,8 @@ export class LocalStore {
   /**
    * Je Kurs eine Übersicht: für jeden Unterrichtstag die Mitarbeitsnote jedes
    * Schülers - auch die automatische Note, wenn er nicht bewertet wurde.
+   * Tage, an denen im Kurs niemand bewertet wurde, zählen nicht (Note null),
+   * außer es ist von Hand eine Note gesetzt.
    */
   getLessonSheets(courseId: number | null, range?: DateRange): LessonSheet[] {
     const courses = this.getCourses().filter((c) => courseId === null || c.id === courseId);
@@ -2053,14 +2055,18 @@ export class LocalStore {
           const rated = new Set(
             ratings.filter((r) => r.studentId === student.id).map((r) => r.lessonDate),
           );
-          const lessons = this.participationFor(course.id, student.id, dates, scheme);
+          const cells = this.participationFor(course.id, student.id, dates, scheme).map((l) => ({
+            ...l,
+            rated: rated.has(l.date),
+            grade: ratedDates.has(l.date) || l.override ? l.grade : null,
+          }));
 
           return {
             studentId: student.id,
             firstName: student.firstName,
             lastName: student.lastName,
-            cells: lessons.map((l) => ({ ...l, rated: rated.has(l.date) })),
-            average: average(lessons.map((l) => l.grade)),
+            cells,
+            average: average(cells.map((c) => c.grade)),
           };
         }),
       };
