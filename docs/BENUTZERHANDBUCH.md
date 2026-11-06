@@ -82,9 +82,9 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Verborgen – erscheint erst zusammen mit dem Menü über den Knopf ☰ links oben im Inhalt (auf Höhe der KW-Auswahl). Enthält den Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Titelleiste** | Verborgen. Am Rechner erscheint sie, sobald die Maus an den oberen Bildschirmrand kommt; auf Tablet/Handy durch **Herunterziehen** (vom oberen Rand oder ganz oben auf der Seite), Hochwischen oder Tippen in den Inhalt blendet sie aus. Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Knopf ☰ links oben im Inhalt; ein Klick zeigt Menü und Titelleiste, Klick daneben oder <kbd>Esc</kbd> blendet beides wieder aus. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -197,7 +197,7 @@ Kurs öffnen → Ansicht **Sitzplan** → in den **Bearbeitungsmodus** wechseln.
 | Funktion | Bedienung |
 | --- | --- |
 | Sitzordnung anlegen | **Sitzordnung anlegen** (wenn noch keine existiert) |
-| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Beliebig viele je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert |
+| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Beliebig viele je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert. Darunter stehen die Sitzordnungen der **anderen Fächer/Lernfelder derselben Klasse** – eine Auswahl übernimmt sie als **Kopie** (mit Plätzen) in dieses Fach; das Original bleibt unverändert |
 | Name ändern | Feld **Name** |
 | Raster | **Reihen** und **Spalten** (je 1–20). Plätze außerhalb eines verkleinerten Rasters werden frei |
 | Platzieren | Schüler aus *Ohne Platz* per Drag and Drop auf einen Platz ziehen |
@@ -345,6 +345,28 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
 6. Änderungen nach der Freigabe brauchen eine **Begründung** (landet im
    Protokoll). **Freigabe zurücknehmen** und **Löschen** sind möglich.
 
+### Mitarbeit aus anderem Werkzeug übernehmen (PDF)
+
+Für Mitarbeitsübersichten aus der Schul-App (PDF mit einer Seite je Schüler und
+den Anzahlen `--`, `-`, `o`, `+`, `++` je Fach):
+
+1. Im Kurs unter **Noten → Leistungsnachweise** bei *Mitarbeit aus anderem
+   Werkzeug übernehmen* **PDF auswählen**.
+2. **Fach in der Übersicht** prüfen (z. B. „LF3 B104" für den Kurs LF3) sowie
+   **Art** (nur mündliche Arten), **Titel** und **Datum** (Ende des Zeitraums).
+3. Die Vorschau zeigt je Name die Bewertungen, die errechnete Note und den
+   zugeordneten Schüler. Rollenkürzel wie *KS1* oder *KV2* werden entfernt.
+   Nicht erkannte Namen von Hand zuordnen oder *nicht übernehmen* lassen;
+   Zeilen ohne Bewertungen werden übersprungen.
+4. **Noten übernehmen** – es entsteht ein freigegebener, mündlicher
+   Leistungsnachweis. Die Anzahlen stehen als Bemerkung bei jeder Note.
+
+Note = Durchschnitt der Bewertungen mit den Mitarbeitsnoten des Schemas
+(Standard ++ 1,0 · + 2,0 · o 3,0 · − 4,0 · −− 5,0), eine Nachkommastelle.
+Die Übersicht enthält nur Summen, keine einzelnen Stunden – deshalb wird kein
+Eintrag je Doppelstunde erzeugt. Das **Gewicht** der gewählten Art im
+Bewertungsschema prüfen.
+
 ### Mitarbeit je Doppelstunde
 
 - Eine Doppelstunde zählt, sobald an dem Tag im Kurs jemand bewertet wurde.
@@ -396,15 +418,18 @@ einzeln verschicken – nie als Klassenliste.
 
 Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
 
-### Reiter „Punkte & Export“
+### Reiter „Mitarbeit & Export“
 
 1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
    **Von/Bis** (leer = gesamter Zeitraum).
-2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
+2. Tabelle: Name, gezählte Doppelstunden, **Mitarbeitsnote** – der Durchschnitt
+   der Noten je Doppelstunde (++ = 1, + = 2, ohne Bewertung 3, − = 4, −− = 5;
+   einstellbar im Bewertungsschema). „fehlte“ zählt nicht. Punkte werden hier
+   nicht angezeigt.
 3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – das gewählte Fach,
-   - **Einzelbewertungen** – jede Bewertung einzeln,
-   - **Alle Kurse** – Punktestände aller Kurse.
+   - **Mitarbeitsnoten (CSV)** – das gewählte Fach,
+   - **Einzelbewertungen** – jede Bewertung einzeln mit ihrer Note,
+   - **Alle Kurse** – Mitarbeitsnoten aller Kurse.
 
 ### Reiter „Notenschlüssel“ *(Bearbeitungsmodus)*
 

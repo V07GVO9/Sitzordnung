@@ -344,3 +344,95 @@ describe('Quartalsnoten', () => {
     expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', 7)).toThrowError(AppError);
   });
 });
+
+describe('LocalStore - Übernahme aus anderem Werkzeug', () => {
+  function oralKey(store: LocalStore, courseId: number): string {
+    return store.getScheme(courseId).types.find((t) => t.area === 'oral')!.key;
+  }
+
+  it('legt einen freigegebenen Nachweis mit den Noten an', () => {
+    const { store, course, anna, ben } = setup();
+
+    const assessment = store.importAssessment(course.id, {
+      typeKey: oralKey(store, course.id),
+      title: 'Mitarbeit (übernommen) LF3',
+      date: '2026-11-05',
+      comment: 'Übernommen aus KDM261.pdf',
+      results: [
+        { studentId: anna.id, grade: 2.6, comment: '1× ++, 2× +, 3× o, 1× -' },
+        { studentId: ben.id, grade: 2, comment: '6× +' },
+      ],
+    });
+
+    expect(assessment.released).toBeTrue();
+    expect(assessment.area).toBe('oral');
+    const detail = store.getAssessmentDetail(assessment.id);
+    const annaResult = detail.results.find((r) => r.studentId === anna.id)!;
+    expect(annaResult.grade).toBe(2.6);
+    expect(annaResult.comment).toBe('1× ++, 2× +, 3× o, 1× -');
+    expect(store.getGradeChanges(course.id)).toEqual([]);
+  });
+
+  it('legt bei Fehlern nichts an', () => {
+    const { store, course, anna } = setup();
+    const other = store.createClass('BFI10A');
+    const stranger = store.createStudent(other.id, 'Fremd', 'Person');
+
+    const attempt = (results: { studentId: number; grade: number; comment: null }[]) => () =>
+      store.importAssessment(course.id, {
+        typeKey: oralKey(store, course.id),
+        title: 'Mitarbeit',
+        date: '2026-11-05',
+        comment: null,
+        results,
+      });
+
+    expect(attempt([{ studentId: anna.id, grade: 7, comment: null }])).toThrowError(AppError);
+    expect(attempt([{ studentId: stranger.id, grade: 2, comment: null }])).toThrowError(AppError);
+    expect(
+      attempt([
+        { studentId: anna.id, grade: 2, comment: null },
+        { studentId: anna.id, grade: 3, comment: null },
+      ]),
+    ).toThrowError(AppError);
+    expect(attempt([])).toThrowError(AppError);
+    expect(store.getAssessments(course.id)).toEqual([]);
+  });
+});
+
+describe('LocalStore - Noten je Stunde', () => {
+  it('zeigt jeden Unterrichtstag - auch ohne Bewertung - mit automatischer Note', () => {
+    const { store, course, anna, ben } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
+    store.setParticipationOverride(course.id, ben.id, '2026-09-28', null, 'krank');
+
+    // 21.09. bis 05.10.: drei Montage, keine Ferien.
+    const [sheet] = store.getLessonSheets(course.id, { from: '2026-09-21', to: '2026-10-05' });
+
+    expect(sheet.dates).toEqual([
+      { date: '2026-09-21', rated: false },
+      { date: '2026-09-28', rated: true },
+      { date: '2026-10-05', rated: false },
+    ]);
+
+    const annaRow = sheet.students.find((s) => s.studentId === anna.id)!;
+    expect(annaRow.cells.map((c) => c.rated)).toEqual([false, true, false]);
+    expect(annaRow.cells.map((c) => c.grade)).toEqual([3, 1, 3]);
+
+    const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
+    expect(benRow.cells[1].grade).toBeNull();
+    expect(benRow.average).toBe(3);
+  });
+
+  it('lässt Ferien aus und liefert je Kurs eine Seite', () => {
+    const { store, course } = setup();
+    // Herbstferien 12.10.-24.10.2026: der Montag 19.10. fällt weg.
+    store.clock.setFixed(new Date('2026-10-26T12:00:00'));
+    const [sheet] = store.getLessonSheets(null, { from: '2026-10-05', to: '2026-10-26' });
+
+    expect(sheet.courseId).toBe(course.id);
+    expect(sheet.dates.map((d) => d.date)).toEqual(['2026-10-05', '2026-10-26']);
+
+    expect(store.exportLessonSheets(null).fileName).toContain('noten-je-stunde');
+  });
+});

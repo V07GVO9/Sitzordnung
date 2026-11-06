@@ -10,12 +10,26 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ## 06.11.2026
 
+**Neu**
+- **Mitarbeit aus anderem Werkzeug übernehmen:** Unter *Noten →
+  Leistungsnachweise* lässt sich die PDF-Mitarbeitsübersicht der Schul-App
+  einlesen. Je Fach entsteht ein mündlicher Leistungsnachweis; die Note ist der
+  Durchschnitt der Bewertungen (++ bis −−). Namen werden automatisch zugeordnet,
+  mit Vorschau vor dem Speichern.
+
 **Geändert**
+- **Auswertung zeigt Noten statt Punkte:** Die Tabelle und die CSV-Exporte
+  zeigen je Schüler die **Mitarbeitsnote** (Durchschnitt der Doppelstunden,
+  ++ = 1 · + = 2 · 0 = 3 · − = 4 · −− = 5). Punkte und Punkte-Mittelwert
+  entfallen dort; die Einzelbewertungen enthalten statt der Punkte die Note.
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
-- Die **Titelleiste ist ausgeblendet**; der Menüknopf ☰ sitzt links oben im Inhalt
-  auf Höhe der KW-Auswahl und zeigt Menü und Titelleiste zusammen. Der Seitenrand
-  ist halb so breit – mehr Platz für Sitzplan und Wochenplan.
+- Die **Titelleiste ist ausgeblendet** und erscheint am Rechner, sobald die Maus an
+  den oberen Rand kommt, auf Tablet/Handy durch Herunterziehen. Der Menüknopf ☰
+  sitzt wieder in der Titelleiste. Der Seitenrand ist halb so breit – mehr Platz
+  für Sitzplan und Wochenplan.
+- Das Dropdown zeigt auch die Sitzordnungen der **anderen Fächer und Lernfelder
+  der Klasse**; eine Auswahl übernimmt sie als Kopie in das aktuelle Fach.
 - Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
 
 ## 05.11.2026

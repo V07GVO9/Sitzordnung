@@ -129,6 +129,13 @@ export interface StudentScore {
   average: number | null;
   pointsToday: number;
   grade: string | null;
+  /**
+   * Mitarbeitsnote: Durchschnitt der Noten je Doppelstunde (++ = 1 ... −− = 5,
+   * laut Bewertungsschema). null, wenn keine Stunde zählt.
+   */
+  participationGrade: number | null;
+  /** Doppelstunden, die in die Mitarbeitsnote eingehen (ohne „fehlte“). */
+  countedLessons: number;
   /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
   currentLessonValue: number | null;
 }
@@ -352,6 +359,15 @@ export interface AssessmentInput {
   comment: string | null;
 }
 
+/** Ein Leistungsnachweis mit fertigen Noten - etwa aus einem anderen Werkzeug übernommen. */
+export interface ImportedAssessmentInput {
+  typeKey: string;
+  title: string;
+  date: string;
+  comment: string | null;
+  results: { studentId: number; grade: number; comment: string | null }[];
+}
+
 export interface AssessmentResultInput {
   studentId: number;
   points: number | null;
@@ -409,6 +425,39 @@ export interface GradeBook {
   assessments: Assessment[];
   lessonDates: string[];
   students: StudentGrades[];
+}
+
+/** Eine Zelle der Stundenübersicht: die Note eines Schülers an einem Unterrichtstag. */
+export interface LessonSheetCell {
+  date: string;
+  /** Wurde der Schüler an diesem Tag bewertet? Sonst gilt die Note für "keine Bewertung". */
+  rated: boolean;
+  /** Summe der Bewertungen des Tages, begrenzt auf -2 bis +2. */
+  value: number;
+  /** Die Note aus den Bewertungen. */
+  autoGrade: number;
+  /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */
+  override: { grade: number | null; reason: string | null } | null;
+  /** Die Note, die zählt - null, wenn die Stunde nicht zählt. */
+  grade: number | null;
+}
+
+/** Die Stundenübersicht eines Kurses: je Unterrichtstag die Note jedes Schülers. */
+export interface LessonSheet {
+  courseId: number;
+  schoolClassName: string;
+  subjectName: string;
+  from: string | null;
+  to: string | null;
+  /** Alle Unterrichtstage laut Stundenplan und alle Tage mit Bewertungen. */
+  dates: { date: string; rated: boolean }[];
+  students: {
+    studentId: number;
+    firstName: string;
+    lastName: string;
+    cells: LessonSheetCell[];
+    average: number | null;
+  }[];
 }
 
 export interface GradeChange {

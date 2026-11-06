@@ -167,6 +167,23 @@
               <button class="btn primary" type="button" (click)="addPlan()">
                 <app-icon name="plus" /> Sitzordnung anlegen
               </button>
+              @if (classPlans().length) {
+                <select
+                  #copySelect
+                  class="copy-select"
+                  aria-label="Sitzordnung aus anderem Fach übernehmen"
+                  (change)="onPlanSelect(copySelect)"
+                >
+                  <option value="" selected disabled>Aus anderem Fach übernehmen …</option>
+                  @for (group of classPlans(); track group.course.id) {
+                    <optgroup [label]="group.course.subjectName">
+                      @for (plan of group.plans; track plan.id) {
+                        <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              }
             }
           </div>
         </div>
@@ -178,10 +195,20 @@
               <label class="plan-field">
                 Sitzordnung
                 <select #planSelect (change)="onPlanSelect(planSelect)">
-                  @for (plan of plans(); track plan.id) {
-                    <option [value]="plan.id" [selected]="plan.id === activePlanId()">
-                      {{ plan.name }}
-                    </option>
+                  <optgroup [label]="course()!.subjectName">
+                    @for (plan of plans(); track plan.id) {
+                      <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                        {{ plan.name }}
+                      </option>
+                    }
+                  </optgroup>
+                  <!-- Sitzordnungen derselben Klasse aus anderen Fächern: Auswahl übernimmt eine Kopie. -->
+                  @for (group of classPlans(); track group.course.id) {
+                    <optgroup [label]="group.course.subjectName + ' – übernehmen'">
+                      @for (plan of group.plans; track plan.id) {
+                        <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
+                      }
+                    </optgroup>
                   }
                   <option disabled>──────────</option>
                   <option value="new">＋ Neue Sitzordnung</option>

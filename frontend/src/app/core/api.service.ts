@@ -5,6 +5,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
@@ -359,6 +360,10 @@ export class ApiService {
     return this.run(() => this.store.saveResults(id, results, reason));
   }
 
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Observable<Assessment> {
+    return this.run(() => this.store.importAssessment(courseId, input));
+  }
+
   setAssessmentReleased(id: number, released: boolean): Observable<Assessment> {
     return this.run(() => this.store.setAssessmentReleased(id, released));
   }
@@ -434,6 +439,14 @@ export class ApiService {
           ? this.store.exportRatings(courseId ?? null, range)
           : this.store.exportSummary(courseId ?? null, range);
 
+      return download(result.blob, result.fileName, { share: true });
+    });
+  }
+
+  /** Die Noten je Unterrichtstag als HTML - je Kurs eine Druckseite. */
+  exportLessonSheets(courseId: number | null, range?: DateRange): Observable<void> {
+    return this.fromPromise(() => {
+      const result = this.store.exportLessonSheets(courseId, range);
       return download(result.blob, result.fileName, { share: true });
     });
   }

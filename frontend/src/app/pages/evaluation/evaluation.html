@@ -7,9 +7,9 @@
       <h1>Auswertung</h1>
       <p class="muted small">
         @if (isEdit()) {
-          Punktestände, Notenschlüssel, Einstellungen und die Datendatei.
+          Mitarbeitsnoten, Notenschlüssel, Einstellungen und die Datendatei.
         } @else {
-          Punktestände und Export. Notenschlüssel und Einstellungen gibt es im Bearbeitungsmodus.
+          Mitarbeitsnoten und Export. Notenschlüssel und Einstellungen gibt es im Bearbeitungsmodus.
         }
       </p>
     </div>
@@ -22,7 +22,7 @@
       [attr.aria-selected]="activeTab() === 'punkte'"
       (click)="setTab('punkte')"
     >
-      <app-icon name="chart-column" /> Punkte &amp; Export
+      <app-icon name="chart-column" /> Mitarbeit &amp; Export
     </button>
     @if (isEdit()) {
       <button
@@ -52,7 +52,7 @@
     }
   </div>
 
-  <!-- Zeitraum für den Punktestand; das Fach kommt aus dem Wochenplan. -->
+  <!-- Zeitraum für die Mitarbeitsnoten; das Fach kommt aus dem Wochenplan. -->
   @if (activeTab() === 'punkte' && selectedCourse()) {
     <section class="card">
       <div class="filter">
@@ -95,13 +95,19 @@
             <span class="spacer"></span>
             <div class="exports">
               <button class="btn primary small" type="button" (click)="exportCsv('summary', false)">
-                <app-icon name="file-down" /> Punktestand (CSV)
+                <app-icon name="file-down" /> Mitarbeitsnoten (CSV)
               </button>
               <button class="btn small" type="button" (click)="exportCsv('ratings', false)">
                 <app-icon name="download" /> Einzelbewertungen
               </button>
               <button class="btn small" type="button" (click)="exportCsv('summary', true)">
                 <app-icon name="download" /> Alle Kurse
+              </button>
+              <button class="btn small" type="button" (click)="exportLessonSheets(false)">
+                <app-icon name="file-down" /> Noten je Stunde
+              </button>
+              <button class="btn small" type="button" (click)="exportLessonSheets(true)">
+                <app-icon name="file-down" /> Noten je Stunde (alle Kurse)
               </button>
             </div>
           </div>
@@ -111,9 +117,8 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th class="num">Punkte</th>
-                  <th class="num">Bewertungen</th>
-                  <th class="num">Mittelwert</th>
+                  <th class="num">Doppelstunden</th>
+                  <th class="num">Mitarbeitsnote</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,28 +128,28 @@
                       <strong>{{ student.lastName }}</strong
                       >, {{ student.firstName }}
                     </td>
-                    <td class="num">
-                      <span
-                        class="points"
-                        [class.pos]="student.points > 0"
-                        [class.neg]="student.points < 0"
-                      >
-                        {{ student.points }}
-                      </span>
+                    <td class="num muted">
+                      {{ student.countedLessons }}
+                      @if (student.countedLessons < student.ratingCount) {
+                        / {{ student.ratingCount }}
+                      }
                     </td>
-                    <td class="num muted">{{ student.ratingCount }}</td>
-                    <td class="num">{{ formatAverage(student.average) }}</td>
+                    <td class="num">
+                      <strong>{{ formatAverage(student.participationGrade) }}</strong>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
+                    <td colspan="3" class="muted">In dieser Klasse sind keine Schüler angelegt.</td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
           <p class="muted small hint">
-            Die CSV-Dateien öffnen sich direkt in Excel oder LibreOffice.
+            Mitarbeitsnote = Durchschnitt der Doppelstunden (++ = 1, + = 2, ohne Bewertung 3,
+            − = 4, −− = 5; einstellbar im Bewertungsschema). „fehlte“ zählt nicht. Die
+            CSV-Dateien öffnen sich direkt in Excel oder LibreOffice.
           </p>
         </section>
       } @else if (!selectedCourse()) {

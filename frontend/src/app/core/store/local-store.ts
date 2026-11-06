@@ -14,12 +14,14 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
   CurrentLesson,
   DayOfWeek,
   GradeBook,
+  LessonSheet,
   GradeChange,
   GradeReport,
   GradeScale,
@@ -65,6 +67,7 @@ import {
   combineGrades,
   formatGrade,
   lastRatingPerDay,
+  lessonGradeFor,
   gradeFromPercent,
   isValidGrade,
   participationLessons,
@@ -85,6 +88,8 @@ import {
   toTimeKey,
 } from './time';
 import { parseTimetableIcs } from './timetable-import';
+import { freeDayReason } from './school-calendar';
+import { renderLessonSheets } from './lesson-sheet';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 export interface DateRange {
@@ -901,11 +906,14 @@ export class LocalStore {
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
     const lessonCount = LocalStore.lessonCount(ratings);
+    const scheme = this.schemeRecord(courseId);
+    const dates = this.lessonDates(courseId, range);
 
     // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
       const perDay = lastRatingPerDay(ratings.filter((r) => r.studentId === s.id));
       const points = LocalStore.sumOf(perDay);
+      const lessonGrades = this.participationFor(courseId, s.id, dates, scheme).map((l) => l.grade);
 
       return {
         studentId: s.id,
@@ -916,6 +924,8 @@ export class LocalStore {
         average: lessonCount ? points / lessonCount : null,
         pointsToday: perDay.get(today) ?? 0,
         grade: resolveGrade(scale, points),
+        participationGrade: average(lessonGrades),
+        countedLessons: lessonGrades.filter((g) => g !== null).length,
       };
     });
 
@@ -1479,6 +1489,59 @@ export class LocalStore {
     return this.toAssessment(record, this.schemeRecord(record.courseId));
   }
 
+  /**
+   * Legt einen Leistungsnachweis mit fertigen Noten an und gibt ihn frei - für
+   * Mitarbeitsnoten, die aus einem anderen Werkzeug übernommen werden. Alles
+   * wird vorab geprüft, damit kein halber Nachweis zurückbleibt.
+   */
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Assessment {
+    const course = this.requireCourse(courseId);
+    this.validateAssessment(courseId, { ...input, maxPoints: null });
+
+    if (input.results.length === 0) {
+      throw new AppError('Es gibt keine Noten, die übernommen werden können.');
+    }
+
+    const seen = new Set<number>();
+    for (const result of input.results) {
+      const student = this.requireStudent(result.studentId);
+      if (student.schoolClassId !== course.schoolClassId) {
+        throw new AppError('Mindestens ein Schüler gehört nicht zur Klasse dieses Kurses.');
+      }
+      if (seen.has(result.studentId)) {
+        throw new AppError(
+          `${student.firstName} ${student.lastName} ist mehreren Zeilen zugeordnet.`,
+        );
+      }
+      seen.add(result.studentId);
+      if (!isValidGrade(result.grade)) {
+        throw new AppError(
+          `Die Note für ${student.firstName} ${student.lastName} liegt nicht zwischen 1,0 und 6,0.`,
+        );
+      }
+    }
+
+    const assessment = this.createAssessment(courseId, {
+      typeKey: input.typeKey,
+      title: input.title,
+      date: input.date,
+      maxPoints: null,
+      comment: input.comment,
+    });
+    this.saveResults(
+      assessment.id,
+      input.results.map((r) => ({
+        studentId: r.studentId,
+        points: null,
+        grade: r.grade,
+        status: 'graded' as const,
+        comment: r.comment,
+      })),
+    );
+
+    return this.setAssessmentReleased(assessment.id, true);
+  }
+
   private logChange(
     courseId: number,
     studentId: number,
@@ -1934,6 +1997,98 @@ export class LocalStore {
     };
   }
 
+  // --- Stundenübersicht --------------------------------------------------
+
+  /**
+   * Die Unterrichtstage eines Kurses laut Stundenplan - ohne Feiertage und
+   * Ferien, höchstens bis heute. Ohne Startdatum ab Beginn des Schuljahres
+   * (1. August) bzw. ab der ersten Bewertung, falls die früher liegt.
+   */
+  private scheduledDates(courseId: number, range?: DateRange): string[] {
+    const weekdays = new Set(
+      this.database.timetableEntries.filter((e) => e.courseId === courseId).map((e) => e.dayOfWeek),
+    );
+    if (weekdays.size === 0) {
+      return [];
+    }
+
+    const now = this.clock.now();
+    const today = toDateKey(now);
+    const yearStart = `${now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1}-08-01`;
+    const firstRating = this.lessonDates(courseId)[0];
+    const from =
+      range?.from || (firstRating && firstRating < yearStart ? firstRating : yearStart);
+    const to = range?.to && range.to < today ? range.to : today;
+
+    const dates: string[] = [];
+    const [y, m, d] = from.split('-').map(Number);
+    for (const day = new Date(y, m - 1, d); toDateKey(day) <= to; day.setDate(day.getDate() + 1)) {
+      const key = toDateKey(day);
+      if (weekdays.has(day.getDay() as DayOfWeek) && freeDayReason(key) === null) {
+        dates.push(key);
+      }
+    }
+    return dates;
+  }
+
+  /**
+   * Je Kurs eine Übersicht: für jeden Unterrichtstag die Mitarbeitsnote jedes
+   * Schülers - auch die automatische Note, wenn er nicht bewertet wurde.
+   */
+  getLessonSheets(courseId: number | null, range?: DateRange): LessonSheet[] {
+    const courses = this.getCourses().filter((c) => courseId === null || c.id === courseId);
+    if (courses.length === 0) {
+      throw new AppError('Es gibt keinen passenden Kurs zum Exportieren.');
+    }
+
+    return courses.map((course) => {
+      const scheme = this.schemeRecord(course.id);
+      const ratedDates = new Set(this.lessonDates(course.id, range));
+      const dates = [...new Set([...this.scheduledDates(course.id, range), ...ratedDates])].sort();
+      const ratings = this.ratingsInRange(course.id, range);
+
+      return {
+        courseId: course.id,
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        from: range?.from || dates[0] || null,
+        to: range?.to || dates.at(-1) || null,
+        dates: dates.map((date) => ({ date, rated: ratedDates.has(date) })),
+        students: this.studentsOfCourse(course.id).map((student) => {
+          const rated = new Set(
+            ratings.filter((r) => r.studentId === student.id).map((r) => r.lessonDate),
+          );
+          const lessons = this.participationFor(course.id, student.id, dates, scheme);
+
+          return {
+            studentId: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            cells: lessons.map((l) => ({ ...l, rated: rated.has(l.date) })),
+            average: average(lessons.map((l) => l.grade)),
+          };
+        }),
+      };
+    });
+  }
+
+  /** Die Stundenübersicht als druckfertiges HTML - je Kurs eine Seite. */
+  exportLessonSheets(courseId: number | null, range?: DateRange): { blob: Blob; fileName: string } {
+    const sheets = this.getLessonSheets(courseId, range);
+    const suffix =
+      sheets.length === 1
+        ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
+          LocalStore.fileNamePart(sheets[0].subjectName)
+        : 'alle-kurse';
+
+    return {
+      blob: new Blob([renderLessonSheets(sheets, toDateKey(this.clock.now()))], {
+        type: 'text/html;charset=utf-8',
+      }),
+      fileName: `noten-je-stunde-${suffix}-${toDateKey(this.clock.now())}.html`,
+    };
+  }
+
   // --- Einstellungen ------------------------------------------------------
 
   getSettings(): AppSettings {
@@ -1990,7 +2145,7 @@ export class LocalStore {
       'Nachname',
       'Vorname',
       'Bewertung',
-      'Punkte',
+      'Note',
       'Kommentar',
     );
 
@@ -2022,7 +2177,10 @@ export class LocalStore {
         row.student?.lastName,
         row.student?.firstName,
         LocalStore.symbol(row.rating.value),
-        row.rating.value,
+        formatGrade(
+          lessonGradeFor(this.schemeRecord(row.rating.courseId).participationGrades, row.rating.value),
+          1,
+        ),
         row.rating.comment,
       );
     }
@@ -2045,16 +2203,23 @@ export class LocalStore {
     }
 
     const csv = new CsvBuilder();
-    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Mittelwert', 'Note');
+    csv.addRow(
+      'Klasse',
+      'Fach',
+      'Nachname',
+      'Vorname',
+      'Doppelstunden',
+      'davon gezählt',
+      'Mitarbeitsnote',
+    );
 
     for (const course of courses) {
-      const ratings = this.ratingsInRange(course.id, range);
-      const scale = effectiveScale(this.database.gradeScales, course.id);
-      const lessonCount = LocalStore.lessonCount(ratings);
+      const scheme = this.schemeRecord(course.id);
+      const dates = this.lessonDates(course.id, range);
 
       for (const student of this.studentsOfCourse(course.id)) {
-        const points = LocalStore.sumOf(
-          lastRatingPerDay(ratings.filter((r) => r.studentId === student.id)),
+        const grades = this.participationFor(course.id, student.id, dates, scheme).map(
+          (l) => l.grade,
         );
 
         csv.addRow(
@@ -2062,10 +2227,9 @@ export class LocalStore {
           course.subjectName,
           student.lastName,
           student.firstName,
-          points,
-          lessonCount,
-          lessonCount ? formatGrade(points / lessonCount, 2) : '',
-          resolveGrade(scale, points),
+          dates.length,
+          grades.filter((g) => g !== null).length,
+          average(grades) === null ? '' : formatGrade(average(grades), 2),
         );
       }
     }
