@@ -4,6 +4,7 @@
 #   ./deploy.sh test
 #   ./deploy.sh prod
 #   ./deploy.sh dev
+#   ./deploy.sh test 1a2b3c4   (bestimmter Image-Tag, z. B. Commit-SHA)
 #
 # Läuft die neue Version nicht an, wird die vorherige wiederhergestellt.
 set -euo pipefail
@@ -35,6 +36,14 @@ set +a
 
 IMAGE="${!IMAGE_VAR}"
 DOMAIN="${!DOMAIN_VAR}"
+
+# Optional: ein bestimmter Image-Tag (z. B. der Commit-SHA aus GitHub Actions)
+# statt des Branch-Tags aus .env.
+TAG="${2:-}"
+if [ -n "$TAG" ]; then
+  IMAGE="${IMAGE%:*}:$TAG"
+  export "$IMAGE_VAR=$IMAGE"
+fi
 
 echo "==> Rolle $UMGEBUNG aus ($IMAGE)"
 
