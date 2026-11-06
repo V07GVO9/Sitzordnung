@@ -197,7 +197,7 @@ Kurs öffnen → Ansicht **Sitzplan** → in den **Bearbeitungsmodus** wechseln.
 | Funktion | Bedienung |
 | --- | --- |
 | Sitzordnung anlegen | **Sitzordnung anlegen** (wenn noch keine existiert) |
-| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Max. zwei je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert |
+| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Beliebig viele je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert |
 | Name ändern | Feld **Name** |
 | Raster | **Reihen** und **Spalten** (je 1–20). Plätze außerhalb eines verkleinerten Rasters werden frei |
 | Platzieren | Schüler aus *Ohne Platz* per Drag and Drop auf einen Platz ziehen |

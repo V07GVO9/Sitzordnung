@@ -13,6 +13,7 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 **Geändert**
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
+- Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
 
 ## 05.11.2026
 

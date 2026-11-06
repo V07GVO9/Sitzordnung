@@ -55,7 +55,6 @@ import {
   Database,
   GradeScaleRecord,
   GradingSchemeRecord,
-  MAX_PLANS_PER_COURSE,
   SeatingPlanRecord,
   StudentRecord,
   createDefaultScheme,
@@ -584,10 +583,6 @@ export class LocalStore {
     this.requireCourse(courseId);
 
     const existing = this.database.seatingPlans.filter((p) => p.courseId === courseId).length;
-    if (existing >= MAX_PLANS_PER_COURSE) {
-      throw new AppError(`Pro Kurs sind höchstens ${MAX_PLANS_PER_COURSE} Sitzordnungen möglich.`);
-    }
-
     const record: SeatingPlanRecord = {
       id: this.database.nextIds.seatingPlan++,
       courseId,

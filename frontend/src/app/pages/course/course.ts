@@ -191,7 +191,6 @@ export class CoursePage implements OnDestroy {
   readonly rows = signal(5);
   readonly columns = signal(8);
 
-  readonly maxPlans = 2;
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   readonly fullName = fullName;
   readonly initials = initials;

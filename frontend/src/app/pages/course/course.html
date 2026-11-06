@@ -78,7 +78,20 @@
           </div>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 1 && !editMode()) {
+        @if (view() === 'sitzplan' && plans().length > 3 && !editMode()) {
+          <!-- Bei vielen Sitzordnungen ein Dropdown statt langer Reiter. -->
+          <select
+            class="plan-select"
+            aria-label="Sitzordnung wählen"
+            (change)="selectPlan(+$any($event.target).value)"
+          >
+            @for (plan of plans(); track plan.id) {
+              <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                {{ plan.name }}
+              </option>
+            }
+          </select>
+        } @else if (view() === 'sitzplan' && plans().length > 1 && !editMode()) {
           <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
             @for (plan of plans(); track plan.id) {
               <button
@@ -171,9 +184,7 @@
                     </option>
                   }
                   <option disabled>──────────</option>
-                  <option value="new" [disabled]="plans().length >= maxPlans">
-                    ＋ Neue Sitzordnung{{ plans().length >= maxPlans ? ` (max. ${maxPlans})` : '' }}
-                  </option>
+                  <option value="new">＋ Neue Sitzordnung</option>
                 </select>
               </label>
               <label class="name-field">

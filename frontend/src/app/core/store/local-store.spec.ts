@@ -124,13 +124,14 @@ describe('LocalStore - Sitzordnung', () => {
     expect(store.createSeatingPlan(course.id, '', 5, 8).name).toBe('Sitzordnung 1');
   });
 
-  it('lässt höchstens zwei Sitzordnungen je Kurs zu', () => {
+  it('lässt beliebig viele Sitzordnungen je Kurs zu', () => {
     const store = setup();
     const { course } = withCourse(store);
-    store.createSeatingPlan(course.id, 'A', 5, 8);
-    store.createSeatingPlan(course.id, 'B', 5, 8);
+    for (const name of ['A', 'B', 'C', 'D']) {
+      store.createSeatingPlan(course.id, name, 5, 8);
+    }
 
-    expect(() => store.createSeatingPlan(course.id, 'C', 5, 8)).toThrowError(AppError);
+    expect(store.getSeatingPlans(course.id).length).toBe(4);
   });
 
   it('speichert die Belegung', () => {
