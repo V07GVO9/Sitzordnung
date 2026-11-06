@@ -82,9 +82,9 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Verborgen – erscheint erst zusammen mit dem Menü über den Knopf ☰ links oben im Inhalt (auf Höhe der KW-Auswahl). Enthält den Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Titelleiste** | Verborgen. Am Rechner erscheint sie, sobald die Maus an den oberen Bildschirmrand kommt; auf Tablet/Handy durch **Herunterziehen** (vom oberen Rand oder ganz oben auf der Seite), Hochwischen oder Tippen in den Inhalt blendet sie aus. Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Knopf ☰ links oben im Inhalt; ein Klick zeigt Menü und Titelleiste, Klick daneben oder <kbd>Esc</kbd> blendet beides wieder aus. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.

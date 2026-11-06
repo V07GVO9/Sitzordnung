@@ -72,6 +72,8 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   host: {
     '(document:keydown.escape)': 'closeMenu()',
     '(document:keydown)': 'onKeydown($event)',
+    '(document:touchstart)': 'onTouchStart($event)',
+    '(document:touchmove)': 'onTouchMove($event)',
   },
 })
 export class App implements OnDestroy {
@@ -118,8 +120,10 @@ export class App implements OnDestroy {
     return PAGE_TITLES[page] ?? '';
   });
   readonly menuOpen = signal(false);
-  /** Die Titelleiste ist verborgen und erscheint erst mit dem Menüknopf. */
+  /** Auf Touch-Geräten heruntergezogen: Die Titelleiste bleibt sichtbar. */
   readonly chromeOpen = signal(false);
+  /** Beginn der laufenden Wischbewegung - null, wenn sie nichts mit der Titelleiste zu tun hat. */
+  private touchStart: { x: number; y: number; pull: boolean } | null = null;
   readonly passwordDialogOpen = signal(false);
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
@@ -192,7 +196,6 @@ export class App implements OnDestroy {
 
   /** Öffnet das Menü - im Unterricht nur, wenn ein Fach gewählt ist. */
   openMenu(): void {
-    this.chromeOpen.set(true);
     if (this.menuLocked()) {
       this.toasts.show('Bitte zuerst im Wochenplan eine Stunde wählen.', 'info');
       return;
@@ -204,6 +207,52 @@ export class App implements OnDestroy {
   closeMenu(): void {
     this.menuOpen.set(false);
     this.chromeOpen.set(false);
+  }
+
+  /**
+   * Herunterziehen zeigt die Titelleiste: vom oberen Rand aus oder ganz oben auf
+   * der Seite. Hochwischen oder Tippen außerhalb blendet sie wieder aus.
+   */
+  onTouchStart(event: TouchEvent): void {
+    const touch = event.touches[0];
+    const target = event.target as Element | null;
+    if (!touch || event.touches.length > 1) {
+      this.touchStart = null;
+      return;
+    }
+
+    const inBar = !!target?.closest('.titlebar, .app-menu, app-confirm-host, app-toast-host');
+    // Tippen in den Inhalt blendet eine heruntergezogene Leiste wieder aus.
+    if (this.chromeOpen() && !inBar && !this.menuOpen()) {
+      this.chromeOpen.set(false);
+    }
+
+    // Plätze ziehen und Eingabefelder bleiben unberührt.
+    const busy = !!target?.closest('.cdk-drag, input, select, textarea');
+    const pull = touch.clientY < 48 || (window.scrollY <= 0 && !busy && !inBar);
+    this.touchStart = { x: touch.clientX, y: touch.clientY, pull };
+  }
+
+  onTouchMove(event: TouchEvent): void {
+    const touch = event.touches[0];
+    const start = this.touchStart;
+    if (!touch || !start) {
+      return;
+    }
+
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dy) < 40 || Math.abs(dx) > Math.abs(dy)) {
+      return;
+    }
+
+    if (dy > 0 && start.pull) {
+      this.chromeOpen.set(true);
+      this.touchStart = null;
+    } else if (dy < 0 && this.chromeOpen() && !this.menuOpen()) {
+      this.chromeOpen.set(false);
+      this.touchStart = null;
+    }
   }
 
   install(): void {
