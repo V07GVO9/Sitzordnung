@@ -29,14 +29,8 @@
   }
 }
 
-/* Der Menüknopf steht links oben im Inhalt, auf Höhe der KW-Auswahl.
-   Die erste Zeile jeder Seite rückt dafür ein (siehe styles.scss).
-   Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
+/* Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
 .menu-btn {
-  position: absolute;
-  top: calc(var(--pad-main) + env(safe-area-inset-top));
-  left: var(--pad-main);
-  z-index: 5;
   transition:
     opacity 0.2s ease,
     transform 0.15s ease;
@@ -66,21 +60,55 @@
   min-height: 100dvh;
 }
 
-.titlebar {
-  /* Verborgen, bis der Menüknopf sie zusammen mit dem Menü einblendet. */
+/* Unsichtbarer Streifen am oberen Rand: Kommt die Maus dorthin, erscheint die Titelleiste. */
+.titlebar-hover-zone {
   position: fixed;
   inset: 0 0 auto;
-  z-index: 71;
-  visibility: hidden;
-  transform: translateY(-100%);
-  transition:
-    transform 0.2s ease,
-    visibility 0s linear 0.2s;
+  z-index: 69;
+  height: 0.75rem;
 
-  &.open {
-    visibility: visible;
+  /* Auf Touch-Geräten holt man die Leiste per Ziehen - der Streifen soll dort nichts abfangen. */
+  @media (hover: none) {
+    pointer-events: none;
+  }
+}
+
+/* Griff oben in der Mitte - zeigt auf Touch-Geräten, dass sich etwas herunterziehen lässt. */
+.titlebar-grabber {
+  display: none;
+  position: fixed;
+  top: calc(0.3rem + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 69;
+  width: 2.5rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: var(--text-muted);
+  opacity: 0.35;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  @media (hover: none) {
+    display: block;
+  }
+}
+
+.titlebar {
+  /* Verborgen: oberhalb des Bildschirms, bis Maus (Rand) oder Finger (Ziehen) sie holt. */
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 69;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease 0.3s;
+  box-shadow: none;
+
+  &.open,
+  &:hover,
+  &:focus-within,
+  .titlebar-hover-zone:hover ~ & {
     transform: none;
-    transition: transform 0.2s ease;
+    transition-delay: 0s;
+    box-shadow: var(--shadow-lg);
   }
 
   display: grid;
@@ -145,7 +173,6 @@
 }
 
 main {
-  position: relative;
   flex: 1 1 auto;
   width: 100%;
   max-width: 1300px;

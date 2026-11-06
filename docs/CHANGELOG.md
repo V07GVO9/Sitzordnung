@@ -13,9 +13,10 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 **Geändert**
 - Im Bearbeitungsmodus werden Sitzordnungen über ein **Dropdown** gewählt;
   dort lässt sich auch direkt eine **neue Sitzordnung** anlegen.
-- Die **Titelleiste ist ausgeblendet**; der Menüknopf ☰ sitzt links oben im Inhalt
-  auf Höhe der KW-Auswahl und zeigt Menü und Titelleiste zusammen. Der Seitenrand
-  ist halb so breit – mehr Platz für Sitzplan und Wochenplan.
+- Die **Titelleiste ist ausgeblendet** und erscheint am Rechner, sobald die Maus an
+  den oberen Rand kommt, auf Tablet/Handy durch Herunterziehen. Der Menüknopf ☰
+  sitzt wieder in der Titelleiste. Der Seitenrand ist halb so breit – mehr Platz
+  für Sitzplan und Wochenplan.
 - Das Dropdown zeigt auch die Sitzordnungen der **anderen Fächer und Lernfelder
   der Klasse**; eine Auswahl übernimmt sie als Kopie in das aktuelle Fach.
 - Je Kurs sind jetzt **beliebig viele Sitzordnungen** möglich (vorher zwei).
