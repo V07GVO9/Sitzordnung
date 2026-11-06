@@ -89,7 +89,9 @@
 
 @media (min-width: 48rem) {
   .fields {
-    flex: 0 1 auto;
+    /* Nicht stauchen: Lieber rutschen die Werkzeuge in die nächste Zeile. */
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
 
     .plan-field,
     .name-field {
@@ -638,4 +640,8 @@
 .plan-select {
   width: auto;
   max-width: 14rem;
+}
+
+.copy-select {
+  width: auto;
 }
