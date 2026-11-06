@@ -1,3 +1,4 @@
+import { PasswordField } from '../../core/ui/password-field';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -32,7 +33,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, Icon, PasswordRules, PasswordField],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })

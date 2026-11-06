@@ -1,3 +1,4 @@
+import { PasswordField } from '../core/ui/password-field';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
@@ -16,7 +17,7 @@ import { PasswordRules } from './password-rules';
 @Component({
   selector: 'app-vault-gate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, Icon, PasswordRules, PasswordField],
   templateUrl: './vault-gate.html',
   styleUrl: './vault-gate.scss',
 })
