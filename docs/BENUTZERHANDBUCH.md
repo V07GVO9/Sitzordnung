@@ -355,12 +355,27 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
 
 | Reiter | Inhalt |
 | --- | --- |
-| **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). |
+| **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). Darüber ein gelber Kasten **Hinweise** (siehe unten). |
 | **Leistungsnachweise** | Klassenarbeit, Test, Referat … anlegen und Noten eintragen (siehe unten). |
 | **Mitarbeit** | Je Doppelstunde eine Mitarbeitsnote pro Schüler. |
-| **Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
-| **Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
-| **Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
+| **Mehr ▾ → Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
+| **Mehr ▾ → Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
+| **Mehr ▾ → Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
+
+Die selteneren Reiter liegen unter **Mehr ▾**; ist einer davon offen, trägt
+der Knopf seinen Namen.
+
+### Hinweise in der Übersicht
+
+Der gelbe Kasten über der Tabelle nennt je Schüler, was Aufmerksamkeit braucht
+(ein Tipp auf die Kopfzeile klappt ihn zu). In der Tabelle markiert ein ⚠ neben
+dem Namen dieselben Schüler.
+
+| Hinweis | Wann |
+| --- | --- |
+| Gesamtnote schlechter als 4,0 | so, wie die Note angezeigt wird (ab 4,1) |
+| Noch keine schriftliche Note | ein schriftlicher Nachweis ist freigegeben, der Schüler hat dort keine Note |
+| Ohne Note in „…“ | in einem freigegebenen Nachweis fehlt die Note (auch entschuldigt) |
 
 ### Leistungsnachweis anlegen und bewerten
 

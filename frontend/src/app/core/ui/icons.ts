@@ -129,6 +129,8 @@ export const ICONS = {
   ],
   'chevron-left': [{ t: 'path', d: 'm15 18-6-6 6-6' }],
   'chevron-right': [{ t: 'path', d: 'm9 18 6-6-6-6' }],
+  'chevron-up': [{ t: 'path', d: 'm18 15-6-6-6 6' }],
+  'chevron-down': [{ t: 'path', d: 'm6 9 6 6 6-6' }],
   lock: [
     { t: 'rect', width: '18', height: '11', x: '3', y: '11', rx: '2', ry: '2' },
     { t: 'path', d: 'M7 11V7a5 5 0 0 1 10 0v4' },
