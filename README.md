@@ -30,6 +30,8 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
+| Sicherheit im Alltag | Datenschutz-Modus für den Beamer, Sicherungskopie mit Erinnerung nach 7 Tagen, automatische Sperre |
+| Schuljahreswechsel | Klassen hochsetzen oder entfernen, Leistungsdaten des alten Jahres löschen, Stundenplan leeren – nach Pflicht-Sicherungskopie |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
 | Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
 
@@ -188,7 +190,7 @@ Auftragsverarbeitung. Er beantwortet aber nicht alles:
 - Die Verschlüsselung schützt die Datei, nicht das laufende Gerät. Ein
   gesperrter Bildschirm und eine verschlüsselte Festplatte gehören dazu.
 - **Löschfristen** liegen weiterhin in der Hand der Lehrkraft: Bewertungen nach
-  Schuljahresende löschen.
+  Schuljahresende löschen – am einfachsten mit dem **Schuljahreswechsel**.
 
 ## Starten
 

@@ -56,6 +56,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/setup/setup').then((m) => m.SetupPage),
   },
   {
+    path: 'schuljahr',
+    canActivate: [editModeGuard],
+    title: 'Schuljahreswechsel',
+    loadComponent: () => import('./pages/school-year/school-year').then((m) => m.SchoolYearPage),
+  },
+  {
     path: 'auswertung',
     canActivate: [evaluationGuard],
     title: 'Auswertung',

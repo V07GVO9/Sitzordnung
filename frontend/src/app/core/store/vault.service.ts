@@ -715,6 +715,22 @@ export class VaultService {
     }
   }
 
+  /**
+   * Lädt eine Sicherungskopie herunter - verschlüsselt mit demselben
+   * Passwort. Anders als „Speichern unter“ bleibt die Arbeitsdatei dieselbe.
+   */
+  async saveBackupCopy(): Promise<void> {
+    if (!this.store.isOpen() || this.password === null) {
+      throw new AppError('Es ist kein Datenbestand geöffnet.');
+    }
+    const blob = await encryptDatabase(this.store.snapshot(), this.password);
+    const base = (this.fileName() ?? DEFAULT_FILE_NAME).replace(/\.sitzordnung$/i, '');
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    await download(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
+    this.store.markBackup();
+  }
+
   /** Fragt nach einer neuen Datei und speichert dorthin. */
   async saveAs(): Promise<void> {
     const previousName = this.fileName();

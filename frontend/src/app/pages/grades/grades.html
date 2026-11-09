@@ -159,7 +159,7 @@
               <ul>
                 @for (row of warningRows(); track row.name) {
                   <li>
-                    <strong>{{ row.name }}:</strong>{{ ' ' }}
+                    <strong class="pii">{{ row.name }}:</strong>{{ ' ' }}
                     @for (w of row.warnings; track w.kind; let last = $last) {
                       <span [class.bad]="w.kind === 'below-four'">{{ w.text }}</span
                       >{{ last ? '' : ' · ' }}
@@ -191,7 +191,7 @@
               @for (s of b.students; track s.studentId) {
                 <tr [class.warn-row]="warnings().has(s.studentId)">
                   <td>
-                    {{ s.lastName }}, {{ s.firstName }}
+                    <span class="pii">{{ s.lastName }}, {{ s.firstName }}</span>
                     @if (warnings().get(s.studentId); as list) {
                       <span class="warn-icon" [title]="warningText(list)">
                         <app-icon name="triangle-alert" />

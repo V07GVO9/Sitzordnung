@@ -224,3 +224,15 @@
     animation: none;
   }
 }
+
+/* Erinnerung an die Sicherungskopie - Knöpfe auf dem Handy in eigener Zeile. */
+.backup-banner {
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+
+  .actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+}

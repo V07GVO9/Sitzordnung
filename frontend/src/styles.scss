@@ -1244,3 +1244,24 @@ app-password-field > input::-ms-reveal {
       var(--shadow-lg);
   }
 }
+
+// --- Datenschutz-Modus (Beamer): Namen und Fotos unkenntlich ---
+
+html.privacy {
+  .avatar,
+  .pii,
+  .tile-who .name,
+  .pool-name,
+  .p-row .row-text,
+  .person .who,
+  app-toast-host .text {
+    filter: blur(7px);
+    user-select: none;
+  }
+}
+
+/* Hinweis in der Titelleiste: Der Modus ist an - ein Tipp schaltet ihn aus. */
+.privacy-on {
+  color: var(--warning-text) !important;
+  background: var(--warning-soft) !important;
+}

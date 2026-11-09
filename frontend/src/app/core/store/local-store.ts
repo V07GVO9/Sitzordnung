@@ -93,6 +93,29 @@ import { renderLessonSheets } from './lesson-sheet';
 import { RatingsSheet, renderRatingsSheets } from './ratings-sheet';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
+/** Was beim Schuljahreswechsel passieren soll. */
+export interface SchoolYearInput {
+  /** Neue Namen, z. B. KDM11 → KDM12. */
+  renames: { classId: number; name: string }[];
+  /** Klassen, die die Schule verlassen - samt Schülern und allem, was daran hängt. */
+  deleteClassIds: number[];
+  /** Bewertungen, Leistungsnachweise, Noten, Protokoll und Notenbögen löschen. */
+  deleteRecords: boolean;
+  clearTimetable: boolean;
+}
+
+/** Anzahl der Datensätze je Art - vor dem Wechsel und als Ergebnis. */
+export interface SchoolYearCounts {
+  ratings: number;
+  participationOverrides: number;
+  assessments: number;
+  quarterGrades: number;
+  gradeChanges: number;
+  gradeReports: number;
+  pastPeriods: number;
+  timetableEntries: number;
+}
+
 export interface DateRange {
   from?: string | null;
   to?: string | null;
@@ -2165,7 +2188,111 @@ export class LocalStore {
   // --- Einstellungen ------------------------------------------------------
 
   getSettings(): AppSettings {
-    return { ...this.database.settings };
+    const { toleranceMinutes, allowRatingOutsideLesson } = this.database.settings;
+    return { toleranceMinutes, allowRatingOutsideLesson };
+  }
+
+  // --- Sicherungskopie ----------------------------------------------------
+
+  /** Wann zuletzt eine Sicherungskopie gezogen wurde - null: noch nie. */
+  getLastBackupAt(): string | null {
+    return this.database.settings.lastBackupAt ?? null;
+  }
+
+  /** Vermerkt eine gerade gezogene Sicherungskopie (steht in der Datei, gilt für alle Geräte). */
+  markBackup(): void {
+    this.database.settings.lastBackupAt = this.clock.now().toISOString();
+    this.changed();
+  }
+
+  // --- Schuljahreswechsel -------------------------------------------------
+
+  /** Was beim Schuljahreswechsel gelöscht würde - für die Zusammenfassung vorab. */
+  getSchoolYearCounts(): SchoolYearCounts {
+    const today = toDateKey(this.clock.now());
+    return {
+      ratings: this.database.ratings.length,
+      participationOverrides: this.database.participationOverrides.length,
+      assessments: this.database.assessments.length,
+      quarterGrades: this.database.quarterGrades.length,
+      gradeChanges: this.database.gradeChanges.length,
+      gradeReports: this.database.gradeReports.length,
+      pastPeriods: this.database.gradingPeriods.filter((p) => p.end < today).length,
+      timetableEntries: this.database.timetableEntries.length,
+    };
+  }
+
+  /**
+   * Neues Schuljahr: Klassen entfernen (Abschluss) oder umbenennen
+   * (hochsetzen), optional alle Leistungsdaten des alten Jahres löschen
+   * (Löschfrist) und den Stundenplan leeren. Schüler, Fächer, Kurse,
+   * Sitzordnungen, Notenschlüssel und Bewertungsschemata bleiben.
+   */
+  startNewSchoolYear(input: SchoolYearInput): SchoolYearCounts {
+    const removed = new Set(input.deleteClassIds);
+    for (const id of removed) {
+      this.requireClass(id);
+    }
+
+    // Erst prüfen, dann ändern: Die neuen Namen müssen eindeutig und nicht leer sein.
+    const finalNames = new Map(
+      this.database.schoolClasses.filter((c) => !removed.has(c.id)).map((c) => [c.id, c.name]),
+    );
+    for (const { classId, name } of input.renames) {
+      if (!finalNames.has(classId)) {
+        continue;
+      }
+      const trimmed = name.trim();
+      if (!trimmed) {
+        throw new AppError('Jede Klasse braucht einen Namen.');
+      }
+      finalNames.set(classId, trimmed);
+    }
+    const names = [...finalNames.values()];
+    const duplicate = names.find((n, i) => names.indexOf(n) !== i);
+    if (duplicate) {
+      throw new AppError(`Die Klasse '${duplicate}' gäbe es danach zweimal.`);
+    }
+
+    const counts = this.getSchoolYearCounts();
+    for (const id of removed) {
+      this.deleteClass(id);
+    }
+    for (const record of this.database.schoolClasses) {
+      record.name = finalNames.get(record.id) ?? record.name;
+    }
+
+    if (input.deleteRecords) {
+      const today = toDateKey(this.clock.now());
+      this.database.ratings = [];
+      this.database.participationOverrides = [];
+      this.database.assessments = [];
+      this.database.assessmentResults = [];
+      this.database.quarterGrades = [];
+      this.database.gradeChanges = [];
+      this.database.gradeReports = [];
+      this.database.gradingPeriods = this.database.gradingPeriods.filter((p) => p.end >= today);
+    }
+    if (input.clearTimetable) {
+      this.database.timetableEntries = [];
+    }
+
+    this.changed();
+    return {
+      ...counts,
+      ...(input.deleteRecords
+        ? {}
+        : {
+            ratings: 0,
+            participationOverrides: 0,
+            assessments: 0,
+            quarterGrades: 0,
+            gradeChanges: 0,
+            gradeReports: 0,
+            pastPeriods: 0,
+          }),
+      timetableEntries: input.clearTimetable ? counts.timetableEntries : 0,
+    };
   }
 
   saveSettings(settings: AppSettings): AppSettings {
@@ -2174,6 +2301,7 @@ export class LocalStore {
     }
 
     this.database.settings = {
+      ...this.database.settings,
       toleranceMinutes: settings.toleranceMinutes,
       allowRatingOutsideLesson: settings.allowRatingOutsideLesson,
     };

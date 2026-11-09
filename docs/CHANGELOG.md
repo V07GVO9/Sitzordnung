@@ -11,6 +11,14 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 09.11.2026
 
 **Neu**
+- **Datenschutz-Modus (Beamer):** Menü ☰ → Datenschutz-Modus macht Namen und
+  Fotos unkenntlich; ein durchgestrichenes Auge in der Titelleiste schaltet ihn
+  wieder aus.
+- **Sicherungskopie:** Menü ☰ → Sicherungskopie herunterladen (verschlüsselt,
+  die Arbeitsdatei bleibt). Nach 7 Tagen ohne Kopie erinnert der Wochenplan.
+- **Schuljahreswechsel:** Assistent mit Pflicht-Sicherungskopie: Klassen
+  hochsetzen oder entfernen, Leistungsdaten des alten Jahres löschen,
+  Stundenplan leeren – mit Zusammenfassung und Rückfrage.
 - **Einrichtungs-Assistent:** Checkliste vom leeren Bestand bis zum ersten
   Unterricht (Klassen & Fächer, Schüler, Stundenplan, Sitzordnungen, Fotos) mit
   Stand je Schritt und Direkt-Knopf. Startet aus dem leeren Wochenplan oder über
