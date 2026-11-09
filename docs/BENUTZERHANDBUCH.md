@@ -246,6 +246,38 @@ einer Bewertung schließen sie von selbst.
 - Schüler **ohne Sitzplatz** stehen neben dem Sitzplan und können dort ebenso
   bewertet werden.
 
+### Schnellbewertung per Wischen
+
+Ohne die Knöpfe zu öffnen: über eine Kachel (Sitzplan) oder eine Zeile (Liste)
+**waagerecht wischen**. Die Kachel folgt dem Finger und zeigt schon unterwegs,
+was beim Loslassen vergeben wird.
+
+| Geste | Bewertung |
+| --- | --- |
+| kurz nach rechts | **+** |
+| weit nach rechts | **++** |
+| kurz nach links | **−** |
+| weit nach links | **−−** |
+
+Zu kurz gewischt zählt nicht. Senkrechtes Wischen scrollt wie gewohnt. Auch hier
+gibt es danach **Rückgängig**. Die **0** gibt es nur über die Knöpfe.
+
+### Abwesende markieren
+
+Wer fehlt, wird schon zu Stundenbeginn markiert: im Sitzplan Kachel antippen →
+**Fehlt**, in der Liste der Knopf **fehlt** neben dem Namen. Die Kachel wird
+grau und gestrichelt, oben steht „· 1 fehlt“. Abwesende lassen sich nicht
+bewerten und werden nicht ausgelost. **Anwesend** nimmt die Markierung zurück.
+
+Für die Note zählt die Doppelstunde dann für diesen Schüler nicht (wie
+„fehlte“ in der Notenverwaltung). Die Änderung steht im Protokoll.
+
+### Schüler auslosen
+
+**Auslosen** wählt zufällig einen anwesenden Schüler – bevorzugt jemanden, der
+an diesem Tag noch nicht bewertet wurde. Die Kachel bzw. Zeile leuchtet auf, im
+Sitzplan öffnen sich gleich ihre Bewertungsknöpfe.
+
 ### Verlauf eines Schülers
 
 In der Liste öffnet ein Tipp auf Foto oder Namen das Blatt **Mitarbeit**, auf

@@ -45,6 +45,7 @@ import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
 import { ParticipationSheet } from './participation-sheet';
+import { SwipeRate } from './swipe-rate';
 
 /** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
 export type ParticipationView = 'liste' | 'sitzplan';
@@ -63,7 +64,7 @@ function readView(): ParticipationView {
 /** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
 const POPOVER_WIDTH = 240;
 /** Ungefähre Höhe: eine Knopfreihe plus „Verlauf“. */
-const POPOVER_HEIGHT = 100;
+const POPOVER_HEIGHT = 110;
 const POPOVER_GAP = 6;
 
 /**
@@ -121,6 +122,7 @@ export interface SeatCell {
     Icon,
     ParticipationList,
     ParticipationSheet,
+    SwipeRate,
   ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
@@ -154,6 +156,14 @@ export class CoursePage implements OnDestroy {
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
   readonly todayRatings = signal<Map<number, Rating[]>>(new Map());
+
+  /** Wer an diesem Tag als „fehlt“ markiert ist - zählt nicht, wird nicht ausgelost. */
+  readonly absentIds = signal<Set<number>>(new Set());
+  readonly absentCount = computed(() => this.absentIds().size);
+
+  /** Der zuletzt ausgeloste Schüler - leuchtet kurz auf. */
+  readonly pickedId = signal<number | null>(null);
+  private pickTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
   readonly view = signal<ParticipationView>(readView());
@@ -353,6 +363,9 @@ export class CoursePage implements OnDestroy {
     if (this.flashTimer) {
       clearTimeout(this.flashTimer);
     }
+    if (this.pickTimer) {
+      clearTimeout(this.pickTimer);
+    }
   }
 
   private load(courseId: number): void {
@@ -392,7 +405,10 @@ export class CoursePage implements OnDestroy {
     this.api.getCourses().subscribe({
       next: (courses) => {
         const others = courses.filter(
-          (c) => c.schoolClassId === course.schoolClassId && c.id !== course.id && c.seatingPlanCount > 0,
+          (c) =>
+            c.schoolClassId === course.schoolClassId &&
+            c.id !== course.id &&
+            c.seatingPlanCount > 0,
         );
         if (!others.length) {
           return;
@@ -784,6 +800,80 @@ export class CoursePage implements OnDestroy {
     });
   }
 
+  /** Schnellbewertung per Wischen über Kachel oder Zeile. */
+  onSwipe(student: Student, value: RatingValue): void {
+    if (this.absentIds().has(student.id)) {
+      return;
+    }
+    this.rate(student, value);
+  }
+
+  // --- Abwesende ---
+
+  /** Markiert einen Schüler für diesen Tag als fehlend - oder wieder als anwesend. */
+  toggleAbsent(student: Student, undo = true): void {
+    if (this.editMode()) {
+      return;
+    }
+    this.selectedId.set(null);
+    const absent = !this.absentIds().has(student.id);
+    this.api.setAbsent(this.courseId(), student.id, this.lessonDate(), absent).subscribe({
+      next: () => {
+        this.refreshScores();
+        if (this.undoToastId !== null) {
+          this.toasts.dismiss(this.undoToastId);
+        }
+        this.undoToastId = this.toasts.show(
+          `${fullName(student)}: ${absent ? 'fehlt' : 'wieder anwesend'}`,
+          'success',
+          6000,
+          undo ? { label: 'Rückgängig', run: () => this.toggleAbsent(student, false) } : undefined,
+        );
+      },
+      error: (err) => this.toasts.error(err, 'Die Anwesenheit konnte nicht gespeichert werden.'),
+    });
+  }
+
+  // --- Auslosen ---
+
+  /**
+   * Lost einen anwesenden Schüler aus - bevorzugt jemanden, der an diesem Tag
+   * noch keine Bewertung hat. Im Sitzplan öffnen sich gleich seine Knöpfe.
+   */
+  pickRandom(): void {
+    const present = this.students().filter((s) => !this.absentIds().has(s.id));
+    if (!present.length) {
+      this.toasts.show('Es ist niemand anwesend, der ausgelost werden kann.', 'info');
+      return;
+    }
+    const open = present.filter((s) => !this.lastToday().has(s.id));
+    const pool = open.length ? open : present;
+    const student = pool[Math.floor(Math.random() * pool.length)];
+
+    if (this.pickTimer) {
+      clearTimeout(this.pickTimer);
+    }
+    this.pickedId.set(null);
+    requestAnimationFrame(() => {
+      this.pickedId.set(student.id);
+      this.pickTimer = setTimeout(() => this.pickedId.set(null), 3600);
+      const el = document.querySelector<HTMLElement>(`[data-student="${student.id}"]`);
+      el?.scrollIntoView({ block: 'center' });
+      // Im Sitzplan gleich die Bewertungsknöpfe öffnen, sobald die Kachel steht.
+      if (el?.classList.contains('student')) {
+        setTimeout(() => {
+          this.popover.set(placePopover(el.getBoundingClientRect()));
+          this.selectedId.set(student.id);
+        }, 200);
+      }
+    });
+    this.toasts.show(
+      `Ausgelost: ${fullName(student)}${open.length ? '' : ' (alle schon bewertet)'}`,
+      'info',
+      4000,
+    );
+  }
+
   /**
    * Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. Hat sie
    * eine frühere ersetzt, gilt danach wieder diese.
@@ -936,6 +1026,9 @@ export class CoursePage implements OnDestroy {
         }
         this.todayRatings.set(map);
       },
+    });
+    this.api.getAbsentStudentIds(this.courseId(), day).subscribe({
+      next: (ids) => this.absentIds.set(new Set(ids)),
     });
   }
 

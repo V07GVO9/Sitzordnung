@@ -10,6 +10,16 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ## 09.11.2026
 
+**Neu**
+- **Schnellbewertung per Wischen:** Über Kachel oder Listenzeile waagerecht
+  wischen – kurz rechts **+**, weit rechts **++**, kurz links **−**, weit links
+  **−−**. Die Kachel zeigt schon beim Wischen, was vergeben wird.
+- **Abwesende markieren:** Kachel antippen → **Fehlt** bzw. in der Liste
+  **fehlt**. Abwesende sind ausgegraut, werden nicht bewertet und nicht
+  ausgelost; die Doppelstunde zählt für sie nicht.
+- **Schüler auslosen:** Knopf **Auslosen** wählt zufällig einen anwesenden
+  Schüler, bevorzugt noch nicht bewertete, und öffnet gleich seine Knöpfe.
+
 **Geändert**
 - Auf der Kursseite (Liste und Sitzplan) entfällt der Knopf **Noten**. Die
   **Notenverwaltung** (Leistungsnachweise, Bewertungsschema, Notenbögen,

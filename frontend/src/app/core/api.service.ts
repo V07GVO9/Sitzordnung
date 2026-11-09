@@ -380,6 +380,19 @@ export class ApiService {
     );
   }
 
+  getAbsentStudentIds(courseId: number, lessonDate: string): Observable<number[]> {
+    return this.run(() => this.store.getAbsentStudentIds(courseId, lessonDate));
+  }
+
+  setAbsent(
+    courseId: number,
+    studentId: number,
+    lessonDate: string,
+    absent: boolean,
+  ): Observable<void> {
+    return this.run(() => this.store.setAbsent(courseId, studentId, lessonDate, absent));
+  }
+
   getGradeChanges(courseId: number): Observable<GradeChange[]> {
     return this.run(() => this.store.getGradeChanges(courseId));
   }

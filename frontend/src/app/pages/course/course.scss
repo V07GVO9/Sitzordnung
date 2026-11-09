@@ -394,6 +394,44 @@
   }
 }
 
+/* Unter den Bewertungsknöpfen: Verlauf und Fehlt nebeneinander. */
+.pop-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.pop-absent {
+  grid-column: 1 / -1;
+  margin: 0.2rem 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Fehlt/Anwesend: aktiv dunkel, damit man den Zustand sofort sieht. */
+.absent-toggle {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 600;
+
+  &.on {
+    background: var(--text-muted);
+    border-color: var(--text-muted);
+    color: var(--bg);
+  }
+}
+
+.tile-absent {
+  position: absolute;
+  top: 0;
+  right: 0.1rem;
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -568,6 +606,11 @@
 
   .rate {
     min-height: 2.1rem;
+  }
+
+  .absent-toggle {
+    grid-column: 1 / -1;
+    min-height: 1.8rem;
   }
 }
 

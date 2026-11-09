@@ -457,3 +457,36 @@ describe('LocalStore - Noten je Stunde', () => {
     expect(result.fileName).toContain(anna.lastName);
   });
 });
+
+describe('LocalStore - Abwesende im Unterricht', () => {
+  it('markiert schon vor der ersten Bewertung - die Stunde zählt für ihn nicht', () => {
+    const { store, course, anna, ben } = setup();
+    store.setAbsent(course.id, ben.id, '2026-10-05', true);
+
+    expect(store.getAbsentStudentIds(course.id, '2026-10-05')).toEqual([ben.id]);
+
+    store.clock.setFixed(new Date('2026-10-05T11:30:00'));
+    store.rate(course.id, anna.id, 2);
+    const book = store.getGradeBook(course.id);
+
+    expect(book.students.find((s) => s.studentId === ben.id)!.lessons[0].grade).toBeNull();
+    expect(book.students.find((s) => s.studentId === ben.id)!.participation).toBeNull();
+    expect(store.getGradeChanges(course.id)[0].newValue).toBe('fehlte');
+  });
+
+  it('nimmt nur das „fehlt“ zurück, eine von Hand gesetzte Note bleibt', () => {
+    const { store, course, anna, ben } = setup();
+    store.clock.setFixed(new Date('2026-10-05T11:30:00'));
+    store.rate(course.id, anna.id, 2);
+    store.setParticipationOverride(course.id, ben.id, '2026-10-05', 2);
+
+    store.setAbsent(course.id, ben.id, '2026-10-05', false);
+    expect(
+      store.getGradeBook(course.id).students.find((s) => s.studentId === ben.id)!.lessons[0].grade,
+    ).toBe(2);
+
+    store.setAbsent(course.id, ben.id, '2026-10-05', true);
+    store.setAbsent(course.id, ben.id, '2026-10-05', false);
+    expect(store.getAbsentStudentIds(course.id, '2026-10-05')).toEqual([]);
+  });
+});
