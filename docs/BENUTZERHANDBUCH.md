@@ -84,7 +84,7 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
 | **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Notenverwaltung, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -310,7 +310,7 @@ Klasse in der Seitenleiste wählen; unten erscheinen vier Reiter.
 
 ## 9. Notenverwaltung je Kurs
 
-Aufruf: Menü ☰ → **Noten** (nachdem im Wochenplan eine Stunde gewählt ist).
+Aufruf: Menü ☰ → **Notenverwaltung** (nachdem im Wochenplan eine Stunde gewählt ist). Die Quartalsnoten stehen getrennt davon unter Menü ☰ → **Noten**.
 
 ### Zeitraum
 

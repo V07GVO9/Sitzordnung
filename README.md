@@ -34,7 +34,7 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 
 ## Noten
 
-Jeder Kurs hat unter **Menü ☰ → Noten** eine eigene Notenverwaltung. In KDM wird
+Jeder Kurs hat unter **Menü ☰ → Notenverwaltung** eine eigene Notenverwaltung. In KDM wird
 jedes Lernfeld als eigenes Fach angelegt (z. B. „LF3 …", Kürzel LF3) – so bekommt
 jedes Lernfeld eine eigene Note und ein eigenes Bewertungsschema.
 

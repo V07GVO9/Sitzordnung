@@ -165,6 +165,9 @@
         <a routerLink="/"><app-icon name="calendar-days" /> Wochenplan</a>
         @if (activeCourse()) {
           <a routerLink="/noten"><app-icon name="graduation-cap" /> Noten</a>
+          <a [routerLink]="['/kurs', activeCourse()!.id, 'noten']">
+            <app-icon name="notebook-pen" /> Notenverwaltung
+          </a>
           <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
             <app-icon name="file-down" /> Auswertung & Export
           </a>
