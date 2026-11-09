@@ -1,17 +1,15 @@
 @if (!isOpen()) {
   <app-vault-gate />
 } @else {
-  <div class="shell" [class.bar-pinned]="barPinned()">
+  <div class="shell">
     <div class="main-col">
-      <!-- Die Titelleiste ist verborgen, bis man sie holt: per Knopf oben in der Mitte
-           (bleibt dann angeheftet), am Rechner auch mit der Maus am oberen Rand,
-           auf Touch-Geräten auch durch Herunterziehen. -->
+      <!-- Die Titelleiste steht oben, weicht beim Runterscrollen und kommt beim
+           Hochscrollen zurück. Am Rechner holt sie auch die Maus am oberen Rand. -->
       <div class="titlebar-hover-zone" aria-hidden="true"></div>
       <header
         class="titlebar"
         [class.editing]="isEdit()"
-        [class.pinned]="barPinned()"
-        [class.open]="chromeOpen() || menuOpen()"
+        [class.hidden]="barHidden() && !menuOpen()"
       >
         <div class="title-left">
           <button
@@ -37,20 +35,12 @@
           </a>
         </div>
 
-        <h1 class="title">
-          <button
-            class="title-btn"
-            type="button"
-            [attr.aria-pressed]="barPinned()"
-            [title]="barPinned() ? 'Titelleiste ausblenden' : 'Titelleiste anheften'"
-            (click)="toggleBar()"
-          >
-            @if (courseBadge(); as badge) {
-              <span class="course-badge" [style.--hue]="badge.hue">{{ badge.short }}</span>
-            }
-            <span class="title-text">{{ title() || 'Sitzordnung' }}</span>
-            <app-icon [name]="barPinned() ? 'chevron-up' : 'pin'" class="title-icon" />
-          </button>
+        <h1 class="title" [title]="title() || 'Sitzordnung'">
+          @if (courseBadge(); as badge) {
+            <span class="course-badge" [style.--hue]="badge.hue">{{ badge.short }}</span>
+          }
+          <span class="title-long">{{ title() || 'Sitzordnung' }}</span>
+          <span class="title-short">{{ shortTitle() || 'Sitzordnung' }}</span>
         </h1>
 
         <div class="title-right">
@@ -105,26 +95,6 @@
           </button>
         </div>
       </header>
-
-      <!-- Immer sichtbar, solange die Leiste verborgen ist: Speicherstand, Seite bzw.
-           Fach - und ein Tipp blendet die Titelleiste dauerhaft ein. -->
-      @if (!barPinned()) {
-        <button
-          class="bar-toggle"
-          type="button"
-          [attr.data-state]="saveState()"
-          [attr.aria-label]="'Titelleiste einblenden – ' + saveStateText()"
-          [title]="'Titelleiste einblenden · ' + saveStateText()"
-          (click)="toggleBar()"
-        >
-          <span class="save-dot" aria-hidden="true"></span>
-          @if (courseBadge(); as badge) {
-            <span class="course-badge" [style.--hue]="badge.hue">{{ badge.short }}</span>
-          }
-          <span class="bar-toggle-text">{{ title() || 'Sitzordnung' }}</span>
-          <app-icon name="chevron-down" />
-        </button>
-      }
 
       @if (isEdit()) {
         <div class="mode-bar" role="status">
