@@ -53,7 +53,8 @@
       </div>
 
       <div class="kb-controls">
-        @if (!appEdit()) {
+        <!-- Im Sitzplan zählt jeder Platz: zum Wochenplan geht es über das Kalender-Symbol oben. -->
+        @if (!appEdit() && view() === 'liste') {
           <a class="btn small" routerLink="/"> <app-icon name="calendar-days" /> Wochenplan </a>
         }
 
