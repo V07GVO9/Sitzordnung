@@ -211,9 +211,6 @@ export class App implements OnDestroy {
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
       this.closeMenu();
-      // Neue Seite: Leiste wieder zeigen.
-      this.barHidden.set(false);
-      this.lastScrollY = 0;
       this.readUrl(e.urlAfterRedirects);
       this.refreshLesson();
     });
