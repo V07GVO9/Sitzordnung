@@ -38,9 +38,18 @@ import { readPdfPages } from '../../core/store/pdf-text';
 import { download, isNativeApp } from '../../core/store/file-system';
 import { renderReports } from '../../core/store/report';
 import { formatDateGerman, toDateKey } from '../../core/store/time';
+import { Icon } from '../../core/ui/icon';
+import { GradeWarning, gradeWarnings } from './grade-warnings';
 import { ToastService } from '../../core/toast.service';
 
 type Tab = 'overview' | 'assessments' | 'participation' | 'scheme' | 'reports' | 'log';
+
+/** Seltener gebraucht - diese Reiter liegen unter „Mehr“. */
+const MORE_TABS: { tab: Tab; label: string }[] = [
+  { tab: 'scheme', label: 'Bewertungsschema' },
+  { tab: 'reports', label: 'Notenbögen' },
+  { tab: 'log', label: 'Protokoll' },
+];
 
 /** Eine Zeile der Eingabetabelle - Punkte und Note als Text, wie getippt. */
 interface ResultRow {
@@ -79,7 +88,7 @@ const OVERRIDE_GRADES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
 @Component({
   selector: 'app-grades',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './grades.html',
   styleUrl: './grades.scss',
 })
@@ -177,6 +186,43 @@ export class GradesPage {
     () => this.book()?.assessments.filter((a) => a.released) ?? [],
   );
 
+  readonly moreTabs = MORE_TABS;
+  /** Das Menü hinter „Mehr“. */
+  readonly moreOpen = signal(false);
+  /** Steht der aktive Reiter unter „Mehr“? Dann trägt der Knopf seinen Namen. */
+  readonly activeMore = computed(() => MORE_TABS.find((t) => t.tab === this.tab()) ?? null);
+
+  /** Hinweise je Schüler - schlechter als 4,0, fehlende Noten. */
+  readonly warnings = computed(() => {
+    const book = this.book();
+    const map = new Map<number, GradeWarning[]>();
+    if (!book) {
+      return map;
+    }
+    for (const student of book.students) {
+      const list = gradeWarnings(student, this.releasedAssessments(), book.scheme.writtenPercent);
+      if (list.length) {
+        map.set(student.studentId, list);
+      }
+    }
+    return map;
+  });
+
+  /** Für den Kasten über der Tabelle: wer welche Hinweise hat. */
+  readonly warningRows = computed(() =>
+    (this.book()?.students ?? [])
+      .filter((s) => this.warnings().has(s.studentId))
+      .map((s) => ({
+        name: `${s.lastName}, ${s.firstName}`,
+        warnings: this.warnings().get(s.studentId)!,
+      })),
+  );
+  readonly warningsOpen = signal(true);
+
+  warningText(list: GradeWarning[]): string {
+    return list.map((w) => w.text).join(' · ');
+  }
+
   readonly otherCourses = computed(() => this.courses().filter((c) => c.id !== this.courseId()));
 
   readonly course = computed(() => this.courses().find((c) => c.id === this.courseId()) ?? null);
@@ -255,6 +301,7 @@ export class GradesPage {
   }
 
   selectTab(tab: Tab): void {
+    this.moreOpen.set(false);
     this.tab.set(tab);
     if (tab === 'scheme') {
       this.resetSchemeDraft();

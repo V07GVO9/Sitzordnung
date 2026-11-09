@@ -11,6 +11,9 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 09.11.2026
 
 **Neu**
+- **Hinweise in der Notenübersicht:** Ein Kasten nennt Schüler mit einer
+  Gesamtnote schlechter als 4,0, ohne schriftliche Note oder ohne Note in einem
+  freigegebenen Leistungsnachweis; ⚠ markiert sie in der Tabelle.
 - **Schnellbewertung per Wischen:** Über Kachel oder Listenzeile waagerecht
   wischen – kurz rechts **+**, weit rechts **++**, kurz links **−**, weit links
   **−−**. Die Kachel zeigt schon beim Wischen, was vergeben wird.
@@ -21,6 +24,8 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   Schüler, bevorzugt noch nicht bewertete, und öffnet gleich seine Knöpfe.
 
 **Geändert**
+- Notenverwaltung: **Bewertungsschema, Notenbögen und Protokoll** liegen unter
+  **Mehr ▾** – auf dem Handy bleiben so nur vier Reiter.
 - Auf der Kursseite (Liste und Sitzplan) entfällt der Knopf **Noten**. Die
   **Notenverwaltung** (Leistungsnachweise, Bewertungsschema, Notenbögen,
   Protokoll) hat dafür einen eigenen Menüpunkt: Menü ☰ → **Notenverwaltung**.
