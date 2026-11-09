@@ -14,6 +14,7 @@ import {
 } from '../../core/models';
 import { formatGrade } from '../../core/store/assessment.logic';
 import { quarterOf } from '../../core/store/quarter.logic';
+import { SwipeRate } from './swipe-rate';
 
 export interface RateRequest {
   student: Student;
@@ -37,6 +38,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 @Component({
   selector: 'app-participation-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [SwipeRate],
   template: `
     <div class="q-bar" role="group" aria-label="Quartal für die Noten">
       <span class="muted">Noten im</span>
@@ -57,8 +59,14 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       @for (row of rows(); track row.student.id) {
         <div
           class="list-row p-row"
+          [attr.data-student]="row.student.id"
+          appSwipeRate
+          [swipeDisabled]="row.absent"
+          (swipeRate)="rate.emit({ student: row.student, value: $event })"
           [class.flash]="flashId() === row.student.id"
-          [class.rated]="row.current !== null"
+          [class.rated]="row.current !== null && !row.absent"
+          [class.is-absent]="row.absent"
+          [class.picked]="pickedId() === row.student.id"
           [style.--rated]="ratedColor(row.current)"
         >
           <button
@@ -77,6 +85,17 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
             <span class="row-text">
               <strong>{{ fullName(row.student) }}</strong>
             </span>
+          </button>
+
+          <button
+            type="button"
+            class="absent-toggle"
+            [class.on]="row.absent"
+            [attr.aria-pressed]="row.absent"
+            (click)="absent.emit(row.student)"
+            [title]="row.absent ? 'Wieder anwesend' : 'Fehlt heute'"
+          >
+            {{ row.absent ? 'anwesend' : 'fehlt' }}
           </button>
 
           <span
@@ -111,25 +130,27 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
             }
           </span>
 
-          <span
-            class="scale"
-            role="group"
-            [attr.aria-label]="'Mitarbeit von ' + fullName(row.student)"
-          >
-            @for (option of options; track option.value) {
-              <button
-                type="button"
-                [class]="ratingClass(option.value)"
-                [class.active]="row.current === option.value"
-                [attr.aria-pressed]="row.current === option.value"
-                (click)="rate.emit({ student: row.student, value: option.value })"
-                [title]="option.title"
-                [attr.aria-label]="fullName(row.student) + ': ' + option.title"
-              >
-                {{ option.symbol }}
-              </button>
-            }
-          </span>
+          @if (!row.absent) {
+            <span
+              class="scale"
+              role="group"
+              [attr.aria-label]="'Mitarbeit von ' + fullName(row.student)"
+            >
+              @for (option of options; track option.value) {
+                <button
+                  type="button"
+                  [class]="ratingClass(option.value)"
+                  [class.active]="row.current === option.value"
+                  [attr.aria-pressed]="row.current === option.value"
+                  (click)="rate.emit({ student: row.student, value: option.value })"
+                  [title]="option.title"
+                  [attr.aria-label]="fullName(row.student) + ': ' + option.title"
+                >
+                  {{ option.symbol }}
+                </button>
+              }
+            </span>
+          }
         </div>
       } @empty {
         <div class="list-row p-row">
@@ -185,6 +206,38 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       border: 0;
       background: transparent;
       text-align: left;
+    }
+
+    /* Fehlt/Anwesend - klein neben dem Namen, aktiv dunkel. */
+    .absent-toggle {
+      flex: none;
+      min-height: 2rem;
+      padding: 0.2rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-muted);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &.on {
+        background: var(--text-muted);
+        border-color: var(--text-muted);
+        color: var(--bg);
+      }
+    }
+
+    /* Abwesende bleiben bedienbar: der Knopf „anwesend“ darf nicht verblassen. */
+    .p-row.is-absent {
+      filter: none;
+      opacity: 1;
+
+      .who,
+      .points,
+      .q-grades {
+        opacity: 0.5;
+        filter: grayscale(1);
+      }
     }
 
     .points {
@@ -311,7 +364,14 @@ export class ParticipationList {
   /** Alle Quartalsnoten des Kurses. */
   readonly quarterGrades = input<QuarterGrade[]>([]);
 
+  /** Wer an diesem Tag fehlt. */
+  readonly absentIds = input<Set<number>>(new Set());
+  /** Der gerade ausgeloste Schüler. */
+  readonly pickedId = input<number | null>(null);
+
   readonly rate = output<RateRequest>();
+  /** „fehlt“/„anwesend“ angetippt. */
+  readonly absent = output<Student>();
 
   readonly quarters = QUARTERS;
   readonly quarter = signal<Quarter>(quarterOf(new Date()));
@@ -348,6 +408,7 @@ export class ParticipationList {
         student,
         score: this.scores().get(student.id) ?? null,
         current: this.today().get(student.id)?.at(-1)?.value ?? null,
+        absent: this.absentIds().has(student.id),
         grades: {
           written: this.gradesOfQuarter().get(`${student.id}:written`) ?? null,
           oral: this.gradesOfQuarter().get(`${student.id}:oral`) ?? null,

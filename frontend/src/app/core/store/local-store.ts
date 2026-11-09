@@ -57,6 +57,7 @@ import {
   Database,
   GradeScaleRecord,
   GradingSchemeRecord,
+  ParticipationOverrideRecord,
   SeatingPlanRecord,
   StudentRecord,
   createDefaultScheme,
@@ -1624,6 +1625,61 @@ export class LocalStore {
     this.changed();
   }
 
+  /** Die an einem Tag als „fehlt“ markierten Schüler eines Kurses. */
+  getAbsentStudentIds(courseId: number, lessonDate: string): number[] {
+    this.requireCourse(courseId);
+    return this.database.participationOverrides
+      .filter((o) => o.courseId === courseId && o.lessonDate === lessonDate && o.grade === null)
+      .map((o) => o.studentId);
+  }
+
+  /**
+   * Markiert einen Schüler für den Tag als fehlend - schon zu Stundenbeginn,
+   * bevor jemand bewertet wurde. Die Doppelstunde zählt für ihn dann nicht.
+   * Zurücknehmen entfernt nur das „fehlt“, keine von Hand gesetzte Note.
+   */
+  setAbsent(courseId: number, studentId: number, lessonDate: string, absent: boolean): void {
+    const course = this.requireCourse(courseId);
+    const student = this.requireStudent(studentId);
+    if (student.schoolClassId !== course.schoolClassId) {
+      throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+    }
+    if (!isValidDateKey(lessonDate)) {
+      throw new AppError('Das Datum der Stunde ist ungültig.');
+    }
+
+    const same = (o: ParticipationOverrideRecord) =>
+      o.courseId === courseId && o.studentId === studentId && o.lessonDate === lessonDate;
+    const existing = this.database.participationOverrides.find(same);
+    if (absent ? existing?.grade === null : existing?.grade !== null) {
+      return;
+    }
+
+    this.database.participationOverrides = this.database.participationOverrides.filter(
+      (o) => !same(o),
+    );
+    if (absent) {
+      this.database.participationOverrides.push({
+        courseId,
+        studentId,
+        lessonDate,
+        grade: null,
+        reason: 'fehlt (im Unterricht markiert)',
+      });
+    }
+
+    this.logChange(
+      courseId,
+      studentId,
+      `Mitarbeit ${formatDateGerman(lessonDate)}`,
+      absent ? (existing ? formatGrade(existing.grade!, 1) : 'aus Bewertungen') : 'fehlte',
+      absent ? 'fehlte' : 'aus Bewertungen',
+      'im Unterricht markiert',
+      this.clock.now().toISOString(),
+    );
+    this.changed();
+  }
+
   private participationFor(
     courseId: number,
     studentId: number,
@@ -2011,8 +2067,7 @@ export class LocalStore {
     const today = toDateKey(now);
     const yearStart = `${now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1}-08-01`;
     const firstRating = this.lessonDates(courseId)[0];
-    const from =
-      range?.from || (firstRating && firstRating < yearStart ? firstRating : yearStart);
+    const from = range?.from || (firstRating && firstRating < yearStart ? firstRating : yearStart);
     const to = range?.to && range.to < today ? range.to : today;
 
     const dates: string[] = [];

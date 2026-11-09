@@ -1187,3 +1187,60 @@ app-password-field > input {
 app-password-field > input::-ms-reveal {
   display: none;
 }
+
+// --- Schnellbewertung per Wischen (Kachel und Listenzeile) ---
+
+.swiping {
+  position: relative;
+  z-index: 5;
+  transform: translateX(var(--swipe, 0));
+  transition: none !important;
+  cursor: grabbing;
+}
+
+/* Unterwegs zeigt die Kachel groß, was beim Loslassen vergeben wird. */
+[data-swipe]::after {
+  content: attr(data-swipe);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: var(--swipe-color);
+  color: var(--rate-ink);
+  font-size: 1.6rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+// --- Abwesend markiert (Kachel und Listenzeile) ---
+
+.is-absent {
+  opacity: 0.55;
+  filter: grayscale(1);
+  border-style: dashed !important;
+}
+
+.absent-badge {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--text-muted);
+  color: var(--bg);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Ausgelost: kurz pulsierender Ring, damit man den Schüler sofort findet. */
+.picked {
+  animation: picked-ring 1.2s ease-in-out 3;
+}
+
+@keyframes picked-ring {
+  50% {
+    box-shadow:
+      0 0 0 4px var(--accent),
+      var(--shadow-lg);
+  }
+}

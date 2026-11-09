@@ -72,6 +72,9 @@ Verordnungen und Konferenzbeschlüsse.
   (7 Tage, 30 Tage, gesamt); dort lassen sich einzelne Bewertungen löschen. Nach
   jeder Bewertung erscheint unten eine Meldung mit **Rückgängig** – für
   Vertipper.
+- **Schneller im Unterricht:** Wischen über Kachel oder Zeile bewertet direkt
+  (rechts +/++, links −/−−). **Fehlt** markiert Abwesende, die dann nicht zählen.
+  **Auslosen** wählt einen anwesenden, noch nicht bewerteten Schüler.
 - **Sitzplan bearbeiten:** Stift-Symbol neben *Liste | Sitzplan*. Neben Drag and
   Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
   Schlag.
