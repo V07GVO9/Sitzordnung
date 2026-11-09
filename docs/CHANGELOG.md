@@ -10,21 +10,17 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ## 09.11.2026
 
-**Neu**
-- **Knopf für die Titelleiste:** Oben in der Mitte sitzt ein Knopf, der die
-  Titelleiste **anheftet** – auch auf Handy und Tablet, wo das Herunterziehen
-  nicht zuverlässig klappt. Ein Tipp auf den Titel blendet sie wieder aus. Die
-  Wahl merkt sich jedes Gerät.
-- **Speicherstand immer sichtbar:** Ein farbiger Punkt im Knopf zeigt
-  gespeichert (grün), ungespeichert (gelb) oder speichert (grau).
-- **Kurskopf:** Auf Mitarbeit, Noten und Auswertung zeigen Knopf und Titel das
-  gewählte Fach mit Kürzel in der Fachfarbe.
-
 **Geändert**
+- **Titelleiste wieder sichtbar:** Statt verborgen zu sein, steht sie fest
+  oben auf der Seite und scrollt beim Runterscrollen mit weg. Das
+  Herunterziehen und der Knopf oben in der Mitte entfallen. So ist auch der
+  Speicherstand (Knopf rechts) wieder im Blick.
+- **Kurskopf:** Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit
+  Kürzel in der Fachfarbe.
+- **Handy:** Kurzer Titel (z. B. „INF BFI10A · Noten“), und der Modusschalter
+  zeigt nur den Knopf zum Wechseln – alles passt in eine Zeile.
 - Wochenplan: Nach dem Blättern führt ein deutlicher **Heute**-Knopf zurück in
   die aktuelle Woche.
-- Auf dem Handy steht der Titel in der Titelleiste in einer eigenen Zeile und
-  wird nicht mehr abgeschnitten.
 
 ## 06.11.2026
 

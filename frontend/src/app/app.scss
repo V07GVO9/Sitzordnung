@@ -60,39 +60,14 @@
   min-height: 100dvh;
 }
 
-/* Unsichtbarer Streifen am oberen Rand: Kommt die Maus dorthin, erscheint die Titelleiste. */
-.titlebar-hover-zone {
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: 69;
-  height: 0.75rem;
-
-  /* Auf Touch-Geräten holt man die Leiste per Ziehen - der Streifen soll dort nichts abfangen. */
-  @media (hover: none) {
-    pointer-events: none;
-  }
-}
-
 .titlebar {
-  /* Verborgen: oberhalb des Bildschirms, bis Maus (Rand) oder Finger (Ziehen) sie holt. */
-  position: fixed;
-  inset: 0 0 auto;
+  /* Fest oben auf der Seite: Beim Runterscrollen scrollt sie mit dem Inhalt weg. */
+  position: relative;
   z-index: 69;
-  transform: translateY(-100%);
-  transition: transform 0.2s ease 0.3s;
-  box-shadow: none;
-
-  &.open,
-  &:hover,
-  &:focus-within,
-  .titlebar-hover-zone:hover ~ & {
-    transform: none;
-    transition-delay: 0s;
-    box-shadow: var(--shadow-lg);
-  }
 
   display: grid;
-  grid-template-columns: minmax(2.6rem, 1fr) auto minmax(2.6rem, 1fr);
+  /* Der Titel bekommt, was die Knöpfe links und rechts übrig lassen. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem var(--pad-seite);
@@ -102,69 +77,53 @@
   border-bottom: 1px solid var(--separator);
 
   .title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     min-width: 0;
-    overflow: hidden;
     margin: 0;
     font-size: 1.02rem;
     font-weight: 650;
-    text-align: center;
-  }
-
-  /* Angeheftet: Die Leiste steht fest oben im Seitenfluss und verdeckt nichts. */
-  &.pinned {
-    position: sticky;
-    top: 0;
-    transform: none;
-    transition: none;
-    box-shadow: none;
   }
 }
 
-/* Auf dem Handy ist die Zeile zu schmal: Knöpfe oben, Titel darunter in voller Breite. */
-@media (max-width: 30rem) {
-  .titlebar {
-    grid-template-columns: auto 1fr;
-    row-gap: 0.15rem;
-
-    .title {
-      grid-column: 1 / -1;
-      grid-row: 2;
-    }
-  }
-}
-
-/* Der Titel ist zugleich der Schalter zum Anheften und Ausblenden. */
-.title-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  max-width: 100%;
-  min-height: 2.4rem;
-  padding: 0.2rem 0.6rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--surface);
-  }
-
-  .title-icon {
-    flex: none;
-    font-size: 0.95rem;
-    color: var(--text-muted);
-  }
-}
-
-.title-text,
-.bar-toggle-text {
+.title-long,
+.title-short {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.title-short {
+  display: none;
+}
+
+/* Handy: kurzer Titel (Kürzel + Klasse), damit alles in eine Zeile passt. */
+@media (max-width: 40rem) {
+  .titlebar {
+    gap: 0.35rem;
+    padding-inline: 0.5rem;
+
+    .title {
+      font-size: 0.95rem;
+    }
+  }
+
+  .title-long {
+    display: none;
+  }
+
+  /* Modusschalter: nur der Knopf zum Wechseln; der aktuelle Modus zeigt sich an
+     der Leiste selbst (gelber Rand und Hinweis im Bearbeitungsmodus). */
+  .mode-switch button.on {
+    display: none;
+  }
+
+  .title-short {
+    display: block;
+  }
 }
 
 /* Kürzel des Fachs in seiner Farbe - wie im Wochenplan und im Menü. */
@@ -177,74 +136,6 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-}
-
-/* Knopf oben in der Mitte, solange die Leiste verborgen ist: groß genug für den Daumen. */
-.bar-toggle {
-  position: fixed;
-  top: calc(0.3rem + env(safe-area-inset-top));
-  left: 50%;
-  z-index: 68;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  max-width: min(80vw, 28rem);
-  min-height: 2.25rem;
-  padding: 0.25rem 0.75rem 0.25rem 0.65rem;
-  border: 1px solid var(--separator);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: saturate(1.6) blur(14px);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
-  transform: translateX(-50%);
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-
-  > app-icon {
-    flex: none;
-    color: var(--text-muted);
-  }
-
-  &:active {
-    transform: translateX(-50%) scale(0.97);
-  }
-
-  /* Ist die Leiste gerade sichtbar (Maus, Ziehen, Menü), tritt der Knopf zurück. */
-  .titlebar.open ~ &,
-  .titlebar:hover ~ &,
-  .titlebar:focus-within ~ &,
-  .titlebar-hover-zone:hover ~ & {
-    opacity: 0;
-    pointer-events: none;
-  }
-}
-
-/* Speicherstand auf einen Blick: grün gespeichert, gelb offen, grau beim Speichern. */
-.save-dot {
-  flex: none;
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--positive);
-
-  [data-state='dirty'] > & {
-    background: var(--warning);
-  }
-
-  [data-state='saving'] > & {
-    background: var(--text-muted);
-    animation: pulse 1s ease-in-out infinite;
-  }
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.35;
-  }
 }
 
 .title-left,
@@ -295,14 +186,7 @@ main {
   /* Halber Seitenabstand - mehr Platz für den Inhalt. */
   --pad-main: calc(var(--pad-seite) / 2);
   padding: var(--pad-main);
-  /* Platz für den Knopf oben in der Mitte, damit er nichts verdeckt. */
-  padding-top: calc(var(--pad-main) + 2.6rem + env(safe-area-inset-top));
   padding-bottom: calc(var(--pad-main) + env(safe-area-inset-bottom));
-
-  /* Mit angehefteter Leiste liegt der sichere Rand schon in der Leiste. */
-  .bar-pinned & {
-    padding-top: var(--pad-main);
-  }
 }
 
 /* --- Menü hinter den drei Balken --- */

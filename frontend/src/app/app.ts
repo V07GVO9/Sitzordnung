@@ -36,6 +36,12 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
 };
 
 /** Titel der Seiten in der Kopfleiste. */
+/** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
+const SHORT_TITLES: Record<string, string> = {
+  verwaltung: 'Verwaltung',
+  auswertung: 'Auswertung',
+};
+
 const PAGE_TITLES: Record<string, string> = {
   '': 'Wochenplan',
   noten: 'Noten',
@@ -46,17 +52,6 @@ const PAGE_TITLES: Record<string, string> = {
 
 /** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */
 const COURSE_PAGES = new Set(['kurs', 'noten', 'auswertung']);
-
-/** Merkt sich je Gerät, ob die Titelleiste dauerhaft eingeblendet ist. */
-const PINNED_KEY = 'sitzordnung.titlebar-pinned';
-
-function readPinned(): boolean {
-  try {
-    return localStorage.getItem(PINNED_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
 
 function courseTitle(course: Course): string {
   return `${course.subjectName} · ${course.schoolClassName}`;
@@ -86,8 +81,6 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   host: {
     '(document:keydown.escape)': 'closeMenu()',
     '(document:keydown)': 'onKeydown($event)',
-    '(document:touchstart)': 'onTouchStart($event)',
-    '(document:touchmove)': 'onTouchMove($event)',
   },
 })
 export class App implements OnDestroy {
@@ -135,6 +128,19 @@ export class App implements OnDestroy {
     // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
     return course && COURSE_PAGES.has(page) ? `${title} – ${courseTitle(course)}` : title;
   });
+  /**
+   * Kurzfassung fürs Handy: Das Kürzel steht davor, statt des Fachnamens nur
+   * die Klasse - z. B. „INF BFI10A · Noten“.
+   */
+  readonly shortTitle = computed(() => {
+    const [page = '', , sub] = this.path();
+    const course = this.activeCourse();
+    if (page === 'kurs') {
+      return course ? course.schoolClassName + (sub === 'noten' ? ' · Noten' : '') : '';
+    }
+    const title = SHORT_TITLES[page] ?? PAGE_TITLES[page] ?? '';
+    return course && COURSE_PAGES.has(page) ? `${course.schoolClassName} · ${title}` : title;
+  });
   /** Kürzel und Farbe des Fachs für den Kurskopf - nur auf den Seiten des Fachs. */
   readonly courseBadge = computed(() => {
     const course = this.activeCourse();
@@ -144,12 +150,6 @@ export class App implements OnDestroy {
       : null;
   });
   readonly menuOpen = signal(false);
-  /** Auf Touch-Geräten heruntergezogen: Die Titelleiste bleibt sichtbar. */
-  readonly chromeOpen = signal(false);
-  /** Per Knopf angeheftet: Die Titelleiste bleibt dauerhaft sichtbar (je Gerät). */
-  readonly barPinned = signal(readPinned());
-  /** Beginn der laufenden Wischbewegung - null, wenn sie nichts mit der Titelleiste zu tun hat. */
-  private touchStart: { x: number; y: number; pull: boolean } | null = null;
   readonly passwordDialogOpen = signal(false);
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
@@ -232,65 +232,6 @@ export class App implements OnDestroy {
   /** Schließt Menü und Titelleiste gemeinsam. */
   closeMenu(): void {
     this.menuOpen.set(false);
-    this.chromeOpen.set(false);
-  }
-
-  /**
-   * Herunterziehen zeigt die Titelleiste: vom oberen Rand aus oder ganz oben auf
-   * der Seite. Hochwischen oder Tippen außerhalb blendet sie wieder aus.
-   */
-  onTouchStart(event: TouchEvent): void {
-    const touch = event.touches[0];
-    const target = event.target as Element | null;
-    if (!touch || event.touches.length > 1) {
-      this.touchStart = null;
-      return;
-    }
-
-    const inBar = !!target?.closest('.titlebar, .app-menu, app-confirm-host, app-toast-host');
-    // Tippen in den Inhalt blendet eine heruntergezogene Leiste wieder aus.
-    if (this.chromeOpen() && !inBar && !this.menuOpen()) {
-      this.chromeOpen.set(false);
-    }
-
-    // Plätze ziehen und Eingabefelder bleiben unberührt.
-    const busy = !!target?.closest('.cdk-drag, input, select, textarea');
-    const pull = touch.clientY < 48 || (window.scrollY <= 0 && !busy && !inBar);
-    this.touchStart = { x: touch.clientX, y: touch.clientY, pull };
-  }
-
-  onTouchMove(event: TouchEvent): void {
-    const touch = event.touches[0];
-    const start = this.touchStart;
-    if (!touch || !start) {
-      return;
-    }
-
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.abs(dy) < 40 || Math.abs(dx) > Math.abs(dy)) {
-      return;
-    }
-
-    if (dy > 0 && start.pull) {
-      this.chromeOpen.set(true);
-      this.touchStart = null;
-    } else if (dy < 0 && this.chromeOpen() && !this.menuOpen()) {
-      this.chromeOpen.set(false);
-      this.touchStart = null;
-    }
-  }
-
-  /** Der Knopf oben: heftet die Titelleiste an oder blendet sie wieder aus. */
-  toggleBar(): void {
-    const pinned = !this.barPinned();
-    this.barPinned.set(pinned);
-    this.chromeOpen.set(false);
-    try {
-      localStorage.setItem(PINNED_KEY, pinned ? '1' : '0');
-    } catch {
-      // Ohne Speicher gilt die Wahl nur bis zum Neuladen.
-    }
   }
 
   install(): void {
