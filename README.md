@@ -22,7 +22,8 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 
 | Bereich | Beschreibung |
 | --- | --- |
-| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hinterlegen |
+| Einrichtung | Assistent als Checkliste: Klassen & Fächer, Schüler, Stundenplan, Sitzordnungen, Fotos – mit Stand und Direkt-Knopf je Schritt |
+| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hinterlegen oder direkt mit der Kamera aufnehmen |
 | Fächer & Kurse | Fächer anlegen und einer Klasse zuordnen – daraus entsteht ein Kurs |
 | Sitzordnung | Beliebig viele Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
 | Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |

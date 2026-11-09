@@ -157,6 +157,7 @@
         [today]="todayRatings()"
         [flashId]="flash()?.studentId ?? null"
         [quarterGrades]="quarterGrades()"
+        [classId]="course()!.schoolClassId"
         [absentIds]="absentIds()"
         [pickedId]="pickedId()"
         (rate)="onRate($event)"
@@ -457,7 +458,11 @@
               @if (students().length === 0) {
                 <div class="empty small">
                   <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-                  <a class="btn small" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+                  <a
+                    class="btn small"
+                    routerLink="/verwaltung"
+                    [queryParams]="{ tab: 'schueler', klasse: course()!.schoolClassId }"
+                  >
                     <app-icon name="plus" /> Schüler anlegen
                   </a>
                 </div>

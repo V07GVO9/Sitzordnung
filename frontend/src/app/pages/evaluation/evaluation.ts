@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { ActiveCourseService } from '../../core/active-course.service';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
@@ -33,7 +33,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules, PasswordField],
+  imports: [FormsModule, RouterLink, Icon, PasswordRules, PasswordField],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })

@@ -51,6 +51,11 @@ export const routes: Routes = [
       import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
   },
   {
+    path: 'einrichtung',
+    title: 'Einrichtung',
+    loadComponent: () => import('./pages/setup/setup').then((m) => m.SetupPage),
+  },
+  {
     path: 'auswertung',
     canActivate: [evaluationGuard],
     title: 'Auswertung',

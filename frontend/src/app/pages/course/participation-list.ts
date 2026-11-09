@@ -14,6 +14,7 @@ import {
 } from '../../core/models';
 import { formatGrade } from '../../core/store/assessment.logic';
 import { quarterOf } from '../../core/store/quarter.logic';
+import { RouterLink } from '@angular/router';
 import { SwipeRate } from './swipe-rate';
 
 export interface RateRequest {
@@ -38,7 +39,7 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
 @Component({
   selector: 'app-participation-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SwipeRate],
+  imports: [SwipeRate, RouterLink],
   template: `
     <div class="q-bar" role="group" aria-label="Quartal für die Noten">
       <span class="muted">Noten im</span>
@@ -155,7 +156,12 @@ export const RATING_OPTIONS: { value: RatingValue; symbol: string; title: string
       } @empty {
         <div class="list-row p-row">
           <span class="row-text"
-            ><span class="sub muted">Keine Schüler in dieser Klasse.</span></span
+            ><span class="sub muted"
+              >Keine Schüler in dieser Klasse.
+              <a routerLink="/verwaltung" [queryParams]="{ tab: 'schueler', klasse: classId() }"
+                >Schüler anlegen</a
+              ></span
+            ></span
           >
         </div>
       }
@@ -364,6 +370,8 @@ export class ParticipationList {
   /** Alle Quartalsnoten des Kurses. */
   readonly quarterGrades = input<QuarterGrade[]>([]);
 
+  /** Für den Link „Schüler anlegen“, wenn die Klasse leer ist. */
+  readonly classId = input<number | null>(null);
   /** Wer an diesem Tag fehlt. */
   readonly absentIds = input<Set<number>>(new Set());
   /** Der gerade ausgeloste Schüler. */
