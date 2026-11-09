@@ -310,7 +310,7 @@ Klasse in der Seitenleiste wählen; unten erscheinen vier Reiter.
 
 ## 9. Notenverwaltung je Kurs
 
-Aufruf: Kurs → **Noten** oder Klasse → Noten → **Notenverwaltung**.
+Aufruf: Menü ☰ → **Noten** (nachdem im Wochenplan eine Stunde gewählt ist).
 
 ### Zeitraum
 
