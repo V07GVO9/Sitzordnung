@@ -44,6 +44,20 @@ const PAGE_TITLES: Record<string, string> = {
   auswertung: 'Auswertung & Einstellungen',
 };
 
+/** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */
+const COURSE_PAGES = new Set(['kurs', 'noten', 'auswertung']);
+
+/** Merkt sich je Gerät, ob die Titelleiste dauerhaft eingeblendet ist. */
+const PINNED_KEY = 'sitzordnung.titlebar-pinned';
+
+function readPinned(): boolean {
+  try {
+    return localStorage.getItem(PINNED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function courseTitle(course: Course): string {
   return `${course.subjectName} · ${course.schoolClassName}`;
 }
@@ -117,11 +131,23 @@ export class App implements OnDestroy {
     if (page === 'kurs') {
       return course ? courseTitle(course) + (sub === 'noten' ? ' – Noten' : '') : '';
     }
-    return PAGE_TITLES[page] ?? '';
+    const title = PAGE_TITLES[page] ?? '';
+    // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
+    return course && COURSE_PAGES.has(page) ? `${title} – ${courseTitle(course)}` : title;
+  });
+  /** Kürzel und Farbe des Fachs für den Kurskopf - nur auf den Seiten des Fachs. */
+  readonly courseBadge = computed(() => {
+    const course = this.activeCourse();
+    const [page = ''] = this.path();
+    return course && COURSE_PAGES.has(page)
+      ? { short: course.subjectShortName, hue: subjectHue(course.subjectName) }
+      : null;
   });
   readonly menuOpen = signal(false);
   /** Auf Touch-Geräten heruntergezogen: Die Titelleiste bleibt sichtbar. */
   readonly chromeOpen = signal(false);
+  /** Per Knopf angeheftet: Die Titelleiste bleibt dauerhaft sichtbar (je Gerät). */
+  readonly barPinned = signal(readPinned());
   /** Beginn der laufenden Wischbewegung - null, wenn sie nichts mit der Titelleiste zu tun hat. */
   private touchStart: { x: number; y: number; pull: boolean } | null = null;
   readonly passwordDialogOpen = signal(false);
@@ -252,6 +278,18 @@ export class App implements OnDestroy {
     } else if (dy < 0 && this.chromeOpen() && !this.menuOpen()) {
       this.chromeOpen.set(false);
       this.touchStart = null;
+    }
+  }
+
+  /** Der Knopf oben: heftet die Titelleiste an oder blendet sie wieder aus. */
+  toggleBar(): void {
+    const pinned = !this.barPinned();
+    this.barPinned.set(pinned);
+    this.chromeOpen.set(false);
+    try {
+      localStorage.setItem(PINNED_KEY, pinned ? '1' : '0');
+    } catch {
+      // Ohne Speicher gilt die Wahl nur bis zum Neuladen.
     }
   }
 

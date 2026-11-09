@@ -8,7 +8,7 @@
         <strong [class]="slideClass()">{{ weekLabel() }}</strong>
       }
       @if (weekOffset() !== 0) {
-        <span class="small muted">zurück zu heute</span>
+        <span class="today-chip"><app-icon name="calendar-days" /> Heute</span>
       }
     </button>
     <button class="round-btn" type="button" aria-label="Nächste Woche" (click)="shiftWeek(1)">
@@ -24,8 +24,8 @@
       <div class="empty">
         <p>Im Stundenplan steht noch kein Unterricht.</p>
         <p class="muted small">
-          Stundenplan, Klassen und Schüler legst du im Bearbeitungsmodus an – Leiste am
-            oberen Rand einblenden, dann „Bearbeiten“.
+          Stundenplan, Klassen und Schüler legst du im Bearbeitungsmodus an – Knopf oben in
+            der Mitte antippen, dann „Bearbeiten“.
         </p>
       </div>
     } @else if (days().length === 0) {
