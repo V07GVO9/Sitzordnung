@@ -73,26 +73,6 @@
   }
 }
 
-/* Griff oben in der Mitte - zeigt auf Touch-Geräten, dass sich etwas herunterziehen lässt. */
-.titlebar-grabber {
-  display: none;
-  position: fixed;
-  top: calc(0.3rem + env(safe-area-inset-top));
-  left: 50%;
-  z-index: 69;
-  width: 2.5rem;
-  height: 0.3rem;
-  border-radius: 999px;
-  background: var(--text-muted);
-  opacity: 0.35;
-  transform: translateX(-50%);
-  pointer-events: none;
-
-  @media (hover: none) {
-    display: block;
-  }
-}
-
 .titlebar {
   /* Verborgen: oberhalb des Bildschirms, bis Maus (Rand) oder Finger (Ziehen) sie holt. */
   position: fixed;
@@ -122,13 +102,148 @@
   border-bottom: 1px solid var(--separator);
 
   .title {
+    min-width: 0;
+    overflow: hidden;
     margin: 0;
     font-size: 1.02rem;
     font-weight: 650;
     text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+
+  /* Angeheftet: Die Leiste steht fest oben im Seitenfluss und verdeckt nichts. */
+  &.pinned {
+    position: sticky;
+    top: 0;
+    transform: none;
+    transition: none;
+    box-shadow: none;
+  }
+}
+
+/* Auf dem Handy ist die Zeile zu schmal: Knöpfe oben, Titel darunter in voller Breite. */
+@media (max-width: 30rem) {
+  .titlebar {
+    grid-template-columns: auto 1fr;
+    row-gap: 0.15rem;
+
+    .title {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+}
+
+/* Der Titel ist zugleich der Schalter zum Anheften und Ausblenden. */
+.title-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.4rem;
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface);
+  }
+
+  .title-icon {
+    flex: none;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+  }
+}
+
+.title-text,
+.bar-toggle-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kürzel des Fachs in seiner Farbe - wie im Wochenplan und im Menü. */
+.course-badge {
+  flex: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.4rem;
+  background: hsl(var(--hue) 55% 45%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Knopf oben in der Mitte, solange die Leiste verborgen ist: groß genug für den Daumen. */
+.bar-toggle {
+  position: fixed;
+  top: calc(0.3rem + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 68;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: min(80vw, 28rem);
+  min-height: 2.25rem;
+  padding: 0.25rem 0.75rem 0.25rem 0.65rem;
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 10%);
+  transform: translateX(-50%);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  > app-icon {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  &:active {
+    transform: translateX(-50%) scale(0.97);
+  }
+
+  /* Ist die Leiste gerade sichtbar (Maus, Ziehen, Menü), tritt der Knopf zurück. */
+  .titlebar.open ~ &,
+  .titlebar:hover ~ &,
+  .titlebar:focus-within ~ &,
+  .titlebar-hover-zone:hover ~ & {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* Speicherstand auf einen Blick: grün gespeichert, gelb offen, grau beim Speichern. */
+.save-dot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--positive);
+
+  [data-state='dirty'] > & {
+    background: var(--warning);
+  }
+
+  [data-state='saving'] > & {
+    background: var(--text-muted);
+    animation: pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
   }
 }
 
@@ -180,8 +295,14 @@ main {
   /* Halber Seitenabstand - mehr Platz für den Inhalt. */
   --pad-main: calc(var(--pad-seite) / 2);
   padding: var(--pad-main);
-  padding-top: calc(var(--pad-main) + env(safe-area-inset-top));
+  /* Platz für den Knopf oben in der Mitte, damit er nichts verdeckt. */
+  padding-top: calc(var(--pad-main) + 2.6rem + env(safe-area-inset-top));
   padding-bottom: calc(var(--pad-main) + env(safe-area-inset-bottom));
+
+  /* Mit angehefteter Leiste liegt der sichere Rand schon in der Leiste. */
+  .bar-pinned & {
+    padding-top: var(--pad-main);
+  }
 }
 
 /* --- Menü hinter den drei Balken --- */

@@ -25,6 +25,20 @@
   cursor: pointer;
 }
 
+/* Nach dem Blättern deutlich sichtbar: ein Tipp führt zurück in die aktuelle Woche. */
+.today-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .grid-wrap {
   overflow-x: auto;
   border-radius: var(--radius);
