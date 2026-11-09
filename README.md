@@ -63,8 +63,8 @@ Verordnungen und Konferenzbeschlüsse.
   Woche (‹ › blättert). Ein Tipp auf eine Stunde öffnet sie zum Bewerten – auch
   rückwirkend. Oben links führen die drei Balken ins Menü und das
   Kalender-Symbol zurück zum Wochenplan.
-- **Titelleiste:** Weicht beim Runterscrollen aus und kommt beim Hochscrollen
-  zurück. Auf Kursseiten zeigt sie das Fach mit Kürzel in der Fachfarbe.
+- **Titelleiste:** Steht fest oben auf der Seite und scrollt mit dem Inhalt
+  weg. Auf Kursseiten zeigt sie das Fach mit Kürzel in der Fachfarbe.
 - **Mitarbeit eintragen:** Oben Datum und Stunde. Bewertet wird wahlweise in der
   **Liste** oder auf dem **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in
   den Farben Grün bis Rot. Wer heute bewertet wurde, bekommt die Farbe seiner

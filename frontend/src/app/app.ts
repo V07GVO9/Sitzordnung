@@ -81,7 +81,6 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   host: {
     '(document:keydown.escape)': 'closeMenu()',
     '(document:keydown)': 'onKeydown($event)',
-    '(window:scroll)': 'onScroll()',
   },
 })
 export class App implements OnDestroy {
@@ -151,9 +150,6 @@ export class App implements OnDestroy {
       : null;
   });
   readonly menuOpen = signal(false);
-  /** Beim Runterscrollen weicht die Titelleiste, beim Hochscrollen kommt sie zurück. */
-  readonly barHidden = signal(false);
-  private lastScrollY = 0;
   readonly passwordDialogOpen = signal(false);
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
@@ -215,9 +211,6 @@ export class App implements OnDestroy {
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
       this.closeMenu();
-      // Neue Seite: Leiste wieder zeigen.
-      this.barHidden.set(false);
-      this.lastScrollY = 0;
       this.readUrl(e.urlAfterRedirects);
       this.refreshLesson();
     });
@@ -239,21 +232,6 @@ export class App implements OnDestroy {
   /** Schließt Menü und Titelleiste gemeinsam. */
   closeMenu(): void {
     this.menuOpen.set(false);
-  }
-
-  /**
-   * Runterscrollen blendet die Titelleiste aus, Hochscrollen wieder ein - wie in
-   * Browsern auf dem Handy. Ganz oben ist sie immer zu sehen.
-   */
-  onScroll(): void {
-    const y = Math.max(0, window.scrollY);
-    const delta = y - this.lastScrollY;
-    // Kleine Zuckungen (Trägheit, Gummiband am Rand) ignorieren.
-    if (Math.abs(delta) < 8) {
-      return;
-    }
-    this.lastScrollY = y;
-    this.barHidden.set(delta > 0 && y > 56 && !this.menuOpen());
   }
 
   install(): void {

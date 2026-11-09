@@ -11,10 +11,10 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 09.11.2026
 
 **Geändert**
-- **Titelleiste wieder sichtbar:** Sie steht oben und blendet sich beim
-  **Runterscrollen** aus, beim **Hochscrollen** sofort wieder ein – wie im
-  Handy-Browser. Das Herunterziehen entfällt. So ist auch der Speicherstand
-  (Knopf rechts) wieder im Blick.
+- **Titelleiste wieder sichtbar:** Statt verborgen zu sein, steht sie fest
+  oben auf der Seite und scrollt beim Runterscrollen mit weg. Das
+  Herunterziehen und der Knopf oben in der Mitte entfallen. So ist auch der
+  Speicherstand (Knopf rechts) wieder im Blick.
 - **Kurskopf:** Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit
   Kürzel in der Fachfarbe.
 - **Handy:** Kurzer Titel (z. B. „INF BFI10A · Noten“), und der Modusschalter

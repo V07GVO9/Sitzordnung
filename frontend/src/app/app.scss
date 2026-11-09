@@ -60,39 +60,10 @@
   min-height: 100dvh;
 }
 
-/* Unsichtbarer Streifen am oberen Rand: Kommt die Maus dorthin, kehrt die Leiste zurück. */
-.titlebar-hover-zone {
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: 69;
-  height: 0.75rem;
-
-  /* Auf Touch-Geräten holt Hochscrollen die Leiste - der Streifen soll nichts abfangen. */
-  @media (hover: none) {
-    pointer-events: none;
-  }
-}
-
 .titlebar {
-  /* Steht oben im Seitenfluss; beim Runterscrollen weicht sie nach oben aus. */
-  position: sticky;
-  top: 0;
+  /* Fest oben auf der Seite: Beim Runterscrollen scrollt sie mit dem Inhalt weg. */
+  position: relative;
   z-index: 69;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-
-  &.hidden {
-    transform: translateY(-100%);
-    transition-delay: 0s, 0s;
-  }
-
-  &.hidden:hover,
-  &.hidden:focus-within,
-  .titlebar-hover-zone:hover ~ &.hidden {
-    transform: none;
-    box-shadow: var(--shadow-lg);
-  }
 
   display: grid;
   /* Der Titel bekommt, was die Knöpfe links und rechts übrig lassen. */
