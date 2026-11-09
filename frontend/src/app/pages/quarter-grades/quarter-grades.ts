@@ -52,12 +52,26 @@ interface Row {
           @for (q of quarters; track q) {
             <button
               type="button"
-              class="chip"
+              class="chip q-chip"
               [class.active]="q === quarter()"
+              [attr.aria-pressed]="q === quarter()"
+              [title]="q === currentQuarter ? 'Das laufende Quartal' : ''"
               (click)="quarter.set(q)"
             >
               Q{{ q }}
+              @if (q === currentQuarter) {
+                <span class="now-dot" aria-label="laufendes Quartal"></span>
+              }
             </button>
+          }
+        </div>
+
+        <!-- Welches Quartal gerade offen ist - groß, damit niemand ins falsche einträgt. -->
+        <div class="q-open">
+          <strong>{{ quarter() }}. Quartal</strong>
+          <span>{{ quarterLabel() }}</span>
+          @if (quarter() === currentQuarter) {
+            <span class="q-now">läuft gerade</span>
           }
         </div>
 
@@ -140,6 +154,47 @@ interface Row {
     </div>
   `,
   styles: `
+    /* Das geöffnete Quartal: kräftig gefüllt statt nur hellblau. */
+    .q-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 750;
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .now-dot {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: var(--positive);
+    }
+
+    .q-open {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.3rem 0.6rem;
+      padding: 0.6rem 0.9rem;
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius-sm, 0.5rem);
+      background: var(--accent-soft);
+      color: var(--accent-text);
+
+      strong {
+        font-size: 1.15rem;
+      }
+    }
+
+    .q-now {
+      padding: 0.05rem 0.5rem;
+      border-radius: 999px;
+      background: var(--positive-soft);
+      color: var(--positive-text);
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
     /* Dezente dunkelgraue Spaltentrenner, damit die Spalten gut unterscheidbar sind. */
     th + th,
     td + td {
@@ -197,6 +252,14 @@ export class QuarterGradesPage {
   readonly course = this.active.course;
   readonly courseId = this.active.courseId;
   readonly quarter = signal<Quarter>(quarterOf(new Date()));
+  /** Das Quartal, in dem heute liegt - mit Punkt markiert. */
+  readonly currentQuarter = quarterOf(new Date());
+  /** „01.11.2026 – 31.01.2027“ für das geöffnete Quartal. */
+  readonly quarterLabel = computed(() => {
+    const { from, to } = quarterRange(this.quarter(), new Date());
+    const de = (key: string) => key.split('-').reverse().join('.');
+    return `${de(from)} – ${de(to)}`;
+  });
   readonly students = signal<Student[]>([]);
   readonly grades = signal<QuarterGrade[]>([]);
 

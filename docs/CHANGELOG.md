@@ -41,6 +41,9 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   Schüler, bevorzugt noch nicht bewertete, und öffnet gleich seine Knöpfe.
 
 **Geändert**
+- **Noten (Quartalsnoten):** Das geöffnete Quartal ist kräftig hervorgehoben,
+  darunter stehen Name und Zeitraum; ein grüner Punkt markiert das laufende
+  Quartal.
 - Kursseite (Sitzplan und Liste): Der Knopf **Wochenplan** entfällt – zurück
   geht es über das Kalender-Symbol in der Titelleiste.
 - Notenverwaltung: **Bewertungsschema, Notenbögen und Protokoll** liegen unter
