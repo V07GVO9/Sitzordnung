@@ -11,6 +11,8 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 09.11.2026
 
 **Geändert**
+- Auf der Kursseite (Liste und Sitzplan) entfällt der Knopf **Noten**; die
+  Noten erreicht man über das Menü ☰ → **Noten**.
 - **Titelleiste wieder sichtbar:** Statt verborgen zu sein, steht sie fest
   oben auf der Seite und scrollt beim Runterscrollen mit weg. Das
   Herunterziehen und der Knopf oben in der Mitte entfallen. So ist auch der

@@ -53,9 +53,6 @@
         @if (!appEdit()) {
           <a class="btn small" routerLink="/"> <app-icon name="calendar-days" /> Wochenplan </a>
         }
-        <a class="btn small" [routerLink]="['/kurs', courseId(), 'noten']">
-          <app-icon name="graduation-cap" /> Noten
-        </a>
 
         @if (!editMode()) {
           <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
