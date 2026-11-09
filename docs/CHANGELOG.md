@@ -41,8 +41,8 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   Schüler, bevorzugt noch nicht bewertete, und öffnet gleich seine Knöpfe.
 
 **Geändert**
-- Sitzplan: Der Knopf **Wochenplan** entfällt – zurück geht es über das
-  Kalender-Symbol in der Titelleiste.
+- Kursseite (Sitzplan und Liste): Der Knopf **Wochenplan** entfällt – zurück
+  geht es über das Kalender-Symbol in der Titelleiste.
 - Notenverwaltung: **Bewertungsschema, Notenbögen und Protokoll** liegen unter
   **Mehr ▾** – auf dem Handy bleiben so nur vier Reiter.
 - Auf der Kursseite (Liste und Sitzplan) entfällt der Knopf **Noten**. Die
