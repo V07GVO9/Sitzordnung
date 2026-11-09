@@ -12,6 +12,10 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+      # Konfigurationen weiterer Apps auf diesem Server (z. B. Jahresplan).
+      - ${CADDY_SITES_DIR:-/home/deploy/caddy-sites}:/etc/caddy/sites:ro
+    # default: die Sitzordnung-Container; celik-web: die Container anderer Apps.
+    networks: [default, celik-web]
     environment:
       PROD_DOMAIN: ${PROD_DOMAIN:?PROD_DOMAIN fehlt}
       TEST_DOMAIN: ${TEST_DOMAIN:?TEST_DOMAIN fehlt}
@@ -55,6 +59,11 @@ services:
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
     volumes:
       - dev-data:/data
+
+networks:
+  # Gemeinsames Netz mit anderen Apps auf diesem Server. deploy.sh legt es an.
+  celik-web:
+    external: true
 
 volumes:
   caddy-data:
