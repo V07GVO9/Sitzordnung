@@ -48,6 +48,7 @@ const PAGE_TITLES: Record<string, string> = {
   stundenplan: 'Stundenplan',
   verwaltung: 'Klassen, Fächer & Schüler',
   auswertung: 'Auswertung & Einstellungen',
+  einrichtung: 'Einrichtung',
 };
 
 /** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */

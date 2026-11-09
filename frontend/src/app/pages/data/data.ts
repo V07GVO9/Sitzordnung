@@ -26,6 +26,8 @@ export class DataPage {
 
   /** Der Reiter steht in der Adresse (?tab=schueler), damit Links direkt dorthin führen. */
   readonly tab = input<string>();
+  /** Optional die Klasse (?klasse=3) - etwa aus dem Einrichtungs-Assistenten. */
+  readonly klasse = input<string>();
   readonly activeTab = computed<DataTab>(() => {
     const tab = this.tab() as DataTab;
     return TABS.includes(tab) ? tab : 'klassen';
@@ -78,7 +80,9 @@ export class DataPage {
         this.courses.set(courses);
 
         const stillThere = keepClassId && classes.some((c) => c.id === previous);
-        this.selectClass(stillThere ? previous : (classes[0]?.id ?? null));
+        const wanted = Number(this.klasse());
+        const fromLink = classes.some((c) => c.id === wanted) ? wanted : null;
+        this.selectClass(stillThere ? previous : (fromLink ?? classes[0]?.id ?? null));
       },
       error: (err) => this.toasts.error(err, 'Die Stammdaten konnten nicht geladen werden.'),
     });

@@ -215,6 +215,13 @@
                 <tr>
                   <td [attr.colspan]="releasedAssessments().length + 5" class="muted">
                     In dieser Klasse sind keine Schüler angelegt.
+                    @if (course(); as c) {
+                      <a
+                        routerLink="/verwaltung"
+                        [queryParams]="{ tab: 'schueler', klasse: c.schoolClassId }"
+                        >Schüler anlegen</a
+                      >
+                    }
                   </td>
                 </tr>
               }

@@ -11,6 +11,15 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 ## 09.11.2026
 
 **Neu**
+- **Einrichtungs-Assistent:** Checkliste vom leeren Bestand bis zum ersten
+  Unterricht (Klassen & Fächer, Schüler, Stundenplan, Sitzordnungen, Fotos) mit
+  Stand je Schritt und Direkt-Knopf. Startet aus dem leeren Wochenplan oder über
+  Menü ☰ → Einrichtung.
+- **Foto per Kamera:** Unter Schüler nimmt das Kamera-Symbol ein Foto direkt
+  auf, ohne Umweg über die Galerie.
+- **Leere Seiten mit Direkt-Link:** Leerer Stundenplan → „Aus WebUntis
+  importieren“, Klasse ohne Schüler → „Schüler anlegen“ (öffnet gleich die
+  richtige Klasse), Auswertung ohne Stunde → „Zum Wochenplan“.
 - **Hinweise in der Notenübersicht:** Ein Kasten nennt Schüler mit einer
   Gesamtnote schlechter als 4,0, ohne schriftliche Note oder ohne Note in einem
   freigegebenen Leistungsnachweis; ⚠ markiert sie in der Tabelle.

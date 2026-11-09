@@ -154,7 +154,10 @@
           </p>
         </section>
       } @else if (!selectedCourse()) {
-        <div class="empty"><p>Bitte zuerst im Wochenplan eine Stunde wählen.</p></div>
+        <div class="empty">
+          <p>Bitte zuerst im Wochenplan eine Stunde wählen.</p>
+          <a class="btn primary" routerLink="/"><app-icon name="calendar-days" /> Zum Wochenplan</a>
+        </div>
       }
     }
 

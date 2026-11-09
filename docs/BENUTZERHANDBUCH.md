@@ -49,6 +49,21 @@ nach dieser Datei und dem Passwort. Ohne beides zeigt sie nichts an.
 > ⚠️ **Das Passwort lässt sich nicht zurücksetzen.** Ist es verloren, ist der
 > Datenbestand verloren.
 
+### Einrichtungs-Assistent
+
+Ist noch kein Unterricht eingetragen, zeigt der Wochenplan **Einrichtung
+starten**. Später: Bearbeitungsmodus → Menü ☰ → **Einrichtung (Assistent)**.
+
+Der Assistent ist eine Checkliste mit Fortschrittsbalken. Jeder Schritt zeigt
+seinen Stand (✓ erledigt), der nächste offene ist blau umrandet; der Knopf führt
+direkt auf die passende Seite (mit Rückfrage in den Bearbeitungsmodus):
+
+1. **Klassen und Fächer** – am schnellsten per WebUntis-Import, sonst von Hand.
+2. **Schüler** – je Klasse ohne Schüler ein Knopf, der sie direkt öffnet.
+3. **Stundenplan**
+4. **Sitzordnungen** – je Kurs ohne Sitzordnung ein Knopf.
+5. **Fotos** (optional) – zeigt, wie viele Schüler schon ein Foto haben.
+
 ### OneDrive
 
 1. Reiter **OneDrive** → **Bei Microsoft anmelden**.
@@ -144,7 +159,7 @@ LF3).
 | Namensliste einfügen | **Namensliste einfügen**, ein Name je Zeile: „Nachname, Vorname“ oder „Vorname Nachname“ → **Schüler übernehmen** |
 | Vor-/Nachname tauschen | Tauscht bei **allen** Schülern der Klasse Vor- und Nachnamen – praktisch nach einem falsch herum eingefügten Import |
 | Umbenennen | Direkt im Namensfeld der Schülerkarte ändern |
-| Foto | Auf das Bild tippen → Foto wählen. Fotos werden auf 400 Bildpunkte verkleinert. Entfernen über das Bild-Symbol |
+| Foto | Auf das Bild tippen → Foto aus Galerie/Datei wählen, oder auf das **Kamera-Symbol** → Foto direkt aufnehmen (Handy/Tablet: Rückkamera). Fotos werden auf 400 Bildpunkte verkleinert. Entfernen über das Bild-Symbol |
 | Löschen | Papierkorb-Symbol an der Schülerkarte |
 
 Alternativ lassen sich Schüler auch im Klassenbereich **Schüler** über das
