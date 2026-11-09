@@ -16,6 +16,25 @@
     </button>
   </div>
 
+  @if (backupReminder(); as due) {
+    <div class="banner warn backup-banner" role="status">
+      <app-icon name="download" />
+      <span>
+        <strong>Sicherungskopie fällig:</strong>
+        @if (due.days === null) {
+          noch keine angelegt.
+        } @else {
+          die letzte ist {{ due.days }} Tage alt.
+        }
+        Am besten auf einem zweiten Gerät oder Stick ablegen.
+      </span>
+      <span class="actions">
+        <button class="btn small primary" type="button" (click)="backupNow()">Jetzt sichern</button>
+        <button class="btn small" type="button" (click)="snoozeBackup()">Später</button>
+      </span>
+    </div>
+  }
+
   @for (offset of [weekOffset()]; track offset) {
     <div class="week-pane" [class]="slideClass()">
     @if (loading()) {

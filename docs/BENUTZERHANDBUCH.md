@@ -606,6 +606,46 @@ Noten, Notenschlüssel und Einstellungen – verschlüsselt (AES-GCM).
 
 ---
 
+### Sicherungskopie
+
+Menü ☰ → **Sicherungskopie herunterladen** speichert eine Kopie des ganzen
+Bestands – verschlüsselt mit demselben Passwort – als
+`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung` in den Download-Ordner. Anders
+als *Speichern unter …* arbeitet die App danach mit derselben Datei weiter.
+
+Ist die letzte Kopie **7 Tage oder älter** (oder gibt es noch keine), zeigt der
+Wochenplan einen gelben Hinweis mit **Jetzt sichern**; **Später** blendet ihn
+bis morgen aus. Der Zeitpunkt der letzten Kopie steht in der Datei und gilt
+damit für alle Geräte. Die Kopie gehört an einen zweiten Ort (USB-Stick,
+Dienstrechner).
+
+### Datenschutz-Modus (Beamer)
+
+Menü ☰ → **Datenschutz-Modus** macht Namen und Fotos unkenntlich: auf Sitzplan,
+Liste, im Verlauf, in der Notenübersicht und in den Meldungen unten. Bewerten
+geht weiter. Solange er an ist, zeigt die Titelleiste ein durchgestrichenes
+Auge – ein Tipp darauf schaltet ihn aus. Die Wahl gilt je Gerät.
+
+### Schuljahreswechsel
+
+Bearbeitungsmodus → Menü ☰ → **Schuljahreswechsel**:
+
+1. **Sicherungskopie** herunterladen – Pflicht, sonst bleibt der Wechsel
+   gesperrt.
+2. **Klassen:** neue Namen eintragen (**Alle Klassennummern +1** macht aus
+   KDM11 → KDM12) oder **verlässt die Schule** ankreuzen – die Klasse wird samt
+   Schülern gelöscht.
+3. **Daten des alten Schuljahres:** Leistungsdaten löschen (Bewertungen, von
+   Hand gesetzte Stundennoten, Leistungsnachweise, Quartalsnoten, Protokoll,
+   Notenbögen-Vermerke, abgelaufene Zeiträume) und/oder den Stundenplan leeren.
+   Die Anzahl je Art steht dabei.
+4. Zusammenfassung prüfen → **Schuljahreswechsel durchführen** → bestätigen.
+
+Erhalten bleiben Schüler, Fächer, Kurse, Sitzordnungen, Notenschlüssel und
+Bewertungsschemata. Danach öffnet sich der Einrichtungs-Assistent – meist fehlt
+nur noch der neue Stundenplan. Rückgängig machen lässt sich der Wechsel nur über
+die Sicherungskopie.
+
 ## 12. Android-App und Installation als App
 
 - **Als App installieren** (Chrome/Edge): Menü → **Als App installieren**.
@@ -636,13 +676,14 @@ Bewertung antippen und löschen.
 Verwaltung → Schüler → **Vor-/Nachname tauschen**.
 
 **Passwort vergessen?**
-Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (**Speichern unter …**)
-anlegen und das Passwort sicher verwahren.
+Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (Menü ☰ →
+**Sicherungskopie herunterladen**) anlegen und das Passwort sicher verwahren.
 
 **Wie lösche ich Daten nach Schuljahresende?**
-Im Bearbeitungsmodus Schüler, Kurse oder ganze Klassen in der Verwaltung
-löschen – damit verschwinden auch deren Bewertungen. Löschfristen liegen bei
-der Lehrkraft.
+Mit dem **Schuljahreswechsel** (Bearbeitungsmodus → Menü ☰): Er löscht die
+Leistungsdaten des alten Jahres und Klassen, die die Schule verlassen – nach
+einer Pflicht-Sicherungskopie. Einzelne Schüler, Kurse oder Klassen lassen
+sich weiterhin in der Verwaltung löschen. Löschfristen liegen bei der Lehrkraft.
 
 ---
 

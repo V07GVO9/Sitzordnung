@@ -490,3 +490,66 @@ describe('LocalStore - Abwesende im Unterricht', () => {
     expect(store.getAbsentStudentIds(course.id, '2026-10-05')).toEqual([]);
   });
 });
+
+describe('LocalStore - Sicherungskopie und Schuljahreswechsel', () => {
+  it('merkt sich die letzte Sicherungskopie in der Datei - Einstellungen bleiben unberührt', () => {
+    const { store } = setup();
+    expect(store.getLastBackupAt()).toBeNull();
+
+    store.markBackup();
+    expect(store.getLastBackupAt()).toBe(MONDAY.toISOString());
+
+    store.saveSettings({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
+    expect(store.getLastBackupAt()).toBe(MONDAY.toISOString());
+    expect(store.getSettings()).toEqual({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
+  });
+
+  it('setzt Klassen hoch, löscht Leistungsdaten und Stundenplan - Schüler und Kurse bleiben', () => {
+    const { store, schoolClass, course, anna } = setup();
+    store.rate(course.id, anna.id, 2);
+    const abgang = store.createClass('KDM13');
+
+    const result = store.startNewSchoolYear({
+      renames: [{ classId: schoolClass.id, name: 'KDM271' }],
+      deleteClassIds: [abgang.id],
+      deleteRecords: true,
+      clearTimetable: true,
+    });
+
+    expect(result.ratings).toBe(1);
+    expect(result.timetableEntries).toBe(1);
+    expect(store.getClasses().map((c) => c.name)).toEqual(['KDM271']);
+    expect(store.getStudents(schoolClass.id).length).toBe(2);
+    expect(store.getCourses().length).toBe(1);
+    expect(store.getSchoolYearCounts().ratings).toBe(0);
+    expect(store.getSchoolYearCounts().timetableEntries).toBe(0);
+  });
+
+  it('erlaubt Tauschen von Namen, lehnt doppelte Namen ab und ändert dann nichts', () => {
+    const { store, schoolClass, course, anna } = setup();
+    const other = store.createClass('KDM271');
+    store.rate(course.id, anna.id, 2);
+
+    expect(() =>
+      store.startNewSchoolYear({
+        renames: [{ classId: schoolClass.id, name: 'KDM271' }],
+        deleteClassIds: [],
+        deleteRecords: true,
+        clearTimetable: false,
+      }),
+    ).toThrowError(/zweimal/);
+    expect(store.getSchoolYearCounts().ratings).toBe(1);
+
+    store.startNewSchoolYear({
+      renames: [
+        { classId: schoolClass.id, name: 'KDM271' },
+        { classId: other.id, name: 'KDM261' },
+      ],
+      deleteClassIds: [],
+      deleteRecords: false,
+      clearTimetable: false,
+    });
+    expect(store.getClasses().find((c) => c.id === schoolClass.id)!.name).toBe('KDM271');
+    expect(store.getSchoolYearCounts().ratings).toBe(1);
+  });
+});

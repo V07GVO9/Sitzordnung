@@ -37,12 +37,12 @@ import {
   Quarter,
   QuarterGrade,
 } from './models';
-import { DateRange, LocalStore } from './store/local-store';
+import { DateRange, LocalStore, SchoolYearCounts, SchoolYearInput } from './store/local-store';
 import { readPhoto } from './store/photo';
 import { download } from './store/file-system';
 import { AppError } from './store/app-error';
 
-export type { DateRange } from './store/local-store';
+export type { DateRange, SchoolYearCounts, SchoolYearInput } from './store/local-store';
 
 /**
  * Die Schnittstelle, über die die Oberfläche an die Daten kommt.
@@ -391,6 +391,18 @@ export class ApiService {
     absent: boolean,
   ): Observable<void> {
     return this.run(() => this.store.setAbsent(courseId, studentId, lessonDate, absent));
+  }
+
+  getLastBackupAt(): Observable<string | null> {
+    return this.run(() => this.store.getLastBackupAt());
+  }
+
+  getSchoolYearCounts(): Observable<SchoolYearCounts> {
+    return this.run(() => this.store.getSchoolYearCounts());
+  }
+
+  startNewSchoolYear(input: SchoolYearInput): Observable<SchoolYearCounts> {
+    return this.run(() => this.store.startNewSchoolYear(input));
   }
 
   getGradeChanges(courseId: number): Observable<GradeChange[]> {

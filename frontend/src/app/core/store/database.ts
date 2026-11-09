@@ -202,6 +202,8 @@ export interface GradeReportRecord {
 export interface AppSettingsRecord {
   toleranceMinutes: number;
   allowRatingOutsideLesson: boolean;
+  /** Wann zuletzt eine Sicherungskopie heruntergeladen wurde (ISO) - null: noch nie. */
+  lastBackupAt?: string | null;
 }
 
 /**
@@ -284,7 +286,7 @@ export function createEmptyDatabase(): Database {
     quarterGrades: [],
     gradeChanges: [],
     gradeReports: [],
-    settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false },
+    settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false, lastBackupAt: null },
     nextIds: {
       schoolClass: 1,
       subject: 1,

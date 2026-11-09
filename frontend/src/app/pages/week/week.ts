@@ -5,6 +5,8 @@ import { ApiService } from '../../core/api.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { freeDayReason } from '../../core/store/school-calendar';
 import { toDateKey } from '../../core/store/time';
+import { backupDue } from '../../core/store/backup.logic';
+import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { subjectHue } from '../../core/ui/subject-hue';
@@ -22,6 +24,9 @@ interface Cell {
   short: string;
   running: boolean;
 }
+
+/** Tag, an dem „Später“ gewählt wurde - dann erst morgen wieder erinnern. */
+const SNOOZE_KEY = 'sitzordnung.sicherung-spaeter';
 
 const DAY_SHORT: Record<number, string> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa' };
 
@@ -44,6 +49,10 @@ const DAY_SHORT: Record<number, string> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 
 export class WeekPage {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  private readonly vault = inject(VaultService);
+
+  /** Erinnerung an die Sicherungskopie - null, wenn keine fällig ist. */
+  readonly backupReminder = signal<{ days: number | null } | null>(null);
 
   readonly loading = signal(true);
   readonly entries = signal<TimetableEntry[]>([]);
@@ -139,8 +148,7 @@ export class WeekPage {
       const cell: Cell = {
         entry,
         date,
-        short:
-          this.shortBySubject().get(entry.courseId) ?? abbreviate('', entry.subjectName),
+        short: this.shortBySubject().get(entry.courseId) ?? abbreviate('', entry.subjectName),
         running:
           date === this.todayKey &&
           !!lesson?.hasLesson &&
@@ -168,6 +176,7 @@ export class WeekPage {
         this.entries.set(entries);
         this.courses.set(courses);
         this.loading.set(false);
+        this.checkBackup();
       },
       error: (err) => {
         this.toasts.error(err, 'Der Stundenplan konnte nicht geladen werden.');
@@ -183,6 +192,42 @@ export class WeekPage {
 
   cellsAt(dayOfWeek: number, slot: Slot): Cell[] {
     return this.cells().get(`${dayOfWeek}|${slot.startTime}|${slot.endTime}`) ?? [];
+  }
+
+  /** Fällige Sicherung? „Später“ schiebt die Erinnerung um einen Tag. */
+  private checkBackup(): void {
+    let snoozed = false;
+    try {
+      snoozed = localStorage.getItem(SNOOZE_KEY) === toDateKey(new Date());
+    } catch {
+      // Ohne Speicher erinnert die App eben bei jedem Öffnen.
+    }
+    this.api
+      .getLastBackupAt()
+      .subscribe((last) =>
+        this.backupReminder.set(
+          snoozed ? null : backupDue(last, new Date(), this.entries().length > 0),
+        ),
+      );
+  }
+
+  async backupNow(): Promise<void> {
+    try {
+      await this.vault.saveBackupCopy();
+      this.backupReminder.set(null);
+      this.toasts.success('Sicherungskopie heruntergeladen – bitte an einem zweiten Ort ablegen.');
+    } catch (error) {
+      this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
+    }
+  }
+
+  snoozeBackup(): void {
+    this.backupReminder.set(null);
+    try {
+      localStorage.setItem(SNOOZE_KEY, toDateKey(new Date()));
+    } catch {
+      // Dann eben bis zum nächsten Öffnen.
+    }
   }
 
   shiftWeek(step: number): void {
@@ -222,7 +267,6 @@ export class WeekPage {
       this.shiftWeek(distance < 0 ? 1 : -1);
     }
   }
-
 }
 
 /** Das Kürzel eines Fachs: das hinterlegte, sonst die ersten Buchstaben ("Informatik" → "INF"). */
