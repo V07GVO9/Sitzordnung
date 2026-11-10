@@ -107,7 +107,12 @@
       @if (zeitschienen().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
-          <p class="muted">Tragen Sie die Stunden oben über das Formular ein.</p>
+          <p class="muted">
+            Am schnellsten aus WebUntis übernehmen – oder die Stunden oben einzeln eintragen.
+          </p>
+          <a class="btn primary" routerLink="/stundenplan/import">
+            <app-icon name="calendar-days" /> Aus WebUntis importieren
+          </a>
         </div>
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->

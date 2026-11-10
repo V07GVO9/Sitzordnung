@@ -1,0 +1,11 @@
+# Hält die Versionen der GitHub Actions aktuell (ein gesammelter PR pro Monat).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: test
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

@@ -19,10 +19,19 @@ const FORMAT = 'sitzordnung-vault';
 const VERSION = 1;
 
 /**
- * Anzahl der PBKDF2-Runden. Hoch genug, um das Durchprobieren von Passwörtern
- * teuer zu machen, niedrig genug, um den Start nicht spürbar zu bremsen.
+ * Anzahl der PBKDF2-Runden für neu geschriebene Dateien. 600 000 entspricht
+ * der Empfehlung von OWASP für PBKDF2-HMAC-SHA256 (Password Storage Cheat
+ * Sheet). Ältere Dateien mit weniger Runden lassen sich weiter öffnen - die
+ * Rundenzahl steht in jeder Datei - und bekommen beim nächsten Speichern die
+ * neue Zahl.
  */
-const ITERATIONS = 310_000;
+export const ITERATIONS = 600_000;
+
+/**
+ * Untergrenze beim Öffnen. Eine manipulierte Datei mit sehr wenigen Runden
+ * würde sonst ein späteres Speichern nicht schwächen, aber unnötig verwirren.
+ */
+const MIN_ITERATIONS = 100_000;
 
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
@@ -153,7 +162,12 @@ export async function decryptDatabase(content: string, password: string): Promis
     );
   }
 
-  const key = await deriveKey(password, fromBase64(file.kdf.salt), file.kdf.iterations);
+  const iterations = Number(file.kdf?.iterations);
+  if (!Number.isInteger(iterations) || iterations < MIN_ITERATIONS || iterations > 10_000_000) {
+    throw new VaultFormatError('Die Datei ist beschädigt.');
+  }
+
+  const key = await deriveKey(password, fromBase64(file.kdf.salt), iterations);
 
   let decrypted: ArrayBuffer;
   try {

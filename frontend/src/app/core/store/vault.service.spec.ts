@@ -6,7 +6,9 @@
 
 import { TestBed } from '@angular/core/testing';
 import { createEmptyDatabase } from './database';
+import { ConfirmService } from '../ui/confirm.service';
 import { FileHandle, SaveConflictError } from './file-system';
+import { readAutosave } from './browser-storage';
 import { LocalStore } from './local-store';
 import { OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
@@ -101,7 +103,7 @@ class FakeCloudHandle extends FakeHandle {
 
 /** Wartet, bis der Entprellzeitgeber gelaufen und die Schreibung durch ist. */
 async function warteAufAutosave(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 3_400));
+  await new Promise((resolve) => setTimeout(resolve, 2_400));
 }
 
 /** Legt einen leeren Bestand an und schiebt den Dateigriff unter. */
@@ -176,6 +178,24 @@ describe('VaultService', () => {
       await warteAufAutosave();
 
       expect(handle.geschrieben.length - vorher).toBe(1);
+    });
+
+    it('zählt eine Änderung während des Schreibens nicht als gespeichert', async () => {
+      await warteAufAutosave();
+
+      const speichern = vault.save();
+      store.createClass('10b');
+      await speichern;
+
+      // Die Datei kennt 10b noch nicht - also darf nichts „gespeichert“ melden.
+      expect(store.hasUnsavedChanges()).toBeTrue();
+
+      // Gleich danach wird von selbst nachgeschrieben.
+      await warteAufAutosave();
+      expect(store.hasUnsavedChanges()).toBeFalse();
+      const inhalt = await handle.geschrieben[handle.geschrieben.length - 1].text();
+      const bestand = await decryptDatabase(inhalt, PASSWORT);
+      expect(bestand.schoolClasses.map((c) => c.name)).toEqual(['10b']);
     });
 
     it('haelt den Bestand als ungespeichert, wenn die Datei nicht erreichbar ist', async () => {
@@ -393,6 +413,175 @@ describe('VaultService', () => {
       expect(handle.geschrieben.length).toBe(0);
       expect(store.hasUnsavedChanges()).toBeTrue();
       await vault.closeVault();
+    });
+  });
+  describe('VaultService - zuletzt benutzte Datei', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeHandle;
+
+    beforeEach(async () => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+      handle = new FakeHandle();
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+      await vault.closeVault();
+      vault.lastLocalFile.set(handle);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+      await vault.forgetLastLocalFile();
+    });
+
+    it('öffnet die vorgemerkte Datei nur mit dem Passwort', async () => {
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(store.isOpen()).toBeTrue();
+      expect(vault.fileName()).toBe(handle.name);
+      expect(vault.hasFileHandle()).toBeTrue();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a']);
+    });
+
+    it('lehnt ein falsches Passwort ab', async () => {
+      await expectAsync(vault.openLastLocalFile('Falsches#Passwort1')).toBeRejected();
+      expect(store.isOpen()).toBeFalse();
+    });
+
+    it('bricht ab, wenn der Browser den Zugriff verweigert', async () => {
+      handle.erlaubt = false;
+      await expectAsync(vault.openLastLocalFile(PASSWORT)).toBeRejected();
+      expect(store.isOpen()).toBeFalse();
+    });
+
+    it('vergisst die Datei auf Wunsch', async () => {
+      await vault.forgetLastLocalFile();
+      expect(vault.lastLocalFile()).toBeNull();
+      await expectAsync(vault.openLastLocalFile(PASSWORT)).toBeRejected();
+    });
+  });
+
+  describe('VaultService - Zwischenstand automatisch laden', () => {
+    let handle: FakeHandle;
+    let vorherAutoSave: boolean;
+
+    /** Ein frischer Seitenaufruf: neue Dienste, aber derselbe Browser-Speicher. */
+    function neuerAufruf(): { vault: VaultService; store: LocalStore; confirm: ConfirmService } {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({});
+      const vault = TestBed.inject(VaultService);
+      vault.setAutoSaveToFile(false);
+      vault.lastLocalFile.set(handle);
+      return { vault, store: TestBed.inject(LocalStore), confirm: TestBed.inject(ConfirmService) };
+    }
+
+    beforeEach(async () => {
+      handle = new FakeHandle();
+      TestBed.configureTestingModule({});
+      const vault = TestBed.inject(VaultService);
+      const store = TestBed.inject(LocalStore);
+      vorherAutoSave = vault.autoSaveToFile();
+      vault.setAutoSaveToFile(false);
+
+      await oeffne(vault, handle);
+      store.createClass('10a');
+      await vault.save();
+
+      // Danach eine Änderung, die nur im Browser landet - dann „stürzt“ die Seite ab.
+      store.createClass('10b');
+      await warteAufAutosave();
+    });
+
+    afterEach(async () => {
+      const vault = TestBed.inject(VaultService);
+      await vault.closeVault();
+      vault.setAutoSaveToFile(vorherAutoSave);
+    });
+
+    it('übernimmt ungesicherte Änderungen beim Öffnen ohne Rückfrage', async () => {
+      const { vault, store, confirm } = neuerAufruf();
+      const frage = spyOn(confirm, 'ask').and.resolveTo(true);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(frage).not.toHaveBeenCalled();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a', '10b']);
+      expect(store.hasUnsavedChanges()).toBeTrue();
+      expect(vault.hasFileHandle()).toBeTrue();
+    });
+
+    it('fragt nach, wenn die Datei inzwischen anderswo gespeichert wurde', async () => {
+      const fremd = createEmptyDatabase();
+      fremd.schoolClasses = [{ id: 99, name: 'anderes Gerät' }];
+      handle.geschrieben.push(await encryptDatabase(fremd, PASSWORT));
+
+      const { vault, store, confirm } = neuerAufruf();
+      const frage = spyOn(confirm, 'ask').and.resolveTo(true);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(frage).toHaveBeenCalled();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['anderes Gerät']);
+    });
+
+    it('behält auf Wunsch die eigenen Änderungen statt der neueren Datei', async () => {
+      const fremd = createEmptyDatabase();
+      handle.geschrieben.push(await encryptDatabase(fremd, PASSWORT));
+
+      const { vault, store, confirm } = neuerAufruf();
+      spyOn(confirm, 'ask').and.resolveTo(false);
+
+      await vault.openLastLocalFile(PASSWORT);
+
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a', '10b']);
+      expect(store.hasUnsavedChanges()).toBeTrue();
+    });
+  });
+
+  describe('VaultService - Sperre bei Untätigkeit', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+
+    beforeEach(async () => {
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+      await oeffne(vault, null);
+    });
+
+    afterEach(async () => {
+      await vault.closeVault();
+    });
+
+    it('schließt den Bestand und meldet die Sperre', async () => {
+      await vault.lock();
+
+      expect(store.isOpen()).toBeFalse();
+      expect(vault.lockedByIdle()).toBeTrue();
+      expect((vault as unknown as { password: string | null }).password).toBeNull();
+    });
+
+    it('legt ungesicherte Änderungen verschlüsselt im Zwischenspeicher ab', async () => {
+      store.createClass('BFI10A');
+      const name = vault.fileName();
+      await vault.lock();
+
+      const entry = await readAutosave(name);
+      expect(entry?.dirty).toBeTrue();
+      expect(entry?.content).not.toContain('BFI10A');
+      const restored = await decryptDatabase(entry!.content, PASSWORT);
+      expect(restored.schoolClasses.map((c) => c.name)).toEqual(['BFI10A']);
+    });
+
+    it('hebt die Meldung beim nächsten Öffnen wieder auf', async () => {
+      await vault.lock();
+      await vault.createNew(PASSWORT);
+
+      expect(vault.lockedByIdle()).toBeFalse();
     });
   });
 });

@@ -1,47 +1,18 @@
 import { Routes } from '@angular/router';
+import { activeCourseGuard, evaluationGuard } from './core/active-course.service';
 import { editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
 // entschluesselte Datei offen ist, zeigt AppComponent das Schloss statt der
 // Routen. Eine serverseitige Anmeldung gibt es nicht mehr.
-//
-// Aufbau nach dem Vorbild der Klassenmappe: Man wählt links eine Klasse und
-// bewegt sich dann in ihren Bereichen Übersicht, Schüler, Mitarbeit und Noten.
 export const routes: Routes = [
+  // Einziger Einstieg ist der Wochenplan: Von dort wählt man die Stunde,
+  // die bewertet werden soll.
   {
     path: '',
     pathMatch: 'full',
-    title: 'Sitzordnung',
-    loadComponent: () => import('./pages/home/home').then((m) => m.HomePage),
-  },
-  {
-    path: 'klasse/:classId',
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'uebersicht' },
-      {
-        path: 'uebersicht',
-        title: 'Übersicht',
-        loadComponent: () =>
-          import('./pages/class/class-overview').then((m) => m.ClassOverviewPage),
-      },
-      {
-        path: 'schueler',
-        title: 'Schüler',
-        loadComponent: () =>
-          import('./pages/class/class-students').then((m) => m.ClassStudentsPage),
-      },
-      {
-        path: 'mitarbeit',
-        title: 'Mitarbeit',
-        loadComponent: () =>
-          import('./pages/class/class-participation').then((m) => m.ClassParticipationPage),
-      },
-      {
-        path: 'noten',
-        title: 'Noten',
-        loadComponent: () => import('./pages/class/class-grades').then((m) => m.ClassGradesPage),
-      },
-    ],
+    title: 'Wochenplan',
+    loadComponent: () => import('./pages/week/week').then((m) => m.WeekPage),
   },
   {
     path: 'kurs/:courseId',
@@ -52,6 +23,13 @@ export const routes: Routes = [
     path: 'kurs/:courseId/noten',
     title: 'Noten',
     loadComponent: () => import('./pages/grades/grades').then((m) => m.GradesPage),
+  },
+  {
+    path: 'noten',
+    canActivate: [activeCourseGuard],
+    title: 'Noten',
+    loadComponent: () =>
+      import('./pages/quarter-grades/quarter-grades').then((m) => m.QuarterGradesPage),
   },
   {
     path: 'stundenplan',
@@ -73,11 +51,24 @@ export const routes: Routes = [
       import('./pages/timetable-import/timetable-import').then((m) => m.TimetableImportPage),
   },
   {
+    path: 'einrichtung',
+    title: 'Einrichtung',
+    loadComponent: () => import('./pages/setup/setup').then((m) => m.SetupPage),
+  },
+  {
+    path: 'schuljahr',
+    canActivate: [editModeGuard],
+    title: 'Schuljahreswechsel',
+    loadComponent: () => import('./pages/school-year/school-year').then((m) => m.SchoolYearPage),
+  },
+  {
     path: 'auswertung',
+    canActivate: [evaluationGuard],
     title: 'Auswertung',
     loadComponent: () => import('./pages/evaluation/evaluation').then((m) => m.EvaluationPage),
   },
   // Frühere Adressen führen weiterhin irgendwohin Sinnvolles.
   { path: 'unterricht', redirectTo: '' },
+  { path: 'klasse/**', redirectTo: '' },
   { path: '**', redirectTo: '' },
 ];

@@ -1,15 +1,16 @@
 # Betrieb auf einem Server (Hetzner Cloud)
 
-Diese Anleitung richtet zwei Umgebungen auf **einem** Server ein:
+Diese Anleitung richtet drei Umgebungen auf **einem** Server ein:
 
 | Umgebung | Branch | Beispieladresse |
 | --- | --- | --- |
 | Produktion | `master` | `sitzordnung.celik-soft.de` |
 | Test | `test` | `test.sitzordnung.celik-soft.de` |
+| Entwicklung | `develop` | `develop.sitzordnung.celik-soft.de` |
 
 Davor sitzt Caddy als Reverse-Proxy und holt die HTTPS-Zertifikate automatisch
 von Let's Encrypt. Beide Umgebungen haben **getrennte Daten** – auf der
-Testumgebung gehören keine echten Schülerdaten.
+Test- und Entwicklungsumgebung gehören keine echten Schülerdaten.
 
 ## Bevor es losgeht
 
@@ -20,7 +21,7 @@ Minderjährigen. Vor dem Produktivbetrieb an einer Schule gehört das geklärt:
 - Bei Hetzner den **Auftragsverarbeitungsvertrag** abschließen (im Kundenkonto
   unter *Rechtliches* elektronisch abschließbar). Ohne ihn fehlt die Grundlage
   nach Art. 28 DSGVO.
-- Ein starkes Passwort setzen und das Startpasswort sofort ersetzen.
+- Für die Datei ein starkes Passwort wählen (wird in der App erzwungen).
 - Auf der Testumgebung nur erfundene Namen verwenden.
 
 ## 1. Server anlegen
@@ -37,11 +38,12 @@ Notieren Sie die IPv4-Adresse des Servers.
 
 ## 2. DNS eintragen
 
-Beim Domain-Anbieter zwei A-Einträge auf die IP des Servers setzen:
+Beim Domain-Anbieter drei A-Einträge auf die IP des Servers setzen:
 
 ```
 sitzordnung.celik-soft.de.        A    <IP des Servers>
 test.sitzordnung.celik-soft.de.   A    <IP des Servers>
+develop.sitzordnung.celik-soft.de.   A    <IP des Servers>
 ```
 
 Erst wenn die Namen auflösen, kann Caddy Zertifikate holen. Prüfen mit
@@ -94,10 +96,9 @@ cp deploy/.env.example deploy/.env
 nano deploy/.env
 ```
 
-In `deploy/.env` eintragen: die beiden Adressen, eine E-Mail für Let's Encrypt
-und je ein Startpasswort. **Die Startpasswörter gelten nur beim allerersten
-Start**, solange noch kein Konto existiert – danach zählt ausschließlich das
-Passwort, das Sie in der App setzen.
+In `deploy/.env` eintragen: die Adressen und eine E-Mail für Let's Encrypt.
+Ein Konto auf dem Server gibt es nicht – geschützt sind die Daten allein durch
+das Passwort der verschlüsselten Datei, das jede Lehrkraft in der App setzt.
 
 ## 5. Zum ersten Mal starten
 
@@ -107,20 +108,13 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 ```
 
-Danach `https://sitzordnung.celik-soft.de` aufrufen, anmelden und **sofort unter
-*Konto* ein eigenes Passwort setzen**.
-
-Falls das Startpasswort in `.env` zu kurz war, hat die App ein zufälliges
-erzeugt. Es steht einmalig im Log:
-
-```bash
-docker compose -f deploy/docker-compose.yml logs app-prod | grep Startpasswort
-```
+Danach `https://sitzordnung.celik-soft.de` aufrufen und einen neuen
+Datenbestand mit einem starken Passwort anlegen.
 
 ## 6. Automatisch ausrollen einrichten
 
-Die Pipeline in `.github/workflows/deploy.yml` baut bei jedem Push auf `test`
-beziehungsweise `master` ein Image, lädt es in die GitHub-Registry und startet
+Die Pipeline in `.github/workflows/deploy.yml` baut bei jedem Push auf `develop`,
+`test` beziehungsweise `master` ein Image, lädt es in die GitHub-Registry und startet
 auf dem Server `deploy/deploy.sh`.
 
 Dafür im Repository unter **Settings → Secrets and variables → Actions** anlegen:
@@ -137,7 +131,7 @@ Legen Sie für die Pipeline am besten ein **eigenes Schlüsselpaar** an
 `/home/deploy/.ssh/authorized_keys` ein und hinterlegen Sie nur den privaten
 Teil als Secret.
 
-Zusätzlich unter **Settings → Environments** die Umgebungen `test` und
+Zusätzlich unter **Settings → Environments** die Umgebungen `develop`, `test` und
 `produktion` anlegen. Für `produktion` lohnt sich ein *Required reviewer* –
 dann wird erst nach Ihrer Bestätigung produktiv ausgerollt.
 
@@ -151,7 +145,7 @@ Von Hand geht das genauso:
 
 ```bash
 cd /home/deploy/sitzordnung
-./deploy/deploy.sh test    # oder: prod
+./deploy/deploy.sh test    # oder: prod, dev
 ```
 
 ## 7. Sicherungen einrichten
@@ -204,10 +198,6 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 **Kein Zertifikat / Browser meldet unsicher.** Caddy braucht auflösende
 DNS-Namen und die offenen Ports 80 und 443. Prüfen mit
 `docker compose -f deploy/docker-compose.yml logs caddy`.
-
-**Anmeldung schlägt fehl, obwohl das Passwort stimmt.** Das Cookie wird nur über
-HTTPS übertragen. Rufen Sie die Adresse mit `https://` auf, nicht mit der reinen
-IP.
 
 **Nach dem Ausrollen sind Daten weg.** Sollte nicht passieren – die Daten liegen
 in den Volumes `deploy_prod-data` und `deploy_test-data` und überstehen den

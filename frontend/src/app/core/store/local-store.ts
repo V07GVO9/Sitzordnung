@@ -9,16 +9,19 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
   AREA_LABELS,
+  GradeArea,
   AppSettings,
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
   CurrentLesson,
   DayOfWeek,
   GradeBook,
+  LessonSheet,
   GradeChange,
   GradeReport,
   GradeScale,
@@ -43,6 +46,8 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  Quarter,
+  QuarterGrade,
   WEEKDAY_NAMES,
 } from '../models';
 import { AppError } from './app-error';
@@ -52,7 +57,7 @@ import {
   Database,
   GradeScaleRecord,
   GradingSchemeRecord,
-  MAX_PLANS_PER_COURSE,
+  ParticipationOverrideRecord,
   SeatingPlanRecord,
   StudentRecord,
   createDefaultScheme,
@@ -62,12 +67,16 @@ import {
   average,
   combineGrades,
   formatGrade,
+  lastRatingPerDay,
+  gradeFromPercent,
   isValidGrade,
   participationLessons,
   resultGrade,
+  roundGrade,
 } from './assessment.logic';
-import { CsvBuilder, CsvDate, CsvLiteral } from './csv';
+import { CsvBuilder } from './csv';
 import { effectiveScale, resolveGrade } from './grading.logic';
+import { quarterRange } from './quarter.logic';
 import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
 import {
   Clock,
@@ -79,8 +88,34 @@ import {
   toTimeKey,
 } from './time';
 import { parseTimetableIcs } from './timetable-import';
+import { freeDayReason } from './school-calendar';
+import { renderLessonSheets } from './lesson-sheet';
+import { RatingsSheet, renderRatingsSheets } from './ratings-sheet';
 
 /** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
+/** Was beim Schuljahreswechsel passieren soll. */
+export interface SchoolYearInput {
+  /** Neue Namen, z. B. KDM11 → KDM12. */
+  renames: { classId: number; name: string }[];
+  /** Klassen, die die Schule verlassen - samt Schülern und allem, was daran hängt. */
+  deleteClassIds: number[];
+  /** Bewertungen, Leistungsnachweise, Noten, Protokoll und Notenbögen löschen. */
+  deleteRecords: boolean;
+  clearTimetable: boolean;
+}
+
+/** Anzahl der Datensätze je Art - vor dem Wechsel und als Ergebnis. */
+export interface SchoolYearCounts {
+  ratings: number;
+  participationOverrides: number;
+  assessments: number;
+  quarterGrades: number;
+  gradeChanges: number;
+  gradeReports: number;
+  pastPeriods: number;
+  timetableEntries: number;
+}
+
 export interface DateRange {
   from?: string | null;
   to?: string | null;
@@ -133,9 +168,10 @@ export class LocalStore {
     return structuredClone(this.database);
   }
 
-  /** Merkt sich, dass der aktuelle Stand gesichert ist. */
-  markSaved(): void {
-    this.savedRevision.set(this.revision());
+  /** Merkt sich, dass der (übergebene) Stand gesichert ist. */
+  markSaved(revision = this.revision()): void {
+    // Mit Stand: Was während des Schreibens dazukam, bleibt ungesichert.
+    this.savedRevision.set(Math.max(this.savedRevision(), revision));
   }
 
   private changed(): void {
@@ -437,6 +473,9 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => o.courseId !== courseId,
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter(
+      (q) => q.courseId !== courseId,
+    );
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => c.courseId !== courseId);
     this.database.gradeReports = this.database.gradeReports.filter((r) => r.courseId !== courseId);
   }
@@ -455,6 +494,7 @@ export class LocalStore {
     this.database.participationOverrides = this.database.participationOverrides.filter(
       (o) => !gone.has(o.studentId),
     );
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !gone.has(q.studentId));
     this.database.gradeChanges = this.database.gradeChanges.filter((c) => !gone.has(c.studentId));
     this.database.gradeReports = this.database.gradeReports.filter((r) => !gone.has(r.studentId));
     for (const plan of this.database.seatingPlans) {
@@ -572,10 +612,6 @@ export class LocalStore {
     this.requireCourse(courseId);
 
     const existing = this.database.seatingPlans.filter((p) => p.courseId === courseId).length;
-    if (existing >= MAX_PLANS_PER_COURSE) {
-      throw new AppError(`Pro Kurs sind höchstens ${MAX_PLANS_PER_COURSE} Sitzordnungen möglich.`);
-    }
-
     const record: SeatingPlanRecord = {
       id: this.database.nextIds.seatingPlan++,
       courseId,
@@ -766,9 +802,23 @@ export class LocalStore {
     return ratingWindow(this.lessonContext(), courseId, this.clock.now());
   }
 
-  rate(courseId: number, studentId: number, value: RatingValue, comment?: string): Rating {
+  /**
+   * Vergibt eine Bewertung. Ohne Datum gilt sie für die laufende Stunde und nur
+   * innerhalb des Stundenplans. Mit Datum wird sie gezielt für diesen Tag
+   * eingetragen - so lassen sich Stunden aus dem Wochenplan jederzeit nachtragen.
+   */
+  rate(
+    courseId: number,
+    studentId: number,
+    value: RatingValue,
+    comment?: string,
+    lessonDate?: string,
+    replaceSameDay = false,
+  ): Rating {
     if (!ALLOWED_RATING_VALUES.includes(value)) {
-      throw new AppError('Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).');
+      throw new AppError(
+        'Erlaubt sind nur die Bewertungen ++ (2), + (1), 0 (0), - (-1) und -- (-2).',
+      );
     }
 
     const course = this.requireCourse(courseId);
@@ -778,9 +828,13 @@ export class LocalStore {
       throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
     }
 
-    const window = this.getRatingWindow(courseId);
-    if (!window.canRate) {
-      throw new AppError(window.reason);
+    if (lessonDate === undefined) {
+      const window = this.getRatingWindow(courseId);
+      if (!window.canRate) {
+        throw new AppError(window.reason);
+      }
+    } else if (!isValidDateKey(lessonDate)) {
+      throw new AppError('Das Datum der Stunde ist ungültig.');
     }
 
     const now = this.clock.now();
@@ -789,10 +843,23 @@ export class LocalStore {
       courseId,
       studentId,
       value,
-      lessonDate: toDateKey(now),
+      lessonDate: lessonDate ?? toDateKey(now),
       createdAt: now.toISOString(),
       comment: comment?.trim() ? comment.trim() : null,
     };
+
+    // Listenansicht: je Schüler und Tag nur eine Bewertung - der letzte
+    // Klick ersetzt die vorige.
+    if (replaceSameDay) {
+      this.database.ratings = this.database.ratings.filter(
+        (r) =>
+          !(
+            r.courseId === courseId &&
+            r.studentId === studentId &&
+            r.lessonDate === record.lessonDate
+          ),
+      );
+    }
 
     this.database.ratings.push(record);
     this.changed();
@@ -838,27 +905,45 @@ export class LocalStore {
   }
 
   /**
-   * Punktestand aller Schüler des Kurses. Jeder startet bei 0; die Punkte sind
-   * die Summe aller Bewertungen im gewählten Zeitraum.
+   * Wie viele Unterrichtseinheiten gehalten wurden: jeder Tag, an dem
+   * mindestens ein Schüler bewertet wurde. Wer an so einem Tag keine
+   * Bewertung hat, bekommt dort die 0 - deshalb hat jeder Schüler gleich
+   * viele Bewertungen.
+   */
+  private static lessonCount(ratings: { lessonDate: string }[]): number {
+    return new Set(ratings.map((r) => r.lessonDate)).size;
+  }
+
+  /** Summe der Tagesbewertungen - je Tag zählt nur die letzte. */
+  private static sumOf(perDay: Map<string, number>): number {
+    return [...perDay.values()].reduce((sum, v) => sum + v, 0);
+  }
+
+  /**
+   * Punktestand aller Schüler des Kurses. Je Unterrichtseinheit zählt nur die
+   * letzte Bewertung, ohne Bewertung die 0. Die Punkte sind die Summe dieser
+   * Tagesbewertungen, der Mittelwert teilt sie durch die gehaltenen Einheiten.
    */
   getScoreboard(courseId: number, range?: DateRange): CourseScoreboard {
     const course = this.requireCourse(courseId);
     const today = toDateKey(this.clock.now());
     const ratings = this.ratingsInRange(courseId, range);
     const scale = effectiveScale(this.database.gradeScales, courseId);
+    const lessonCount = LocalStore.lessonCount(ratings);
 
     // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
-      const own = ratings.filter((r) => r.studentId === s.id);
-      const points = own.reduce((sum, r) => sum + r.value, 0);
+      const perDay = lastRatingPerDay(ratings.filter((r) => r.studentId === s.id));
+      const points = LocalStore.sumOf(perDay);
 
       return {
         studentId: s.id,
         firstName: s.firstName,
         lastName: s.lastName,
         points,
-        ratingCount: own.length,
-        pointsToday: own.filter((r) => r.lessonDate === today).reduce((sum, r) => sum + r.value, 0),
+        ratingCount: lessonCount,
+        average: lessonCount ? points / lessonCount : null,
+        pointsToday: perDay.get(today) ?? 0,
         grade: resolveGrade(scale, points),
       };
     });
@@ -1423,6 +1508,59 @@ export class LocalStore {
     return this.toAssessment(record, this.schemeRecord(record.courseId));
   }
 
+  /**
+   * Legt einen Leistungsnachweis mit fertigen Noten an und gibt ihn frei - für
+   * Mitarbeitsnoten, die aus einem anderen Werkzeug übernommen werden. Alles
+   * wird vorab geprüft, damit kein halber Nachweis zurückbleibt.
+   */
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Assessment {
+    const course = this.requireCourse(courseId);
+    this.validateAssessment(courseId, { ...input, maxPoints: null });
+
+    if (input.results.length === 0) {
+      throw new AppError('Es gibt keine Noten, die übernommen werden können.');
+    }
+
+    const seen = new Set<number>();
+    for (const result of input.results) {
+      const student = this.requireStudent(result.studentId);
+      if (student.schoolClassId !== course.schoolClassId) {
+        throw new AppError('Mindestens ein Schüler gehört nicht zur Klasse dieses Kurses.');
+      }
+      if (seen.has(result.studentId)) {
+        throw new AppError(
+          `${student.firstName} ${student.lastName} ist mehreren Zeilen zugeordnet.`,
+        );
+      }
+      seen.add(result.studentId);
+      if (!isValidGrade(result.grade)) {
+        throw new AppError(
+          `Die Note für ${student.firstName} ${student.lastName} liegt nicht zwischen 1,0 und 6,0.`,
+        );
+      }
+    }
+
+    const assessment = this.createAssessment(courseId, {
+      typeKey: input.typeKey,
+      title: input.title,
+      date: input.date,
+      maxPoints: null,
+      comment: input.comment,
+    });
+    this.saveResults(
+      assessment.id,
+      input.results.map((r) => ({
+        studentId: r.studentId,
+        points: null,
+        grade: r.grade,
+        status: 'graded' as const,
+        comment: r.comment,
+      })),
+    );
+
+    return this.setAssessmentReleased(assessment.id, true);
+  }
+
   private logChange(
     courseId: number,
     studentId: number,
@@ -1510,6 +1648,61 @@ export class LocalStore {
     this.changed();
   }
 
+  /** Die an einem Tag als „fehlt“ markierten Schüler eines Kurses. */
+  getAbsentStudentIds(courseId: number, lessonDate: string): number[] {
+    this.requireCourse(courseId);
+    return this.database.participationOverrides
+      .filter((o) => o.courseId === courseId && o.lessonDate === lessonDate && o.grade === null)
+      .map((o) => o.studentId);
+  }
+
+  /**
+   * Markiert einen Schüler für den Tag als fehlend - schon zu Stundenbeginn,
+   * bevor jemand bewertet wurde. Die Doppelstunde zählt für ihn dann nicht.
+   * Zurücknehmen entfernt nur das „fehlt“, keine von Hand gesetzte Note.
+   */
+  setAbsent(courseId: number, studentId: number, lessonDate: string, absent: boolean): void {
+    const course = this.requireCourse(courseId);
+    const student = this.requireStudent(studentId);
+    if (student.schoolClassId !== course.schoolClassId) {
+      throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+    }
+    if (!isValidDateKey(lessonDate)) {
+      throw new AppError('Das Datum der Stunde ist ungültig.');
+    }
+
+    const same = (o: ParticipationOverrideRecord) =>
+      o.courseId === courseId && o.studentId === studentId && o.lessonDate === lessonDate;
+    const existing = this.database.participationOverrides.find(same);
+    if (absent ? existing?.grade === null : existing?.grade !== null) {
+      return;
+    }
+
+    this.database.participationOverrides = this.database.participationOverrides.filter(
+      (o) => !same(o),
+    );
+    if (absent) {
+      this.database.participationOverrides.push({
+        courseId,
+        studentId,
+        lessonDate,
+        grade: null,
+        reason: 'fehlt (im Unterricht markiert)',
+      });
+    }
+
+    this.logChange(
+      courseId,
+      studentId,
+      `Mitarbeit ${formatDateGerman(lessonDate)}`,
+      absent ? (existing ? formatGrade(existing.grade!, 1) : 'aus Bewertungen') : 'fehlte',
+      absent ? 'fehlte' : 'aus Bewertungen',
+      'im Unterricht markiert',
+      this.clock.now().toISOString(),
+    );
+    this.changed();
+  }
+
   private participationFor(
     courseId: number,
     studentId: number,
@@ -1524,6 +1717,133 @@ export class LocalStore {
       ),
       scheme.participationGrades,
     );
+  }
+
+  // --- Quartalsnoten -----------------------------------------------------
+
+  /**
+   * Alle Quartalsnoten eines Kurses. Ist für mündlich nichts eingetragen,
+   * steht dort als Vorschlag der Durchschnitt der Mitarbeitsnoten im Quartal.
+   */
+  getQuarterGrades(courseId: number): QuarterGrade[] {
+    this.requireCourse(courseId);
+    const stored: QuarterGrade[] = this.database.quarterGrades
+      .filter((q) => q.courseId === courseId)
+      .map(({ studentId, quarter, area, percent, grade }) => ({
+        studentId,
+        quarter,
+        area,
+        percent,
+        grade,
+        suggested: false,
+      }));
+
+    const hasOral = new Set(
+      stored.filter((q) => q.area === 'oral').map((q) => `${q.studentId}:${q.quarter}`),
+    );
+    const scheme = this.schemeRecord(courseId);
+    const today = this.clock.now();
+    const suggestions: QuarterGrade[] = [];
+
+    for (const quarter of [1, 2, 3, 4] as Quarter[]) {
+      const dates = this.lessonDates(courseId, quarterRange(quarter, today));
+      if (dates.length === 0) {
+        continue;
+      }
+      for (const student of this.getCourseStudents(courseId)) {
+        if (hasOral.has(`${student.id}:${quarter}`)) {
+          continue;
+        }
+        const avg = average(
+          this.participationFor(courseId, student.id, dates, scheme).map((l) => l.grade),
+        );
+        if (avg !== null) {
+          suggestions.push({
+            studentId: student.id,
+            quarter,
+            area: 'oral',
+            percent: null,
+            grade: roundGrade(avg, 1),
+            suggested: true,
+          });
+        }
+      }
+    }
+
+    return [...stored, ...suggestions];
+  }
+
+  /**
+   * Trägt eine Quartalsnote ein: schriftlich in Prozent (die Note folgt aus
+   * dem Prozentschlüssel), mündlich direkt als Note. null löscht den Eintrag -
+   * mündlich gilt dann wieder der Durchschnitt der Mitarbeit.
+   */
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    value: number | null,
+  ): QuarterGrade {
+    const course = this.requireCourse(courseId);
+    const student = this.requireStudent(studentId);
+    if (student.schoolClassId !== course.schoolClassId) {
+      throw new AppError('Der Schüler gehört nicht zur Klasse dieses Kurses.');
+    }
+    if (![1, 2, 3, 4].includes(quarter)) {
+      throw new AppError('Es gibt nur die Quartale 1 bis 4.');
+    }
+
+    let percent: number | null = null;
+    let grade: number | null = null;
+    if (area === 'written') {
+      if (value !== null && !(Number.isFinite(value) && value >= 0 && value <= 100)) {
+        throw new AppError('Die Prozentzahl muss zwischen 0 und 100 liegen.');
+      }
+      percent = value;
+      grade =
+        value === null ? null : gradeFromPercent(this.schemeRecord(courseId).percentScale, value);
+    } else {
+      if (value !== null && !isValidGrade(value)) {
+        throw new AppError('Die Note muss zwischen 1,0 und 6,0 liegen.');
+      }
+      grade = value === null ? null : roundGrade(value, 1);
+    }
+
+    const matches = (q: { courseId: number; studentId: number; quarter: number; area: string }) =>
+      q.courseId === courseId &&
+      q.studentId === studentId &&
+      q.quarter === quarter &&
+      q.area === area;
+    const before = this.database.quarterGrades.find(matches);
+    this.database.quarterGrades = this.database.quarterGrades.filter((q) => !matches(q));
+
+    if (grade !== null || percent !== null) {
+      this.database.quarterGrades.push({ courseId, studentId, quarter, area, percent, grade });
+    }
+
+    const describe = (p: number | null, g: number | null) =>
+      p === null && g === null
+        ? '–'
+        : p === null
+          ? formatGrade(g, 1)
+          : `${String(p).replace('.', ',')} % / ${formatGrade(g, 1)}`;
+    const oldText = describe(before?.percent ?? null, before?.grade ?? null);
+    const newText = describe(percent, grade);
+    if (oldText !== newText) {
+      this.logChange(
+        courseId,
+        studentId,
+        `${quarter}. Quartal ${AREA_LABELS[area]}`,
+        oldText,
+        newText,
+        null,
+        this.clock.now().toISOString(),
+      );
+    }
+    this.changed();
+
+    return { studentId, quarter, area, percent, grade, suggested: false };
   }
 
   // --- Notenübersicht -----------------------------------------------------
@@ -1751,10 +2071,228 @@ export class LocalStore {
     };
   }
 
+  // --- Stundenübersicht --------------------------------------------------
+
+  /**
+   * Die Unterrichtstage eines Kurses laut Stundenplan - ohne Feiertage und
+   * Ferien, höchstens bis heute. Ohne Startdatum ab Beginn des Schuljahres
+   * (1. August) bzw. ab der ersten Bewertung, falls die früher liegt.
+   */
+  private scheduledDates(courseId: number, range?: DateRange): string[] {
+    const weekdays = new Set(
+      this.database.timetableEntries.filter((e) => e.courseId === courseId).map((e) => e.dayOfWeek),
+    );
+    if (weekdays.size === 0) {
+      return [];
+    }
+
+    const now = this.clock.now();
+    const today = toDateKey(now);
+    const yearStart = `${now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1}-08-01`;
+    const firstRating = this.lessonDates(courseId)[0];
+    const from = range?.from || (firstRating && firstRating < yearStart ? firstRating : yearStart);
+    const to = range?.to && range.to < today ? range.to : today;
+
+    const dates: string[] = [];
+    const [y, m, d] = from.split('-').map(Number);
+    for (const day = new Date(y, m - 1, d); toDateKey(day) <= to; day.setDate(day.getDate() + 1)) {
+      const key = toDateKey(day);
+      if (weekdays.has(day.getDay() as DayOfWeek) && freeDayReason(key) === null) {
+        dates.push(key);
+      }
+    }
+    return dates;
+  }
+
+  /**
+   * Je Kurs eine Übersicht: für jeden Unterrichtstag die Mitarbeitsnote jedes
+   * Schülers - auch die automatische Note, wenn er nicht bewertet wurde.
+   * Tage, an denen im Kurs niemand bewertet wurde, zählen nicht (Note null),
+   * außer es ist von Hand eine Note gesetzt.
+   */
+  getLessonSheets(courseId: number | null, range?: DateRange): LessonSheet[] {
+    const courses = this.getCourses().filter((c) => courseId === null || c.id === courseId);
+    if (courses.length === 0) {
+      throw new AppError('Es gibt keinen passenden Kurs zum Exportieren.');
+    }
+
+    return courses.map((course) => {
+      const scheme = this.schemeRecord(course.id);
+      const ratedDates = new Set(this.lessonDates(course.id, range));
+      const dates = [...new Set([...this.scheduledDates(course.id, range), ...ratedDates])].sort();
+      const ratings = this.ratingsInRange(course.id, range);
+
+      return {
+        courseId: course.id,
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        from: range?.from || dates[0] || null,
+        to: range?.to || dates.at(-1) || null,
+        dates: dates.map((date) => ({ date, rated: ratedDates.has(date) })),
+        students: this.studentsOfCourse(course.id).map((student) => {
+          const rated = new Set(
+            ratings.filter((r) => r.studentId === student.id).map((r) => r.lessonDate),
+          );
+          const cells = this.participationFor(course.id, student.id, dates, scheme).map((l) => ({
+            ...l,
+            rated: rated.has(l.date),
+            grade: ratedDates.has(l.date) || l.override ? l.grade : null,
+          }));
+
+          return {
+            studentId: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            cells,
+            average: average(cells.map((c) => c.grade)),
+          };
+        }),
+      };
+    });
+  }
+
+  /** Die Stundenübersicht als druckfertiges HTML - je Kurs eine Seite. */
+  exportLessonSheets(
+    courseId: number | null,
+    range?: DateRange,
+    studentId?: number,
+  ): { blob: Blob; fileName: string } {
+    let sheets = this.getLessonSheets(courseId, range);
+    let studentPart = '';
+    if (studentId !== undefined) {
+      sheets = sheets.map((sheet) => ({
+        ...sheet,
+        students: sheet.students.filter((s) => s.studentId === studentId),
+      }));
+      const student = sheets[0]?.students[0];
+      if (!student) {
+        throw new AppError('Der Schüler gehört nicht zu diesem Kurs.');
+      }
+      studentPart = `-${LocalStore.fileNamePart(`${student.lastName}-${student.firstName}`)}`;
+    }
+    const suffix =
+      sheets.length === 1
+        ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
+          LocalStore.fileNamePart(sheets[0].subjectName) +
+          studentPart
+        : 'alle-kurse';
+
+    return {
+      blob: new Blob([renderLessonSheets(sheets, toDateKey(this.clock.now()))], {
+        type: 'text/html;charset=utf-8',
+      }),
+      fileName: `noten-je-stunde-${suffix}-${toDateKey(this.clock.now())}.html`,
+    };
+  }
+
   // --- Einstellungen ------------------------------------------------------
 
   getSettings(): AppSettings {
-    return { ...this.database.settings };
+    const { toleranceMinutes, allowRatingOutsideLesson } = this.database.settings;
+    return { toleranceMinutes, allowRatingOutsideLesson };
+  }
+
+  // --- Sicherungskopie ----------------------------------------------------
+
+  /** Wann zuletzt eine Sicherungskopie gezogen wurde - null: noch nie. */
+  getLastBackupAt(): string | null {
+    return this.database.settings.lastBackupAt ?? null;
+  }
+
+  /** Vermerkt eine gerade gezogene Sicherungskopie (steht in der Datei, gilt für alle Geräte). */
+  markBackup(): void {
+    this.database.settings.lastBackupAt = this.clock.now().toISOString();
+    this.changed();
+  }
+
+  // --- Schuljahreswechsel -------------------------------------------------
+
+  /** Was beim Schuljahreswechsel gelöscht würde - für die Zusammenfassung vorab. */
+  getSchoolYearCounts(): SchoolYearCounts {
+    const today = toDateKey(this.clock.now());
+    return {
+      ratings: this.database.ratings.length,
+      participationOverrides: this.database.participationOverrides.length,
+      assessments: this.database.assessments.length,
+      quarterGrades: this.database.quarterGrades.length,
+      gradeChanges: this.database.gradeChanges.length,
+      gradeReports: this.database.gradeReports.length,
+      pastPeriods: this.database.gradingPeriods.filter((p) => p.end < today).length,
+      timetableEntries: this.database.timetableEntries.length,
+    };
+  }
+
+  /**
+   * Neues Schuljahr: Klassen entfernen (Abschluss) oder umbenennen
+   * (hochsetzen), optional alle Leistungsdaten des alten Jahres löschen
+   * (Löschfrist) und den Stundenplan leeren. Schüler, Fächer, Kurse,
+   * Sitzordnungen, Notenschlüssel und Bewertungsschemata bleiben.
+   */
+  startNewSchoolYear(input: SchoolYearInput): SchoolYearCounts {
+    const removed = new Set(input.deleteClassIds);
+    for (const id of removed) {
+      this.requireClass(id);
+    }
+
+    // Erst prüfen, dann ändern: Die neuen Namen müssen eindeutig und nicht leer sein.
+    const finalNames = new Map(
+      this.database.schoolClasses.filter((c) => !removed.has(c.id)).map((c) => [c.id, c.name]),
+    );
+    for (const { classId, name } of input.renames) {
+      if (!finalNames.has(classId)) {
+        continue;
+      }
+      const trimmed = name.trim();
+      if (!trimmed) {
+        throw new AppError('Jede Klasse braucht einen Namen.');
+      }
+      finalNames.set(classId, trimmed);
+    }
+    const names = [...finalNames.values()];
+    const duplicate = names.find((n, i) => names.indexOf(n) !== i);
+    if (duplicate) {
+      throw new AppError(`Die Klasse '${duplicate}' gäbe es danach zweimal.`);
+    }
+
+    const counts = this.getSchoolYearCounts();
+    for (const id of removed) {
+      this.deleteClass(id);
+    }
+    for (const record of this.database.schoolClasses) {
+      record.name = finalNames.get(record.id) ?? record.name;
+    }
+
+    if (input.deleteRecords) {
+      const today = toDateKey(this.clock.now());
+      this.database.ratings = [];
+      this.database.participationOverrides = [];
+      this.database.assessments = [];
+      this.database.assessmentResults = [];
+      this.database.quarterGrades = [];
+      this.database.gradeChanges = [];
+      this.database.gradeReports = [];
+      this.database.gradingPeriods = this.database.gradingPeriods.filter((p) => p.end >= today);
+    }
+    if (input.clearTimetable) {
+      this.database.timetableEntries = [];
+    }
+
+    this.changed();
+    return {
+      ...counts,
+      ...(input.deleteRecords
+        ? {}
+        : {
+            ratings: 0,
+            participationOverrides: 0,
+            assessments: 0,
+            quarterGrades: 0,
+            gradeChanges: 0,
+            gradeReports: 0,
+            pastPeriods: 0,
+          }),
+      timetableEntries: input.clearTimetable ? counts.timetableEntries : 0,
+    };
   }
 
   saveSettings(settings: AppSettings): AppSettings {
@@ -1763,6 +2301,7 @@ export class LocalStore {
     }
 
     this.database.settings = {
+      ...this.database.settings,
       toleranceMinutes: settings.toleranceMinutes,
       allowRatingOutsideLesson: settings.allowRatingOutsideLesson,
     };
@@ -1781,72 +2320,62 @@ export class LocalStore {
       .replace(/^-+|-+$/g, '');
   }
 
-  private static symbol(value: number): CsvLiteral {
-    switch (value) {
-      case 2:
-        return new CsvLiteral('++');
-      case 1:
-        return new CsvLiteral('+');
-      case -1:
-        return new CsvLiteral('-');
-      case -2:
-        return new CsvLiteral('--');
-      default:
-        return new CsvLiteral(String(value));
-    }
-  }
-
-  /** Jede einzelne Bewertung als eigene Zeile. */
+  /**
+   * Die Einzelbewertungen als druckfertiges HTML im Querformat: je Kurs eine
+   * Tabelle, Schüler in den Zeilen, Bewertungstage in den Spalten.
+   */
   exportRatings(courseId: number | null, range?: DateRange): { blob: Blob; fileName: string } {
-    const csv = new CsvBuilder();
-    csv.addRow(
-      'Datum',
-      'Uhrzeit',
-      'Klasse',
-      'Fach',
-      'Nachname',
-      'Vorname',
-      'Bewertung',
-      'Punkte',
-      'Kommentar',
+    const courses = this.getCourses().filter(
+      (c) =>
+        (courseId === null || c.id === courseId) &&
+        (courseId !== null || this.ratingsInRange(c.id, range).length > 0),
     );
-
-    const rows = this.ratingsInRange(courseId, range)
-      .map((rating) => {
-        const course = this.database.courses.find((c) => c.id === rating.courseId);
-        const student = this.database.students.find((s) => s.id === rating.studentId);
-        return {
-          rating,
-          className: course ? this.className(course.schoolClassId) : '',
-          subjectName: course ? (this.subject(course.subjectId)?.name ?? '') : '',
-          student,
-        };
-      })
-      .sort(
-        (a, b) =>
-          a.className.localeCompare(b.className, 'de') ||
-          a.subjectName.localeCompare(b.subjectName, 'de') ||
-          a.rating.lessonDate.localeCompare(b.rating.lessonDate) ||
-          (a.student?.lastName ?? '').localeCompare(b.student?.lastName ?? '', 'de'),
-      );
-
-    for (const row of rows) {
-      csv.addRow(
-        new CsvDate(row.rating.lessonDate),
-        toTimeKey(new Date(row.rating.createdAt)),
-        row.className,
-        row.subjectName,
-        row.student?.lastName,
-        row.student?.firstName,
-        LocalStore.symbol(row.rating.value),
-        row.rating.value,
-        row.rating.comment,
-      );
+    if (courses.length === 0) {
+      throw new AppError('Es gibt keinen passenden Kurs zum Exportieren.');
     }
+
+    const sheets: RatingsSheet[] = courses.map((course) => {
+      // Nach Eingabe sortiert - die letzte Bewertung eines Tages zählt.
+      const ratings = this.ratingsInRange(course.id, range).sort((a, b) => a.id - b.id);
+      const dates = [...new Set(ratings.map((r) => r.lessonDate))].sort();
+
+      return {
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        from: range?.from || dates[0] || null,
+        to: range?.to || dates.at(-1) || null,
+        dates,
+        students: this.studentsOfCourse(course.id).map((student) => {
+          const own = ratings.filter((r) => r.studentId === student.id);
+          return {
+            firstName: student.firstName,
+            lastName: student.lastName,
+            cells: dates.map((date) =>
+              own
+                .filter((r) => r.lessonDate === date)
+                .map((r) => ({
+                  value: r.value,
+                  time: toTimeKey(new Date(r.createdAt)),
+                  comment: r.comment || null,
+                })),
+            ),
+            points: LocalStore.sumOf(lastRatingPerDay(own)),
+          };
+        }),
+      };
+    });
+
+    const suffix =
+      sheets.length === 1
+        ? `${LocalStore.fileNamePart(sheets[0].schoolClassName)}-` +
+          LocalStore.fileNamePart(sheets[0].subjectName)
+        : 'alle-kurse';
 
     return {
-      blob: csv.toBlob(),
-      fileName: `bewertungen-${toDateKey(this.clock.now())}.csv`,
+      blob: new Blob([renderRatingsSheets(sheets, toDateKey(this.clock.now()))], {
+        type: 'text/html;charset=utf-8',
+      }),
+      fileName: `bewertungen-${suffix}-${toDateKey(this.clock.now())}.html`,
     };
   }
 
@@ -1862,15 +2391,26 @@ export class LocalStore {
     }
 
     const csv = new CsvBuilder();
-    csv.addRow('Klasse', 'Fach', 'Nachname', 'Vorname', 'Punkte', 'Anzahl Bewertungen', 'Note');
+    csv.addRow(
+      'Klasse',
+      'Fach',
+      'Nachname',
+      'Vorname',
+      'Punkte',
+      'Anzahl Bewertungen',
+      'Mittelwert',
+      'Note',
+    );
 
     for (const course of courses) {
       const ratings = this.ratingsInRange(course.id, range);
       const scale = effectiveScale(this.database.gradeScales, course.id);
+      const lessonCount = LocalStore.lessonCount(ratings);
 
       for (const student of this.studentsOfCourse(course.id)) {
-        const own = ratings.filter((r) => r.studentId === student.id);
-        const points = own.reduce((sum, r) => sum + r.value, 0);
+        const points = LocalStore.sumOf(
+          lastRatingPerDay(ratings.filter((r) => r.studentId === student.id)),
+        );
 
         csv.addRow(
           course.schoolClassName,
@@ -1878,7 +2418,8 @@ export class LocalStore {
           student.lastName,
           student.firstName,
           points,
-          own.length,
+          lessonCount,
+          lessonCount ? formatGrade(points / lessonCount, 2) : '',
           resolveGrade(scale, points),
         );
       }

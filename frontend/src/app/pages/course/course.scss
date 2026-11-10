@@ -1,13 +1,7 @@
 /* Mobile first: kleine Kacheln, die sich über Container-Abfragen an die
    tatsächliche Platzbreite anpassen – so muss nie seitlich gescrollt werden. */
 
-/* --- Kopf im Stil des Kursbuchs: Fach-Reiter, Datum, Ansicht --- */
-
-.course-tabs {
-  margin: calc(var(--pad-seite) * -1) calc(var(--pad-seite) * -1) 0;
-  padding-top: 0.35rem;
-  border-bottom: 1px solid var(--separator);
-}
+/* --- Kopf im Stil des Kursbuchs: Datum, Ansicht --- */
 
 .kb-bar {
   display: flex;
@@ -72,9 +66,11 @@
   gap: 0.6rem;
   flex: 1 1 100%;
 
+  .plan-field,
   .name-field {
     flex: 1 1 100%;
 
+    select,
     input {
       width: 100%;
     }
@@ -93,8 +89,11 @@
 
 @media (min-width: 48rem) {
   .fields {
-    flex: 0 1 auto;
+    /* Nicht stauchen: Lieber rutschen die Werkzeuge in die nächste Zeile. */
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
 
+    .plan-field,
     .name-field {
       flex: 0 1 14rem;
     }
@@ -331,32 +330,6 @@
   }
 }
 
-/* Der Punktestand oben rechts auf der Kachel. */
-.score {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  min-width: 1.4rem;
-  padding: 0 0.3rem;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--text-muted);
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1.4;
-  font-variant-numeric: tabular-nums;
-
-  &.pos {
-    background: var(--positive-soft);
-    color: var(--positive);
-  }
-
-  &.neg {
-    background: var(--negative-soft);
-    color: var(--negative);
-  }
-}
-
 /* Auf sehr schmalen Plätzen weicht das Foto dem Namen. */
 .student .avatar {
   display: none;
@@ -383,22 +356,86 @@
     white-space: nowrap;
   }
 
+  /* Vorname hervorgehoben: 4 pt größer als der Nachname. */
+  span:first-child {
+    font-size: calc(0.6rem + 4pt);
+  }
+
   span + span {
     color: var(--text-muted);
     font-weight: 450;
   }
 }
 
-.actions {
+/* Die Bewertungsknöpfe der angetippten Kachel als schwebendes Overlay:
+   Kachel und Sitzplan behalten ihre Größe. Breite passt zu POPOVER_WIDTH in course.ts. */
+.rate-pop {
+  position: fixed;
+  z-index: 50;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.15rem;
-  width: 100%;
-  margin-top: auto;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.25rem;
+  width: min(15rem, calc(100vw - 0.75rem));
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.12s ease-out;
 
-  // Auf schmalen Plätzen liegt die 0 als Mitte zwischen + und −.
-  .rate-o {
-    grid-column: 1 / -1;
+  .rate {
+    min-height: 2.4rem;
+    font-size: 0.95rem;
+  }
+
+  .history {
+    min-height: 2rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Unter den Bewertungsknöpfen: Verlauf und Fehlt nebeneinander. */
+.pop-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+
+.pop-absent {
+  grid-column: 1 / -1;
+  margin: 0.2rem 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Fehlt/Anwesend: aktiv dunkel, damit man den Zustand sofort sieht. */
+.absent-toggle {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 600;
+
+  &.on {
+    background: var(--text-muted);
+    border-color: var(--text-muted);
+    color: var(--bg);
+  }
+}
+
+.tile-absent {
+  position: absolute;
+  top: 0;
+  right: 0.1rem;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
 }
 
@@ -443,20 +480,10 @@
 
 /* --- Je breiter der Platz, desto mehr zeigt die Kachel --- */
 
-/* Ganz enge Plätze zeigen nur noch Name und die vier Knöpfe. */
+/* Ganz enge Plätze zeigen nur noch den Namen. */
 @container platz (max-width: 3rem) {
   .name {
     font-size: 0.55rem;
-  }
-
-  .score {
-    display: none;
-  }
-
-  .rate {
-    min-height: 1.4rem;
-    padding: 0.15rem 0;
-    font-size: 0.6rem;
   }
 }
 
@@ -490,17 +517,6 @@
   .name {
     font-size: 0.74rem;
   }
-
-  .score {
-    top: 0.3rem;
-    right: 0.3rem;
-    font-size: 0.7rem;
-  }
-
-  .rate {
-    min-height: 2rem;
-    font-size: 0.82rem;
-  }
 }
 
 @container platz (min-width: 7.5rem) {
@@ -517,24 +533,6 @@
 
   .name {
     font-size: 0.8rem;
-  }
-
-  .score {
-    font-size: 0.75rem;
-  }
-
-  .actions {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.2rem;
-
-    .rate-o {
-      grid-column: auto;
-    }
-  }
-
-  .rate {
-    min-height: 2.2rem;
-    font-size: 0.85rem;
   }
 }
 
@@ -609,6 +607,11 @@
   .rate {
     min-height: 2.1rem;
   }
+
+  .absent-toggle {
+    grid-column: 1 / -1;
+    min-height: 1.8rem;
+  }
 }
 
 /* --- Ziehen --- */
@@ -629,4 +632,19 @@
 
 .cdk-drag-animating {
   transition: transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Eine Stunde aus dem Wochenplan, die nicht heute ist - Bewertungen werden nachgetragen. */
+.nachtrag {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.plan-select {
+  width: auto;
+  max-width: 14rem;
+}
+
+.copy-select {
+  width: auto;
 }

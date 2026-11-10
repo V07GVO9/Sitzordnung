@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Rollt eine neue Version aus - entweder die Test- oder die Produktivumgebung.
+# Rollt eine neue Version aus - die Entwicklungs-, Test- oder Produktivumgebung.
 #
 #   ./deploy.sh test
 #   ./deploy.sh prod
+#   ./deploy.sh dev
+#   ./deploy.sh test 1a2b3c4   (bestimmter Image-Tag, z. B. Commit-SHA)
 #
 # Läuft die neue Version nicht an, wird die vorherige wiederhergestellt.
 set -euo pipefail
@@ -13,7 +15,8 @@ UMGEBUNG="${1:-}"
 case "$UMGEBUNG" in
   prod) DIENST="app-prod"; IMAGE_VAR="IMAGE_PROD"; DOMAIN_VAR="PROD_DOMAIN" ;;
   test) DIENST="app-test"; IMAGE_VAR="IMAGE_TEST"; DOMAIN_VAR="TEST_DOMAIN" ;;
-  *) echo "Aufruf: $0 {prod|test}" >&2; exit 2 ;;
+  dev)  DIENST="app-dev";  IMAGE_VAR="IMAGE_DEV";  DOMAIN_VAR="DEV_DOMAIN" ;;
+  *) echo "Aufruf: $0 {prod|test|dev}" >&2; exit 2 ;;
 esac
 
 if [ ! -f .env ]; then
@@ -26,8 +29,21 @@ set -a
 . ./.env
 set +a
 
+# Vorgaben für die Entwicklungsumgebung, falls .env sie noch nicht kennt
+# (gleiche Werte wie in docker-compose.yml).
+: "${IMAGE_DEV:=ghcr.io/v07gvo9/sitzordnung:develop}"
+: "${DEV_DOMAIN:=develop.sitzordnung.celik-soft.de}"
+
 IMAGE="${!IMAGE_VAR}"
 DOMAIN="${!DOMAIN_VAR}"
+
+# Optional: ein bestimmter Image-Tag (z. B. der Commit-SHA aus GitHub Actions)
+# statt des Branch-Tags aus .env.
+TAG="${2:-}"
+if [ -n "$TAG" ]; then
+  IMAGE="${IMAGE%:*}:$TAG"
+  export "$IMAGE_VAR=$IMAGE"
+fi
 
 echo "==> Rolle $UMGEBUNG aus ($IMAGE)"
 

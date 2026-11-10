@@ -1,17 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { PasswordField } from '../../core/ui/password-field';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { ActiveCourseService } from '../../core/active-course.service';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService, DateRange } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
-import {
-  AppSettings,
-  Course,
-  CourseScoreboard,
-  GradeScale,
-  GradeScaleEntry,
-} from '../../core/models';
+import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
+import { formatGrade } from '../../core/store/assessment.logic';
 import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
 import { OneDriveService } from '../../core/store/onedrive.service';
 import { isStrongPassword } from '../../core/store/password-policy';
@@ -27,7 +33,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
 @Component({
   selector: 'app-evaluation',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, RouterLink, Icon, PasswordRules, PasswordField],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.scss',
 })
@@ -58,8 +64,10 @@ export class EvaluationPage {
   readonly newPassword = signal('');
   readonly isStrongPassword = isStrongPassword;
 
-  readonly courses = signal<Course[]>([]);
-  readonly selectedCourseId = signal<number | null>(null);
+  /** Ausgewertet wird immer das Fach, das im Wochenplan gewählt ist. */
+  private readonly active = inject(ActiveCourseService);
+  readonly selectedCourse = this.active.course;
+  readonly selectedCourseId = this.active.courseId;
   readonly scoreboard = signal<CourseScoreboard | null>(null);
   readonly from = signal('');
   readonly to = signal('');
@@ -70,10 +78,6 @@ export class EvaluationPage {
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
   readonly settings = signal<AppSettings | null>(null);
-
-  readonly selectedCourse = computed(
-    () => this.courses().find((c) => c.id === this.selectedCourseId()) ?? null,
-  );
 
   /** Die Stufen absteigend - so liest sich ein Notenschlüssel. */
   readonly sortedEntries = computed(() =>
@@ -86,25 +90,23 @@ export class EvaluationPage {
 
   constructor() {
     forkJoin({
-      courses: this.api.getCourses(),
       scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
       settings: this.api.getSettings().pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ courses, scale, settings }) => {
-        this.courses.set(courses);
+      next: ({ scale, settings }) => {
         this.applyScale(scale);
         this.settings.set(settings);
-
-        if (courses.length) {
-          this.selectCourse(courses[0].id);
-        }
       },
       error: (err) => this.toasts.error(err, 'Die Auswertung konnte nicht geladen werden.'),
     });
+
+    effect(() => {
+      const courseId = this.selectedCourseId();
+      untracked(() => this.loadScoreboard(courseId));
+    });
   }
 
-  selectCourse(courseId: number | null): void {
-    this.selectedCourseId.set(courseId);
+  private loadScoreboard(courseId: number | null): void {
     this.scoreboard.set(null);
 
     if (courseId === null) {
@@ -117,8 +119,13 @@ export class EvaluationPage {
     });
   }
 
+  /** Mittelwert mit einer Nachkommastelle, etwa 0,7 - ohne Unterricht ein Strich. */
+  formatAverage(value: number | null): string {
+    return formatGrade(value, 1);
+  }
+
   refreshScoreboard(): void {
-    this.selectCourse(this.selectedCourseId());
+    this.loadScoreboard(this.selectedCourseId());
   }
 
   clearRange(): void {
@@ -307,9 +314,25 @@ export class EvaluationPage {
   // --- Export ---
 
   /** Baut die CSV-Datei im Browser und legt sie in den Download-Ordner. */
-  exportCsv(kind: 'ratings' | 'summary', allCourses: boolean): void {
-    this.api.exportCsv(kind, allCourses ? null : this.selectedCourseId(), this.range).subscribe({
+  exportCsv(allCourses: boolean): void {
+    this.api.exportCsv(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
       next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
+  }
+
+  /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
+  /** Einzelbewertungen im Querformat: Schüler in Zeilen, Bewertungstage in Spalten. */
+  exportRatings(): void {
+    this.api.exportRatings(this.selectedCourseId(), this.range).subscribe({
+      next: () => this.toasts.success('Die Einzelbewertungen wurden erzeugt.'),
+      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
+    });
+  }
+
+  exportLessonSheets(allCourses: boolean): void {
+    this.api.exportLessonSheets(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
+      next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),
       error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
     });
   }

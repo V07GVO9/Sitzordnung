@@ -20,6 +20,7 @@ export interface FileHandle {
   getFile(): Promise<File>;
   createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
+  requestPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
   readonly location?: 'onedrive';
   /** Die Kennung der Datei in OneDrive. */
@@ -139,6 +140,25 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
   });
 }
 
+/**
+ * Liest eine gemerkte Datei ohne Dateidialog. Der Browser fragt dabei
+ * gegebenenfalls einmal nach, ob die App die Datei bearbeiten darf - das muss
+ * direkt auf einen Klick folgen, deshalb steht die Abfrage hier ganz vorn.
+ */
+export async function readHandle(handle: FileHandle): Promise<string> {
+  const options = { mode: 'readwrite' as const };
+  let state = (await handle.queryPermission?.(options)) ?? 'granted';
+  if (state !== 'granted' && handle.requestPermission) {
+    state = await handle.requestPermission(options);
+  }
+  if (state !== 'granted') {
+    throw new FilePickerCancelled();
+  }
+
+  const file = await handle.getFile();
+  return file.text();
+}
+
 /** Fragt nach einem Speicherort für eine neue Datei. */
 export async function chooseSaveFile(suggestedName: string): Promise<FileHandle | null> {
   if (isNativeApp()) {
@@ -214,6 +234,38 @@ export async function download(
   link.click();
   // Erst freigeben, wenn der Browser den Download übernommen hat.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * Speichert eine einzelne Kopie und fragt dabei jedes Mal nach dem Ort -
+ * die Datei wird nicht gemerkt. In Chrome/Edge öffnet sich der
+ * Speichern-Dialog, in der Android-App das Teilen-Menü. Andere Browser
+ * kennen keinen Dialog; dort bleibt nur der Download.
+ */
+export async function saveCopyWithPicker(blob: Blob, suggestedName: string): Promise<void> {
+  if (isNativeApp()) {
+    await saveOnDevice(blob, suggestedName, true);
+    return;
+  }
+
+  const show = picker().showSaveFilePicker;
+  if (show) {
+    let handle: FileHandle | null = null;
+    try {
+      handle = await show({ ...PICKER_OPTIONS, suggestedName });
+    } catch (error) {
+      if (isAbort(error)) {
+        throw new FilePickerCancelled();
+      }
+      // Lehnt der Browser den Dialog ab (eingebettetes Fenster), bleibt der Download.
+    }
+    if (handle) {
+      await writeFile(handle, blob);
+      return;
+    }
+  }
+
+  await download(blob, suggestedName);
 }
 
 async function saveOnDevice(blob: Blob, fileName: string, share: boolean): Promise<void> {

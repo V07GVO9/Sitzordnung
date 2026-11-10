@@ -1,43 +1,85 @@
 name: Tests
 
+# Läuft bei Pull Requests. Für master und test ruft "Ausrollen" (deploy.yml)
+# diesen Workflow selbst auf - so wird pro Push nur einmal getestet.
 on:
-  push:
-    branches: [master, develop, test, "claude/**"]
   pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      docker-bauen:
+        description: "Docker-Image zur Probe bauen"
+        type: boolean
+        default: true
+
+# Neuere Pushes auf denselben Pull Request brechen ältere Läufe ab.
+# Bei workflow_call gilt die Gruppe des aufrufenden Workflows.
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build-und-test:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
 
-      - uses: actions/setup-node@v4
+      - name: NuGet-Pakete aus dem Cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Baut den Host (liefert nur noch die Angular-App aus). Das alte
+      # API-Testprojekt ist nicht mehr in der Solution - Tests gibt es hier keine.
+      - name: Backend bauen
+        run: dotnet build backend/Sitzordnung.sln --configuration Release
+
+      # Das Docker-Image baut das Frontend selbst (npm ci + npm run build),
+      # ein eigener Frontend-Schritt wäre doppelte Arbeit.
+      - uses: docker/setup-buildx-action@v4
+        if: inputs.docker-bauen != false
+
+      - name: Docker-Image bauen (mit Frontend)
+        if: inputs.docker-bauen != false
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: sitzordnung:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Unit-Tests des Frontends (Karma/Jasmine, headless Chrome).
+  # Läuft parallel zu build-und-test, verlängert die Wartezeit also kaum.
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Backend testen
-        run: dotnet test backend/Sitzordnung.sln --configuration Release
-
-      - name: Frontend bauen
+      - name: Frontend testen
+        working-directory: frontend
         run: |
-          npm --prefix frontend ci
-          npm --prefix frontend run build
-
-      - name: Docker-Image bauen
-        run: docker build -t sitzordnung:ci .
+          npm ci
+          npx ng test --watch=false --no-progress
 
   # Pull Requests in den Branch "test" werden automatisch genehmigt und gemerged,
   # sobald alle Tests grün sind. Nach "master" wird weiterhin von Hand freigegeben.
   # Nur für Branches aus diesem Repository (keine Forks, keine Entwürfe).
   automatisch-mergen-test:
-    needs: build-und-test
+    needs: [build-und-test, frontend-tests]
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'test' &&
@@ -62,8 +104,7 @@ jobs:
         run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge
 
       # Merges mit dem GITHUB_TOKEN lösen keine push-Workflows aus,
-      # daher Ausrollen und Android-App hier ausdrücklich starten.
-      - name: Ausrollen und Android-App starten
-        run: |
-          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref test
-          gh workflow run android.yml --repo "$GITHUB_REPOSITORY" --ref test
+      # daher das Ausrollen hier ausdrücklich starten. (Die Android-App wird
+      # nur noch aus master gebaut.)
+      - name: Ausrollen starten
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref test

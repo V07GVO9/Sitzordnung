@@ -23,19 +23,6 @@
   </ng-template>
 
   <div class="stack">
-    <!-- Fach-Reiter der Klasse, wie im Kursbuch der Klassenmappe -->
-    <nav class="subject-tabs course-tabs" aria-label="Fach wählen">
-      @for (sibling of siblings(); track sibling.id) {
-        <a
-          [routerLink]="['/kurs', sibling.id]"
-          [class.active]="sibling.id === courseId()"
-          [attr.aria-current]="sibling.id === courseId() ? 'page' : null"
-        >
-          {{ sibling.subjectName }}
-        </a>
-      }
-    </nav>
-
     <!-- Datum und Stunde, darunter Liste/Sitzplan und Bearbeiten -->
     <section class="kb-bar">
       <div class="today-box" [class.live]="isRunning()">
@@ -46,6 +33,11 @@
             @if (lesson()!.room) {
               · Raum {{ lesson()!.room }}
             }
+          } @else if (lessonTime(); as time) {
+            {{ time.from }}–{{ time.to }} Uhr
+            @if (!isToday()) {
+              · <span class="nachtrag">Bewertungen für diesen Tag</span>
+            }
           } @else {
             außerhalb des Stundenplans –
             @if (editMode()) {
@@ -54,14 +46,13 @@
               Stundenplan
             }
           }
+          @if (absentCount() > 0) {
+            · {{ absentCount() }} {{ absentCount() === 1 ? 'fehlt' : 'fehlen' }}
+          }
         </span>
       </div>
 
       <div class="kb-controls">
-        <a class="btn small" [routerLink]="['/kurs', courseId(), 'noten']">
-          <app-icon name="graduation-cap" /> Noten
-        </a>
-
         @if (!editMode()) {
           <div class="tabs view-switch" role="tablist" aria-label="Ansicht wählen">
             <button
@@ -83,7 +74,26 @@
           </div>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 1) {
+        @if (!editMode() && students().length > 0) {
+          <button class="btn small pick-btn" type="button" (click)="pickRandom()">
+            <app-icon name="shuffle" /> Auslosen
+          </button>
+        }
+
+        @if (view() === 'sitzplan' && plans().length > 3 && !editMode()) {
+          <!-- Bei vielen Sitzordnungen ein Dropdown statt langer Reiter. -->
+          <select
+            class="plan-select"
+            aria-label="Sitzordnung wählen"
+            (change)="selectPlan(+$any($event.target).value)"
+          >
+            @for (plan of plans(); track plan.id) {
+              <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                {{ plan.name }}
+              </option>
+            }
+          </select>
+        } @else if (view() === 'sitzplan' && plans().length > 1 && !editMode()) {
           <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
             @for (plan of plans(); track plan.id) {
               <button
@@ -97,19 +107,41 @@
             }
           </div>
         }
+
+        @if (view() === 'sitzplan' && plans().length > 0 && !appEdit()) {
+          <!-- Das Schloss: zu = Sitzplan fixiert, auf = Plätze lassen sich verschieben. -->
+          <button
+            class="round-btn edit-toggle"
+            type="button"
+            [class.on]="editMode()"
+            (click)="toggleMode(!editMode())"
+            [attr.aria-pressed]="editMode()"
+            [title]="editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'"
+            [attr.aria-label]="
+              editMode() ? 'Sitzplan wieder sperren' : 'Sitzplan entsperren und bearbeiten'
+            "
+          >
+            <app-icon [name]="editMode() ? 'lock-open' : 'lock'" />
+          </button>
+        }
       </div>
     </section>
 
     @if (editMode()) {
       <div class="banner warn">
-        <app-icon name="pencil" />
+        <app-icon name="lock-open" />
         <span>
-          <strong>Sitzplan bearbeiten:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
+          <strong>Sitzplan entsperrt:</strong> Schüler per Drag and Drop auf die Plätze ziehen.
           Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
         @if (saving()) {
           <span class="small">Wird übernommen …</span>
+        }
+        @if (seatUnlocked()) {
+          <button class="btn small" type="button" (click)="toggleMode(false)">
+            <app-icon name="lock" /> Sperren
+          </button>
         }
       </div>
     }
@@ -120,7 +152,12 @@
         [scores]="scoresById()"
         [today]="todayRatings()"
         [flashId]="flash()?.studentId ?? null"
+        [quarterGrades]="quarterGrades()"
+        [classId]="course()!.schoolClassId"
+        [absentIds]="absentIds()"
+        [pickedId]="pickedId()"
         (rate)="onRate($event)"
+        (absent)="toggleAbsent($event)"
         (openStudent)="openSheet($event)"
       />
     } @else {
@@ -136,6 +173,23 @@
               <button class="btn primary" type="button" (click)="addPlan()">
                 <app-icon name="plus" /> Sitzordnung anlegen
               </button>
+              @if (classPlans().length) {
+                <select
+                  #copySelect
+                  class="copy-select"
+                  aria-label="Sitzordnung aus anderem Fach übernehmen"
+                  (change)="onPlanSelect(copySelect)"
+                >
+                  <option value="" selected disabled>Aus anderem Fach übernehmen …</option>
+                  @for (group of classPlans(); track group.course.id) {
+                    <optgroup [label]="group.course.subjectName">
+                      @for (plan of group.plans; track plan.id) {
+                        <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              }
             }
           </div>
         </div>
@@ -144,9 +198,32 @@
         @if (editMode()) {
           <section class="card toolbar">
             <div class="fields">
+              <label class="plan-field">
+                Sitzordnung
+                <select #planSelect (change)="onPlanSelect(planSelect)">
+                  <optgroup [label]="course()!.subjectName">
+                    @for (plan of plans(); track plan.id) {
+                      <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                        {{ plan.name }}
+                      </option>
+                    }
+                  </optgroup>
+                  <!-- Sitzordnungen derselben Klasse aus anderen Fächern: Auswahl übernimmt eine Kopie. -->
+                  @for (group of classPlans(); track group.course.id) {
+                    <optgroup [label]="group.course.subjectName + ' – übernehmen'">
+                      @for (plan of group.plans; track plan.id) {
+                        <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
+                      }
+                    </optgroup>
+                  }
+                  <option disabled>──────────</option>
+                  <option value="new">＋ Neue Sitzordnung</option>
+                </select>
+              </label>
               <label class="name-field">
                 Name
                 <input
+                  #nameInput
                   type="text"
                   [value]="activePlan()?.name ?? ''"
                   (change)="renamePlan($any($event.target).value)"
@@ -202,11 +279,6 @@
               <button class="btn small" type="button" (click)="clearSeats()">
                 <app-icon name="eraser" /> Leeren
               </button>
-              @if (plans().length < maxPlans) {
-                <button class="btn small" type="button" (click)="addPlan()">
-                  <app-icon name="plus" /> Zweite Sitzordnung
-                </button>
-              }
               <button class="btn small danger" type="button" (click)="deletePlan()">
                 <app-icon name="trash-2" /> Löschen
               </button>
@@ -238,6 +310,12 @@
                         cdkDrag
                         [cdkDragData]="student.id"
                         [cdkDragDisabled]="!editMode()"
+                        [attr.data-student]="student.id"
+                        appSwipeRate
+                        [swipeDisabled]="editMode() || absentIds().has(student.id)"
+                        (swipeRate)="onSwipe(student, $event)"
+                        [class.is-absent]="!editMode() && absentIds().has(student.id)"
+                        [class.picked]="pickedId() === student.id"
                         [class.selected]="selectedId() === student.id"
                         [class.rated]="!editMode() && lastToday().has(student.id)"
                         [style.--rated]="ratedColor(lastToday().get(student.id))"
@@ -248,27 +326,11 @@
                           {{ fullName(student) }}
                         </div>
 
-                        @if (!editMode()) {
-                          <span
-                            class="score"
-                            [class.pos]="(cell.score?.points ?? 0) > 0"
-                            [class.neg]="(cell.score?.points ?? 0) < 0"
-                            [title]="
-                              'Punktestand ' +
-                              (cell.score?.points ?? 0) +
-                              ', heute ' +
-                              (cell.score?.pointsToday ?? 0)
-                            "
-                          >
-                            {{ signed(cell.score?.points ?? 0) }}
-                          </span>
-                        }
-
                         <button
                           class="tile-who"
                           type="button"
                           [disabled]="editMode()"
-                          (click)="toggleSelect(student)"
+                          (click)="toggleSelect(student, $event)"
                           [attr.aria-expanded]="selectedId() === student.id"
                           [title]="fullName(student) + ' bewerten'"
                         >
@@ -279,6 +341,9 @@
                               <span>{{ initials(student) }}</span>
                             }
                           </span>
+                          @if (!editMode() && absentIds().has(student.id)) {
+                            <span class="absent-badge tile-absent">fehlt</span>
+                          }
                           @if (!editMode() && lastToday().has(student.id)) {
                             <span class="today-badge">{{
                               ratingSymbolOf(lastToday().get(student.id)!)
@@ -290,25 +355,6 @@
                             <span>{{ student.lastName }}</span>
                           </span>
                         </button>
-
-                        @if (!editMode() && selectedId() === student.id) {
-                          <div class="actions">
-                            <ng-container
-                              *ngTemplateOutlet="
-                                rateButtons;
-                                context: { $implicit: student, score: cell.score }
-                              "
-                            />
-                            <button
-                              type="button"
-                              class="history"
-                              (click)="openSheet(student)"
-                              [attr.aria-label]="'Verlauf von ' + fullName(student)"
-                            >
-                              <app-icon name="clock" /> Verlauf
-                            </button>
-                          </div>
-                        }
                       </div>
                     } @else {
                       <span class="free">{{ editMode() ? 'frei' : '' }}</span>
@@ -347,6 +393,12 @@
                     cdkDrag
                     [cdkDragData]="student.id"
                     [cdkDragDisabled]="!editMode()"
+                    [attr.data-student]="student.id"
+                    appSwipeRate
+                    [swipeDisabled]="editMode() || absentIds().has(student.id)"
+                    (swipeRate)="onSwipe(student, $event)"
+                    [class.is-absent]="!editMode() && absentIds().has(student.id)"
+                    [class.picked]="pickedId() === student.id"
                     [class.flash-pos]="flash()?.studentId === student.id && flash()!.value > 0"
                     [class.flash-neg]="flash()?.studentId === student.id && flash()!.value < 0"
                   >
@@ -370,20 +422,25 @@
                     </button>
 
                     @if (!editMode()) {
-                      <span
-                        class="points"
-                        [class.pos]="(scoreFor(student.id)?.points ?? 0) > 0"
-                        [class.neg]="(scoreFor(student.id)?.points ?? 0) < 0"
-                      >
-                        {{ signed(scoreFor(student.id)?.points ?? 0) }}
-                      </span>
                       <span class="mini-actions">
-                        <ng-container
-                          *ngTemplateOutlet="
-                            rateButtons;
-                            context: { $implicit: student, score: scoreFor(student.id) }
-                          "
-                        />
+                        @if (!absentIds().has(student.id)) {
+                          <ng-container
+                            *ngTemplateOutlet="
+                              rateButtons;
+                              context: { $implicit: student, score: scoreFor(student.id) }
+                            "
+                          />
+                        }
+                        <button
+                          type="button"
+                          class="absent-toggle"
+                          [class.on]="absentIds().has(student.id)"
+                          [attr.aria-pressed]="absentIds().has(student.id)"
+                          (click)="toggleAbsent(student)"
+                          [title]="absentIds().has(student.id) ? 'Wieder anwesend' : 'Fehlt heute'"
+                        >
+                          {{ absentIds().has(student.id) ? 'anwesend' : 'fehlt' }}
+                        </button>
                       </span>
                     }
                   </div>
@@ -397,7 +454,11 @@
               @if (students().length === 0) {
                 <div class="empty small">
                   <p>In dieser Klasse sind noch keine Schüler angelegt.</p>
-                  <a class="btn small" routerLink="/verwaltung" [queryParams]="{ tab: 'schueler' }">
+                  <a
+                    class="btn small"
+                    routerLink="/verwaltung"
+                    [queryParams]="{ tab: 'schueler', klasse: course()!.schoolClassId }"
+                  >
                     <app-icon name="plus" /> Schüler anlegen
                   </a>
                 </div>
@@ -406,6 +467,49 @@
           }
         </div>
       }
+    }
+
+    <!-- Die Bewertungsknöpfe der angetippten Kachel schweben über dem Raum,
+         statt die Kachel - und damit den Sitzplan - aufzuziehen. -->
+    @if (selectedStudent(); as student) {
+      <div
+        class="rate-pop"
+        role="group"
+        [attr.aria-label]="fullName(student) + ' bewerten'"
+        [style.left.px]="popover()!.left"
+        [style.top.px]="popover()!.top"
+        [style.bottom.px]="popover()!.bottom"
+      >
+        @if (absentIds().has(student.id)) {
+          <p class="pop-absent">{{ student.firstName }} fehlt heute – zählt nicht.</p>
+        } @else {
+          <ng-container
+            *ngTemplateOutlet="
+              rateButtons;
+              context: { $implicit: student, score: scoreFor(student.id) }
+            "
+          />
+        }
+        <div class="pop-actions">
+          <button
+            type="button"
+            class="history"
+            (click)="openSheet(student)"
+            [attr.aria-label]="'Verlauf von ' + fullName(student)"
+          >
+            <app-icon name="clock" /> Verlauf
+          </button>
+          <button
+            type="button"
+            class="history absent-toggle"
+            [class.on]="absentIds().has(student.id)"
+            (click)="toggleAbsent(student)"
+          >
+            <app-icon [name]="absentIds().has(student.id) ? 'circle-check' : 'user-round'" />
+            {{ absentIds().has(student.id) ? 'Anwesend' : 'Fehlt' }}
+          </button>
+        </div>
+      </div>
     }
 
     @if (sheetStudent(); as student) {

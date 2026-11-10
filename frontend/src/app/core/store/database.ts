@@ -117,8 +117,6 @@ export interface ParticipationGradesRecord {
   neutral: number;
   minus: number;
   minusMinus: number;
-  /** Für Schüler, die in einer gehaltenen Stunde keine Bewertung bekommen haben. */
-  unrated: number;
 }
 
 /** Das Bewertungsschema eines Kurses - also eines Lernfelds oder Fachs. */
@@ -167,6 +165,16 @@ export interface ParticipationOverrideRecord {
   reason: string | null;
 }
 
+/** Eine Quartalsnote (schriftlich oder mündlich) - in Prozent und als Note. */
+export interface QuarterGradeRecord {
+  courseId: number;
+  studentId: number;
+  quarter: 1 | 2 | 3 | 4;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+}
+
 /** Ein Eintrag im Änderungsprotokoll - geändert wird nie stillschweigend. */
 export interface GradeChangeRecord {
   id: number;
@@ -194,6 +202,8 @@ export interface GradeReportRecord {
 export interface AppSettingsRecord {
   toleranceMinutes: number;
   allowRatingOutsideLesson: boolean;
+  /** Wann zuletzt eine Sicherungskopie heruntergeladen wurde (ISO) - null: noch nie. */
+  lastBackupAt?: string | null;
 }
 
 /**
@@ -230,6 +240,7 @@ export interface Database {
   assessments: AssessmentRecord[];
   assessmentResults: AssessmentResultRecord[];
   participationOverrides: ParticipationOverrideRecord[];
+  quarterGrades: QuarterGradeRecord[];
   gradeChanges: GradeChangeRecord[];
   gradeReports: GradeReportRecord[];
   settings: AppSettingsRecord;
@@ -237,7 +248,6 @@ export interface Database {
 }
 
 /** Höchstens so viele Sitzordnungen sind je Kurs vorgesehen. */
-export const MAX_PLANS_PER_COURSE = 2;
 
 /**
  * Ein frischer, leerer Datenbestand - mit demselben Vorschlag für den
@@ -273,9 +283,10 @@ export function createEmptyDatabase(): Database {
     assessments: [],
     assessmentResults: [],
     participationOverrides: [],
+    quarterGrades: [],
     gradeChanges: [],
     gradeReports: [],
-    settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false },
+    settings: { toleranceMinutes: 15, allowRatingOutsideLesson: false, lastBackupAt: null },
     nextIds: {
       schoolClass: 1,
       subject: 1,
@@ -317,6 +328,6 @@ export function createDefaultScheme(courseId: number): GradingSchemeRecord {
       { minPercent: 0, grade: 6 },
     ],
     participationWeight: 2,
-    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5, unrated: 3 },
+    participationGrades: { plusPlus: 1, plus: 2, neutral: 3, minus: 4, minusMinus: 5 },
   };
 }

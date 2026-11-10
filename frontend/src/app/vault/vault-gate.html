@@ -16,6 +16,13 @@
       </div>
     </div>
 
+    @if (lockedByIdle()) {
+      <p class="hint warn">
+        <app-icon name="lock" /> Nach {{ idleMinutes }} Minuten ohne Eingabe gesperrt. Ungesicherte
+        Änderungen kommen beim erneuten Öffnen derselben Datei zurück.
+      </p>
+    }
+
     @if (autoOpening()) {
       <p class="remembered muted">
         <app-icon name="loader-circle" /> Öffne „{{ rememberedFile() }}“ aus OneDrive …
@@ -153,15 +160,28 @@
 
     @if (mode() !== 'onedrive' || driveFiles() !== null) {
       <form (ngSubmit)="submit()">
+        @if (mode() === 'open' && lastLocalFile(); as file) {
+          <div class="last-file">
+            <app-icon name="folder-open" />
+            <strong>{{ file.name }}</strong>
+            <button class="link small" type="button" (click)="chooseOtherFile()">
+              Andere Datei wählen
+            </button>
+          </div>
+        }
+
         <label>
           <span>Passwort</span>
-          <input
-            type="password"
-            [attr.autocomplete]="isCreating() ? 'new-password' : 'current-password'"
-            [ngModel]="password()"
-            (ngModelChange)="password.set($event)"
-            name="password"
-          />
+          <app-password-field [value]="password()">
+            <input #passwordInput
+              type="password"
+              [attr.autocomplete]="isCreating() ? 'new-password' : 'current-password'"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              name="password"
+              autofocus
+            />
+          </app-password-field>
         </label>
 
         @if (isCreating()) {
@@ -169,13 +189,15 @@
 
           <label>
             <span>Passwort wiederholen</span>
-            <input
-              type="password"
-              autocomplete="new-password"
-              [ngModel]="passwordRepeat()"
-              (ngModelChange)="passwordRepeat.set($event)"
-              name="passwordRepeat"
-            />
+            <app-password-field [value]="passwordRepeat()">
+              <input #passwordInput
+                type="password"
+                autocomplete="new-password"
+                [ngModel]="passwordRepeat()"
+                (ngModelChange)="passwordRepeat.set($event)"
+                name="passwordRepeat"
+              />
+            </app-password-field>
           </label>
 
           @if (!passwordsMatch()) {
@@ -215,38 +237,13 @@
             <app-icon name="cloud" /> Aus OneDrive öffnen
           } @else if (mode() === 'create') {
             <app-icon name="file-plus" /> Neuen Datenbestand anlegen
+          } @else if (lastLocalFile()) {
+            <app-icon name="folder-open" /> Öffnen
           } @else {
             <app-icon name="folder-open" /> Datei auswählen und öffnen
           }
         </button>
       </form>
-    }
-
-    @if (autosave(); as entry) {
-      <div class="autosave">
-        <strong><app-icon name="info" /> Zwischenstand gefunden</strong>
-        <p class="muted small">
-          Zuletzt gesichert am {{ savedAtText(entry) }}
-          @if (entry.fileName) {
-            , zur Datei „{{ entry.fileName }}"
-          }
-          . Der Zwischenstand liegt verschlüsselt im Browser und lässt sich mit demselben Passwort
-          öffnen.
-        </p>
-        <div class="row">
-          <button
-            class="btn"
-            type="button"
-            [disabled]="busy() || password().length === 0"
-            (click)="restore()"
-          >
-            Zwischenstand laden
-          </button>
-          <button class="btn danger small" type="button" (click)="discardAutosave()">
-            Verwerfen
-          </button>
-        </div>
-      </div>
     }
 
     <p class="hint foot muted">

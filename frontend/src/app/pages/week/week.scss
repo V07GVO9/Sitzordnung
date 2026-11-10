@@ -1,0 +1,238 @@
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Die hereingleitende Woche darf keinen Querscroll auslösen. */
+  overflow-x: clip;
+}
+
+.week-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.week-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 12rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Nach dem Blättern deutlich sichtbar: ein Tipp führt zurück in die aktuelle Woche. */
+.today-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.grid-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.week-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  th,
+  td {
+    border: 1px solid var(--separator);
+    padding: 0.2rem;
+    vertical-align: top;
+  }
+
+  thead th {
+    padding: 0.35rem 0.1rem;
+    text-align: center;
+    font-weight: 600;
+    background: var(--surface-muted);
+
+    &.today {
+      background: var(--accent-soft);
+      color: var(--accent-text);
+    }
+  }
+
+  td.today {
+    background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+  }
+}
+
+.day-short,
+.day-date {
+  display: block;
+  line-height: 1.2;
+}
+
+.day-date {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.slot-col {
+  width: 3rem;
+  text-align: center;
+  font-weight: 400;
+  background: var(--surface-muted);
+}
+
+.slot-no {
+  display: block;
+  font-weight: 700;
+}
+
+.slot-time {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.lesson {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 3.6rem;
+  padding: 0.3rem 0.35rem;
+  border-left: 3px solid hsl(var(--hue) 55% 45%);
+  border-radius: 0.3rem;
+  background: hsl(var(--hue) 60% 50% / 14%);
+  color: hsl(var(--hue) 55% var(--subject-l));
+  text-decoration: none;
+  line-height: 1.2;
+  overflow: hidden;
+
+  & + & {
+    margin-top: 0.2rem;
+  }
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  .cls,
+  .room {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.7rem;
+    color: var(--text);
+  }
+
+  .room {
+    color: var(--text-muted);
+  }
+
+  &:hover {
+    background: hsl(var(--hue) 60% 50% / 24%);
+  }
+
+  &.running {
+    box-shadow: inset 0 0 0 2px var(--positive-solid);
+  }
+}
+
+.hint {
+  margin: 0;
+  text-align: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (min-width: 48rem) {
+  .lesson strong {
+    font-size: 1rem;
+  }
+
+  .lesson .cls,
+  .lesson .room {
+    font-size: 0.78rem;
+  }
+}
+
+.free-days {
+  margin: 0;
+  text-align: center;
+}
+
+/* Wochenwechsel: die neue Woche gleitet aus der Wischrichtung herein. */
+.week-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slide-next {
+  animation: slide-from-right 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.slide-prev {
+  animation: slide-from-left 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(40%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-next,
+  .slide-prev {
+    animation: none;
+  }
+}
+
+/* Erinnerung an die Sicherungskopie - Knöpfe auf dem Handy in eigener Zeile. */
+.backup-banner {
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+
+  .actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+  }
+}

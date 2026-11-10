@@ -124,13 +124,14 @@ describe('LocalStore - Sitzordnung', () => {
     expect(store.createSeatingPlan(course.id, '', 5, 8).name).toBe('Sitzordnung 1');
   });
 
-  it('lässt höchstens zwei Sitzordnungen je Kurs zu', () => {
+  it('lässt beliebig viele Sitzordnungen je Kurs zu', () => {
     const store = setup();
     const { course } = withCourse(store);
-    store.createSeatingPlan(course.id, 'A', 5, 8);
-    store.createSeatingPlan(course.id, 'B', 5, 8);
+    for (const name of ['A', 'B', 'C', 'D']) {
+      store.createSeatingPlan(course.id, name, 5, 8);
+    }
 
-    expect(() => store.createSeatingPlan(course.id, 'C', 5, 8)).toThrowError(AppError);
+    expect(store.getSeatingPlans(course.id).length).toBe(4);
   });
 
   it('speichert die Belegung', () => {
@@ -297,6 +298,26 @@ describe('LocalStore - Bewertungen', () => {
     expect(store.rate(course.id, student.id, 1).value).toBe(1);
   });
 
+  it('trägt mit Datum jederzeit für genau diesen Tag ein - auch außerhalb der Stunde', () => {
+    const store = setup();
+    const { course, student } = withCourse(store);
+    store.clock.setFixed(new Date('2026-08-31T14:00:00'));
+
+    const rating = store.rate(course.id, student.id, -1, undefined, '2026-08-25');
+
+    expect(rating.lessonDate).toBe('2026-08-25');
+    expect(store.getRatings(course.id, { from: '2026-08-25', to: '2026-08-25' }).length).toBe(1);
+  });
+
+  it('lehnt ein ungültiges Datum ab', () => {
+    const store = setup();
+    const { course, student } = withCourse(store);
+
+    expect(() => store.rate(course.id, student.id, 1, undefined, '25.08.2026')).toThrowError(
+      AppError,
+    );
+  });
+
   it('nimmt die 0 als mittlere Bewertung an', () => {
     const store = setup();
     const { course, student } = withCourse(store);
@@ -338,7 +359,7 @@ describe('LocalStore - Bewertungen', () => {
     expect(() => store.undoLastRating(course.id, student.id)).toThrowError(AppError);
   });
 
-  it('rechnet Punkte, Anzahl und Note zusammen', () => {
+  it('zählt je Unterrichtseinheit nur die letzte Bewertung', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.rate(course.id, student.id, 2);
@@ -346,11 +367,11 @@ describe('LocalStore - Bewertungen', () => {
 
     const row = store.getScoreboard(course.id).students[0];
 
-    expect(row.points).toBe(4);
-    expect(row.ratingCount).toBe(2);
-    expect(row.pointsToday).toBe(4);
-    // Der mitgelieferte Standardschlüssel vergibt ab 4 Punkten die Note 3.
-    expect(row.grade).toBe('3');
+    // Beide Bewertungen fallen in dieselbe Unterrichtseinheit - es zählt nur die letzte.
+    expect(row.points).toBe(2);
+    expect(row.ratingCount).toBe(1);
+    expect(row.average).toBe(2);
+    expect(row.pointsToday).toBe(2);
   });
 
   it('führt einen Schüler ohne Bewertung mit null Punkten', () => {
@@ -362,6 +383,19 @@ describe('LocalStore - Bewertungen', () => {
 
     expect(rows.length).toBe(2);
     expect(rows.every((r) => r.ratingCount === 0 || r.points === 0)).toBe(true);
+  });
+
+  it('gibt allen Unbewerteten einer gehaltenen Stunde die 0', () => {
+    const store = setup();
+    const { schoolClass, course, student } = withCourse(store);
+    store.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.rate(course.id, student.id, 2);
+
+    const rows = store.getScoreboard(course.id).students;
+
+    expect(rows.map((r) => r.ratingCount)).toEqual([1, 1]);
+    expect(rows.find((r) => r.studentId !== student.id)!.points).toBe(0);
+    expect(rows.find((r) => r.studentId !== student.id)!.average).toBe(0);
   });
 
   it('grenzt den Punktestand auf einen Zeitraum ein', () => {
@@ -426,15 +460,20 @@ describe('LocalStore - Export', () => {
     expect(content).toContain('Musterfrau;Anna;2;1;');
   });
 
-  it('schreibt jede Bewertung einzeln', async () => {
+  it('legt die Einzelbewertungen als Querformat-Tabelle an: Schüler je Zeile, Tage je Spalte', async () => {
     const store = setup();
     const { course, student } = withCourse(store);
+    store.rate(course.id, student.id, 1);
     store.rate(course.id, student.id, -2, 'stört');
 
-    const content = await store.exportRatings(course.id).blob.text();
+    const result = store.exportRatings(course.id);
+    const content = await result.blob.text();
 
-    expect(content).toContain('31.08.2026');
-    expect(content).toContain('--');
+    expect(result.fileName).toMatch(/^bewertungen-10a-Mathematik-.*\.html$/);
+    expect(content).toContain('size: A4 landscape');
+    expect(content).toContain('31.08.');
+    expect(content).toContain('Musterfrau</strong>, Anna');
+    expect(content).toContain('<span class="old">+</span> <span>−−</span>');
     expect(content).toContain('stört');
   });
 

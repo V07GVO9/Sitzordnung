@@ -257,6 +257,17 @@
                 </div>
 
                 <div class="student-actions">
+                  <!-- Foto direkt mit der Kamera aufnehmen (Handy/Tablet: Rückkamera). -->
+                  <label class="remove camera" title="Foto aufnehmen">
+                    <app-icon name="camera" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      [attr.aria-label]="'Foto von ' + fullName(student) + ' aufnehmen'"
+                      (change)="uploadPhoto(student, $event)"
+                    />
+                  </label>
                   @if (student.hasPhoto) {
                     <button
                       class="remove"
