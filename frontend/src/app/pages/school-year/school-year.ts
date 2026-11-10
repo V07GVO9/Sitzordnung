@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService, SchoolYearCounts } from '../../core/api.service';
 import { SchoolClass } from '../../core/models';
+import { FilePickerCancelled } from '../../core/store/file-system';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -51,7 +52,7 @@ interface ClassRow {
         </p>
         <button class="btn" [class.primary]="!backedUp()" type="button" (click)="backup()">
           <app-icon [name]="backedUp() ? 'circle-check' : 'download'" />
-          {{ backedUp() ? 'Sicherungskopie erstellt' : 'Sicherungskopie herunterladen' }}
+          {{ backedUp() ? 'Sicherungskopie erstellt' : 'Sicherungskopie speichern …' }}
         </button>
       </section>
 
@@ -135,7 +136,7 @@ interface ClassRow {
           }
         </ul>
         @if (!backedUp()) {
-          <p class="small warn-text">Zuerst die Sicherungskopie herunterladen (Schritt 1).</p>
+          <p class="small warn-text">Zuerst die Sicherungskopie speichern (Schritt 1).</p>
         }
         <button
           class="btn danger"
@@ -285,8 +286,11 @@ export class SchoolYearPage {
     try {
       await this.vault.saveBackupCopy();
       this.backedUp.set(true);
-      this.toasts.success('Sicherungskopie heruntergeladen.');
+      this.toasts.success('Sicherungskopie gespeichert.');
     } catch (error) {
+      if (error instanceof FilePickerCancelled) {
+        return;
+      }
       this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
     }
   }

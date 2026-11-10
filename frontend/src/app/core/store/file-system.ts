@@ -236,6 +236,38 @@ export async function download(
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/**
+ * Speichert eine einzelne Kopie und fragt dabei jedes Mal nach dem Ort -
+ * die Datei wird nicht gemerkt. In Chrome/Edge öffnet sich der
+ * Speichern-Dialog, in der Android-App das Teilen-Menü. Andere Browser
+ * kennen keinen Dialog; dort bleibt nur der Download.
+ */
+export async function saveCopyWithPicker(blob: Blob, suggestedName: string): Promise<void> {
+  if (isNativeApp()) {
+    await saveOnDevice(blob, suggestedName, true);
+    return;
+  }
+
+  const show = picker().showSaveFilePicker;
+  if (show) {
+    let handle: FileHandle | null = null;
+    try {
+      handle = await show({ ...PICKER_OPTIONS, suggestedName });
+    } catch (error) {
+      if (isAbort(error)) {
+        throw new FilePickerCancelled();
+      }
+      // Lehnt der Browser den Dialog ab (eingebettetes Fenster), bleibt der Download.
+    }
+    if (handle) {
+      await writeFile(handle, blob);
+      return;
+    }
+  }
+
+  await download(blob, suggestedName);
+}
+
 async function saveOnDevice(blob: Blob, fileName: string, share: boolean): Promise<void> {
   const data = await toBase64(blob);
   let uri: string;

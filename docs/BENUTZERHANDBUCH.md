@@ -608,10 +608,12 @@ Noten, Notenschlüssel und Einstellungen – verschlüsselt (AES-GCM).
 
 ### Sicherungskopie
 
-Menü ☰ → **Sicherungskopie herunterladen** speichert eine Kopie des ganzen
+Menü ☰ → **Sicherungskopie speichern …** speichert eine Kopie des ganzen
 Bestands – verschlüsselt mit demselben Passwort – als
-`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung` in den Download-Ordner. Anders
-als *Speichern unter …* arbeitet die App danach mit derselben Datei weiter.
+`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung`. Dabei fragt die App **jedes Mal**,
+wo die Kopie hin soll (Chrome/Edge: Speichern-Dialog, Android: Teilen-Menü;
+andere Browser legen sie in den Download-Ordner). Anders als *Speichern unter …*
+arbeitet die App danach mit derselben Datei weiter.
 
 Ist die letzte Kopie **7 Tage oder älter** (oder gibt es noch keine), zeigt der
 Wochenplan einen gelben Hinweis mit **Jetzt sichern**; **Später** blendet ihn
@@ -619,18 +621,11 @@ bis morgen aus. Der Zeitpunkt der letzten Kopie steht in der Datei und gilt
 damit für alle Geräte. Die Kopie gehört an einen zweiten Ort (USB-Stick,
 Dienstrechner).
 
-### Datenschutz-Modus (Beamer)
-
-Menü ☰ → **Datenschutz-Modus** macht Namen und Fotos unkenntlich: auf Sitzplan,
-Liste, im Verlauf, in der Notenübersicht und in den Meldungen unten. Bewerten
-geht weiter. Solange er an ist, zeigt die Titelleiste ein durchgestrichenes
-Auge – ein Tipp darauf schaltet ihn aus. Die Wahl gilt je Gerät.
-
 ### Schuljahreswechsel
 
 Bearbeitungsmodus → Menü ☰ → **Schuljahreswechsel**:
 
-1. **Sicherungskopie** herunterladen – Pflicht, sonst bleibt der Wechsel
+1. **Sicherungskopie** speichern – Pflicht, sonst bleibt der Wechsel
    gesperrt.
 2. **Klassen:** neue Namen eintragen (**Alle Klassennummern +1** macht aus
    KDM11 → KDM12) oder **verlässt die Schule** ankreuzen – die Klasse wird samt
@@ -677,7 +672,7 @@ Verwaltung → Schüler → **Vor-/Nachname tauschen**.
 
 **Passwort vergessen?**
 Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (Menü ☰ →
-**Sicherungskopie herunterladen**) anlegen und das Passwort sicher verwahren.
+**Sicherungskopie speichern …**) anlegen und das Passwort sicher verwahren.
 
 **Wie lösche ich Daten nach Schuljahresende?**
 Mit dem **Schuljahreswechsel** (Bearbeitungsmodus → Menü ☰): Er löscht die
