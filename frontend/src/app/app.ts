@@ -24,7 +24,6 @@ import { ConfirmService } from './core/ui/confirm.service';
 import { Icon } from './core/ui/icon';
 import { IconName } from './core/ui/icons';
 import { subjectHue } from './core/ui/subject-hue';
-import { PrivacyService } from './core/ui/privacy.service';
 import { PwaService } from './core/ui/pwa.service';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
 import { ChangePasswordDialog } from './vault/change-password-dialog';
@@ -97,10 +96,6 @@ export class App implements OnDestroy {
   private readonly confirm = inject(ConfirmService);
   private readonly mode = inject(ModeService);
   private readonly active = inject(ActiveCourseService);
-  private readonly privacy = inject(PrivacyService);
-
-  /** Datenschutz-Modus: Namen und Fotos unkenntlich (Beamer). */
-  readonly privacyOn = this.privacy.on;
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
@@ -246,16 +241,12 @@ export class App implements OnDestroy {
     void this.pwa.install();
   }
 
-  togglePrivacy(): void {
-    this.privacy.toggle();
-  }
-
-  /** Lädt eine verschlüsselte Sicherungskopie herunter, die Arbeitsdatei bleibt. */
+  /** Speichert eine verschlüsselte Sicherungskopie an einem gewählten Ort, die Arbeitsdatei bleibt. */
   async backup(): Promise<void> {
     this.closeMenu();
     try {
       await this.vault.saveBackupCopy();
-      this.toasts.success('Sicherungskopie heruntergeladen – bitte an einem zweiten Ort ablegen.');
+      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');

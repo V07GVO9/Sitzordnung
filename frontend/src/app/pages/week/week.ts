@@ -6,6 +6,7 @@ import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core
 import { freeDayReason } from '../../core/store/school-calendar';
 import { toDateKey } from '../../core/store/time';
 import { backupDue } from '../../core/store/backup.logic';
+import { FilePickerCancelled } from '../../core/store/file-system';
 import { VaultService } from '../../core/store/vault.service';
 import { ToastService } from '../../core/toast.service';
 import { Icon } from '../../core/ui/icon';
@@ -215,8 +216,11 @@ export class WeekPage {
     try {
       await this.vault.saveBackupCopy();
       this.backupReminder.set(null);
-      this.toasts.success('Sicherungskopie heruntergeladen – bitte an einem zweiten Ort ablegen.');
+      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
     } catch (error) {
+      if (error instanceof FilePickerCancelled) {
+        return;
+      }
       this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
     }
   }

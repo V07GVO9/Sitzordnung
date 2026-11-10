@@ -33,6 +33,7 @@ import {
   isNativeApp,
   openFile,
   readHandle,
+  saveCopyWithPicker,
   supportsFileHandles,
   writeFile,
 } from './file-system';
@@ -716,8 +717,9 @@ export class VaultService {
   }
 
   /**
-   * Lädt eine Sicherungskopie herunter - verschlüsselt mit demselben
-   * Passwort. Anders als „Speichern unter“ bleibt die Arbeitsdatei dieselbe.
+   * Speichert eine Sicherungskopie - verschlüsselt mit demselben Passwort.
+   * Es wird jedes Mal nach dem Speicherort gefragt. Anders als
+   * „Speichern unter“ bleibt die Arbeitsdatei dieselbe.
    */
   async saveBackupCopy(): Promise<void> {
     if (!this.store.isOpen() || this.password === null) {
@@ -727,7 +729,7 @@ export class VaultService {
     const base = (this.fileName() ?? DEFAULT_FILE_NAME).replace(/\.sitzordnung$/i, '');
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    await download(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
+    await saveCopyWithPicker(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
     this.store.markBackup();
   }
 

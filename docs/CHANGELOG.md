@@ -8,6 +8,13 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 10.11.2026
+
+**Geändert**
+- **Sicherungskopie:** fragt jetzt jedes Mal, wo die Kopie gespeichert werden
+  soll (Menü ☰ → Sicherungskopie speichern …).
+- **Datenschutz-Modus (Beamer)** entfernt.
+
 ## 09.11.2026
 
 **Neu**

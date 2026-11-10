@@ -58,17 +58,6 @@
               <app-icon name="pencil" /> <span class="mode-label">Bearbeiten</span>
             </button>
           </div>
-          @if (privacyOn()) {
-            <button
-              class="round-btn privacy-on"
-              type="button"
-              (click)="togglePrivacy()"
-              title="Datenschutz-Modus ausschalten"
-              aria-label="Datenschutz-Modus ist an – ausschalten"
-            >
-              <app-icon name="eye-off" />
-            </button>
-          }
           @if (lesson()?.hasLesson) {
             <a
               class="live-pill"
@@ -199,10 +188,6 @@
             <app-icon name="settings" /> App-Einstellungen
           </a>
         }
-        <button type="button" (click)="togglePrivacy()" [attr.aria-pressed]="privacyOn()">
-          <app-icon [name]="privacyOn() ? 'eye-off' : 'eye'" /> Datenschutz-Modus:
-          {{ privacyOn() ? 'an' : 'aus' }}
-        </button>
         <button type="button" (click)="cycleTheme()">
           <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
         </button>
@@ -227,7 +212,7 @@
           <app-icon name="save" /> Jetzt speichern
         </button>
         <button type="button" (click)="backup()">
-          <app-icon name="download" /> Sicherungskopie herunterladen
+          <app-icon name="download" /> Sicherungskopie speichern …
         </button>
         <button type="button" [disabled]="isSaving()" (click)="openPasswordDialog()">
           <app-icon name="key-round" /> Passwort ändern
