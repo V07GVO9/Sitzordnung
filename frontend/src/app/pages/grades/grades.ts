@@ -24,7 +24,7 @@ import {
   StudentReport,
   ratingSymbol,
 } from '../../core/models';
-import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
+import { formatGrade, parseGrade } from '../../core/logic/assessment.logic';
 import {
   ImportedStudentReport,
   RatingCounts,
@@ -33,14 +33,14 @@ import {
   matchStudent,
   parseReportPages,
   subjectMatches,
-} from '../../core/store/participation-import';
-import { readPdfPages } from '../../core/store/pdf-text';
-import { download, isNativeApp } from '../../core/store/file-system';
-import { renderReports } from '../../core/store/report';
-import { formatDateGerman, toDateKey } from '../../core/store/time';
+} from '../../core/import/participation-import';
+import { readPdfPages } from '../../core/import/pdf-text';
+import { download, isNativeApp } from '../../core/persistence/file-system';
+import { renderReports } from '../../core/export/report';
+import { formatDateGerman, toDateKey } from '../../core/logic/time';
 import { Icon } from '../../core/ui/icon';
 import { GradeWarning, gradeWarnings } from './grade-warnings';
-import { ToastService } from '../../core/toast.service';
+import { ToastService } from '../../core/ui/toast.service';
 
 type Tab = 'overview' | 'assessments' | 'participation' | 'scheme' | 'reports' | 'log';
 

@@ -1,11 +1,11 @@
 import { PasswordField } from '../core/ui/password-field';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
-import { OneDriveFile, OneDriveService } from '../core/store/onedrive.service';
-import { isStrongPassword } from '../core/store/password-policy';
-import { IDLE_LOCK_MS, VaultService } from '../core/store/vault.service';
-import { ToastService } from '../core/toast.service';
+import { FilePickerCancelled, isNativeApp } from '../core/persistence/file-system';
+import { OneDriveFile, OneDriveService } from '../core/persistence/onedrive.service';
+import { isStrongPassword } from '../core/persistence/password-policy';
+import { IDLE_LOCK_MS, VaultService } from '../core/persistence/vault.service';
+import { ToastService } from '../core/ui/toast.service';
 import { Icon } from '../core/ui/icon';
 import { ConfirmService } from '../core/ui/confirm.service';
 import { PasswordRules } from './password-rules';

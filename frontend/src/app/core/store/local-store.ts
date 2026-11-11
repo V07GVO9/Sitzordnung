@@ -50,7 +50,7 @@ import {
   QuarterGrade,
   WEEKDAY_NAMES,
 } from '../models';
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import {
   AssessmentRecord,
   AssessmentResultRecord,
@@ -73,11 +73,11 @@ import {
   participationLessons,
   resultGrade,
   roundGrade,
-} from './assessment.logic';
-import { CsvBuilder } from './csv';
-import { effectiveScale, resolveGrade } from './grading.logic';
-import { quarterRange } from './quarter.logic';
-import { LessonContext, currentLesson, ratingWindow } from './lesson.logic';
+} from '../logic/assessment.logic';
+import { CsvBuilder } from '../export/csv';
+import { effectiveScale, resolveGrade } from '../logic/grading.logic';
+import { quarterRange } from '../logic/quarter.logic';
+import { LessonContext, currentLesson, ratingWindow } from '../logic/lesson.logic';
 import {
   Clock,
   formatDateGerman,
@@ -86,11 +86,11 @@ import {
   toDateKey,
   toMinutes,
   toTimeKey,
-} from './time';
-import { parseTimetableIcs } from './timetable-import';
-import { freeDayReason } from './school-calendar';
-import { renderLessonSheets } from './lesson-sheet';
-import { RatingsSheet, renderRatingsSheets } from './ratings-sheet';
+} from '../logic/time';
+import { parseTimetableIcs } from '../import/timetable-import';
+import { freeDayReason } from '../logic/school-calendar';
+import { renderLessonSheets } from '../export/lesson-sheet';
+import { RatingsSheet, renderRatingsSheets } from '../export/ratings-sheet';
 
 /** Was beim Schuljahreswechsel passieren soll. */
 export interface SchoolYearInput {

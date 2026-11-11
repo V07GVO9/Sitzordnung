@@ -5,11 +5,11 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { createEmptyDatabase } from './database';
+import { createEmptyDatabase } from '../store/database';
 import { ConfirmService } from '../ui/confirm.service';
 import { FileHandle, SaveConflictError } from './file-system';
 import { readAutosave } from './browser-storage';
-import { LocalStore } from './local-store';
+import { LocalStore } from '../store/local-store';
 import { OneDriveService } from './onedrive.service';
 import { decryptDatabase, encryptDatabase } from './vault-crypto';
 import { VaultService } from './vault.service';

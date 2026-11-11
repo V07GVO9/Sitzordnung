@@ -10,7 +10,7 @@
  * verlassen den Rechner nicht.
  */
 
-import { Database } from './database';
+import { Database } from '../store/database';
 
 /** Kennung, an der eine Datei dieser App zu erkennen ist. */
 const FORMAT = 'sitzordnung-vault';

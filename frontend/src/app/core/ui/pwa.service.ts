@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import { LocalStore } from '../store/local-store';
-import { ToastService } from '../toast.service';
+import { ToastService } from './toast.service';
 import { ConfirmService } from './confirm.service';
 
 /** Das Ereignis, mit dem Chrome und Edge die Installation anbieten. */

@@ -7,9 +7,9 @@
  */
 
 import { Injectable, effect, inject, signal } from '@angular/core';
-import { ToastService } from '../toast.service';
+import { ToastService } from '../ui/toast.service';
 import { ConfirmService } from '../ui/confirm.service';
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import {
   clearAutosave,
   clearLastFileHandle,
@@ -21,7 +21,7 @@ import {
   writeLastFileHandle,
   writeRemembered,
 } from './browser-storage';
-import { Database, createEmptyDatabase } from './database';
+import { Database, createEmptyDatabase } from '../store/database';
 import {
   FileHandle,
   FilePickerCancelled,
@@ -37,7 +37,7 @@ import {
   supportsFileHandles,
   writeFile,
 } from './file-system';
-import { LocalStore } from './local-store';
+import { LocalStore } from '../store/local-store';
 import { OneDriveFile, OneDriveService } from './onedrive.service';
 import { unmetPasswordRules } from './password-policy';
 import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-crypto';

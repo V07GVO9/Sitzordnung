@@ -38,9 +38,9 @@ import {
   QuarterGrade,
 } from './models';
 import { DateRange, LocalStore, SchoolYearCounts, SchoolYearInput } from './store/local-store';
-import { readPhoto } from './store/photo';
-import { download } from './store/file-system';
-import { AppError } from './store/app-error';
+import { readPhoto } from './import/photo';
+import { download } from './persistence/file-system';
+import { AppError } from './app-error';
 
 export type { DateRange, SchoolYearCounts, SchoolYearInput } from './store/local-store';
 

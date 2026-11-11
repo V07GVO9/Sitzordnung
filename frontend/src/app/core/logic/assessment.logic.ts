@@ -23,7 +23,7 @@ import {
   ParticipationGradesRecord,
   ParticipationOverrideRecord,
   PercentScaleEntryRecord,
-} from './database';
+} from '../store/database';
 
 /** Die beste und die schlechteste Note. */
 export const BEST_GRADE = 1;

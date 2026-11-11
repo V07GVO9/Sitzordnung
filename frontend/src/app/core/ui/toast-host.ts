@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ToastService } from './toast.service';
-import { Icon } from './ui/icon';
+import { Icon } from './icon';
 
 @Component({
   selector: 'app-toast-host',

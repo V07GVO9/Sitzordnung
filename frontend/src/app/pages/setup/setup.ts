@@ -4,7 +4,7 @@ import { forkJoin, of, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import { Course, SchoolClass, Student, TimetableEntry } from '../../core/models';
-import { ToastService } from '../../core/toast.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { IconName } from '../../core/ui/icons';
 

@@ -4,7 +4,7 @@
  */
 
 import { TimetableImportRow } from '../models';
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import { LocalStore } from './local-store';
 
 /** Ein Montag, mitten in der ersten Stunde. */

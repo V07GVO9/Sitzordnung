@@ -14,7 +14,7 @@ import {
   SchoolClassRecord,
   SubjectRecord,
   TimetableEntryRecord,
-} from './database';
+} from '../store/database';
 import { toMinutes } from './time';
 
 /** Alles, was für die Beschreibung einer laufenden Stunde gebraucht wird. */

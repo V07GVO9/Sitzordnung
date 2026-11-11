@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
-import { ToastService } from '../../core/toast.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 

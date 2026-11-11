@@ -7,8 +7,8 @@
  * der Bewertungen ist - mit den Noten aus dem Bewertungsschema des Kurses.
  */
 
-import { ParticipationGradesRecord } from './database';
-import { roundGrade } from './assessment.logic';
+import { ParticipationGradesRecord } from '../store/database';
+import { roundGrade } from '../logic/assessment.logic';
 import { PdfLine, PdfPage } from './pdf-text';
 
 export interface RatingCounts {

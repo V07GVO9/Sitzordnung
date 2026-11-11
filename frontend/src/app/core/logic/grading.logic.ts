@@ -6,7 +6,7 @@
  * Portiert aus dem früheren GradingService des Backends.
  */
 
-import { GradeScaleRecord } from './database';
+import { GradeScaleRecord } from '../store/database';
 
 /** Der Schlüssel, der für diesen Kurs tatsächlich gilt. */
 export function effectiveScale(

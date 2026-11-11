@@ -10,7 +10,7 @@ import {
   ratingClass,
   ratingSymbol,
 } from '../../core/models';
-import { toDateKey } from '../../core/store/time';
+import { toDateKey } from '../../core/logic/time';
 import { Icon } from '../../core/ui/icon';
 import { RATING_OPTIONS } from './participation-list';
 

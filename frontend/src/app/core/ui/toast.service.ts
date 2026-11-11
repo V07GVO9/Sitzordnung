@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { AppError } from './store/app-error';
-import { VaultFormatError, VaultPasswordError } from './store/vault-crypto';
+import { AppError } from '../app-error';
+import { VaultFormatError, VaultPasswordError } from '../persistence/vault-crypto';
 
 /** Ein Knopf in der Meldung, etwa „Rückgängig“. */
 export interface ToastAction {

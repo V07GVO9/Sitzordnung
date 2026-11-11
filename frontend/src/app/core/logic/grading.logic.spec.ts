@@ -1,6 +1,6 @@
 /** Notenschlüssel - portiert aus den GradingServiceTests des Backends. */
 
-import { GradeScaleRecord } from './database';
+import { GradeScaleRecord } from '../store/database';
 import { effectiveScale, resolveGrade } from './grading.logic';
 
 const scale: GradeScaleRecord = {

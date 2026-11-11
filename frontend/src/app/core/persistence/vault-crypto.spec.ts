@@ -1,6 +1,6 @@
 /** Verschlüsselung der Datei. */
 
-import { createEmptyDatabase } from './database';
+import { createEmptyDatabase } from '../store/database';
 import {
   ITERATIONS,
   VaultFormatError,

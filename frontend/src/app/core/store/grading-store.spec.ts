@@ -1,6 +1,6 @@
 /** Notenverwaltung im Datenspeicher: Schema, Leistungsnachweise, Mitarbeit, Notenbogen. */
 
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import { LocalStore } from './local-store';
 
 /** Montag, 05.10.2026, mitten in der Doppelstunde. */
