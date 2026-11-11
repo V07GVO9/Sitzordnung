@@ -35,13 +35,13 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
   dark: 'Dunkel',
 };
 
-/** Titel der Seiten in der Kopfleiste. */
 /** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
 const SHORT_TITLES: Record<string, string> = {
   verwaltung: 'Verwaltung',
   auswertung: 'Auswertung',
 };
 
+/** Titel der Seiten in der Kopfleiste. */
 const PAGE_TITLES: Record<string, string> = {
   '': 'Wochenplan',
   noten: 'Noten',

@@ -243,8 +243,6 @@ export class EvaluationPage {
     });
   }
 
-  // --- Export ---
-
   // --- Datenbestand ---
 
   setAutoSave(enabled: boolean): void {
@@ -321,7 +319,6 @@ export class EvaluationPage {
     });
   }
 
-  /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
   /** Einzelbewertungen im Querformat: Schüler in Zeilen, Bewertungstage in Spalten. */
   exportRatings(): void {
     this.api.exportRatings(this.selectedCourseId(), this.range).subscribe({
@@ -330,6 +327,7 @@ export class EvaluationPage {
     });
   }
 
+  /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
   exportLessonSheets(allCourses: boolean): void {
     this.api.exportLessonSheets(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
       next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),

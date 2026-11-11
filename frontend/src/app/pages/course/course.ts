@@ -151,7 +151,6 @@ export class CoursePage implements OnDestroy {
 
   readonly saving = signal(false);
 
-  /** Die anderen Fächer derselben Klasse - als Reiter oben. */
   /** Was laut Stundenplan gerade läuft. */
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */

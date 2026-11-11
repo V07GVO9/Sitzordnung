@@ -92,7 +92,6 @@ import { freeDayReason } from './school-calendar';
 import { renderLessonSheets } from './lesson-sheet';
 import { RatingsSheet, renderRatingsSheets } from './ratings-sheet';
 
-/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 /** Was beim Schuljahreswechsel passieren soll. */
 export interface SchoolYearInput {
   /** Neue Namen, z. B. KDM11 → KDM12. */
@@ -116,6 +115,7 @@ export interface SchoolYearCounts {
   timetableEntries: number;
 }
 
+/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
 export interface DateRange {
   from?: string | null;
   to?: string | null;
@@ -931,7 +931,6 @@ export class LocalStore {
     const scale = effectiveScale(this.database.gradeScales, courseId);
     const lessonCount = LocalStore.lessonCount(ratings);
 
-    // @ts-ignore - Type-Kompatibilität zwischen StudentRecord und StudentScore
     const students = this.studentsOfCourse(courseId).map<StudentScore>((s) => {
       const perDay = lastRatingPerDay(ratings.filter((r) => r.studentId === s.id));
       const points = LocalStore.sumOf(perDay);

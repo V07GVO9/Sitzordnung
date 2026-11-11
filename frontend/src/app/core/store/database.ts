@@ -247,8 +247,6 @@ export interface Database {
   nextIds: IdCounters;
 }
 
-/** Höchstens so viele Sitzordnungen sind je Kurs vorgesehen. */
-
 /**
  * Ein frischer, leerer Datenbestand - mit demselben Vorschlag für den
  * Notenschlüssel, den früher das Backend beim ersten Start angelegt hat.

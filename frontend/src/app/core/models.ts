@@ -85,26 +85,6 @@ export interface CurrentLesson {
   message: string;
 }
 
-/** Die Unterrichtsstunde, auf die eine Bewertung gerade zählt. */
-export interface LessonSlot {
-  date: string;
-  startTime: string;
-  label: string;
-  fromTimetable: boolean;
-  /** Gibt es eine frühere Stunde dieses Kurses? */
-  hasPrevious: boolean;
-  /** Gibt es eine spätere? Über die aktuelle Stunde hinaus geht es nicht. */
-  hasNext: boolean;
-  /** Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird? */
-  isCurrent: boolean;
-}
-
-/** Eine bestimmte Unterrichtsstunde, wie sie an die API übergeben wird. */
-export interface LessonRef {
-  date: string;
-  startTime: string;
-}
-
 /** Die fünf möglichen Bewertungen; 0 ist die Mitte. */
 export type RatingValue = -2 | -1 | 0 | 1 | 2;
 
@@ -129,8 +109,6 @@ export interface StudentScore {
   average: number | null;
   pointsToday: number;
   grade: string | null;
-  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
-  currentLessonValue: number | null;
 }
 
 export interface CourseScoreboard {
@@ -138,7 +116,6 @@ export interface CourseScoreboard {
   schoolClassName: string;
   subjectName: string;
   date: string;
-  currentLesson?: LessonSlot;
   students: StudentScore[];
 }
 
@@ -236,25 +213,6 @@ export interface TimetableImportResult {
   createdSubjects: number;
   createdCourses: number;
   createdLessons: number;
-  skipped: string[];
-}
-
-// --- Schülerimport ----------------------------------------------------------
-
-export interface StudentImportRow {
-  firstName: string;
-  lastName: string;
-  className: string;
-}
-
-export interface StudentImportPreview {
-  rows: StudentImportRow[];
-  warnings: string[];
-}
-
-export interface StudentImportResult {
-  createdClasses: number;
-  createdStudents: number;
   skipped: string[];
 }
 

@@ -59,7 +59,6 @@ export class WeekPage {
   readonly entries = signal<TimetableEntry[]>([]);
   readonly courses = signal<Course[]>([]);
   readonly lesson = signal<CurrentLesson | null>(null);
-  /** Bewertungen je "Kurs|Datum" in der gezeigten Woche. */
 
   /** 0 = diese Woche, -1 = letzte, 1 = nächste. */
   readonly weekOffset = signal(0);
