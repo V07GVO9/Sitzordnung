@@ -8,7 +8,7 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
-## 10.11.2026
+## 10.11.2026 – Version 1.0.0 (erstes Release)
 
 **Geändert**
 - **Sicherungskopie:** fragt jetzt jedes Mal, wo die Kopie gespeichert werden
