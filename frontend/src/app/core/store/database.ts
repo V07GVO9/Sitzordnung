@@ -303,6 +303,21 @@ export function createEmptyDatabase(): Database {
 }
 
 /**
+ * Ergänzt fehlende Felder in einem eingelesenen Bestand, damit auch eine
+ * ältere Datei geöffnet werden kann.
+ */
+export function migrateDatabase(database: Database): Database {
+  const empty = createEmptyDatabase();
+
+  return {
+    ...empty,
+    ...database,
+    settings: { ...empty.settings, ...database.settings },
+    nextIds: { ...empty.nextIds, ...database.nextIds },
+  };
+}
+
+/**
  * Das Schema, das ein Kurs bekommt, solange keines eingestellt ist. Die Werte
  * sind nur ein Vorschlag - verbindlich sind die Beschlüsse der Schule.
  */

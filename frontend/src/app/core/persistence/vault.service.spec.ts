@@ -146,7 +146,7 @@ describe('VaultService', () => {
     });
 
     it('schreibt eine Änderung ohne Zutun in die Datei', async () => {
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       expect(store.hasUnsavedChanges()).toBeTrue();
 
       await warteAufAutosave();
@@ -157,7 +157,7 @@ describe('VaultService', () => {
     });
 
     it('legt in der Datei ab, was wirklich im Bestand steht', async () => {
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       const inhalt = await handle.geschrieben[handle.geschrieben.length - 1].text();
@@ -171,9 +171,9 @@ describe('VaultService', () => {
       await warteAufAutosave();
       const vorher = handle.geschrieben.length;
 
-      store.createClass('10a');
-      store.createClass('10b');
-      store.createClass('10c');
+      store.masterData.createClass('10a');
+      store.masterData.createClass('10b');
+      store.masterData.createClass('10c');
 
       await warteAufAutosave();
 
@@ -184,7 +184,7 @@ describe('VaultService', () => {
       await warteAufAutosave();
 
       const speichern = vault.save();
-      store.createClass('10b');
+      store.masterData.createClass('10b');
       await speichern;
 
       // Die Datei kennt 10b noch nicht - also darf nichts „gespeichert“ melden.
@@ -200,7 +200,7 @@ describe('VaultService', () => {
 
     it('haelt den Bestand als ungespeichert, wenn die Datei nicht erreichbar ist', async () => {
       handle.faelltAus = true;
-      store.createClass('10a');
+      store.masterData.createClass('10a');
 
       await warteAufAutosave();
 
@@ -210,12 +210,12 @@ describe('VaultService', () => {
 
     it('nimmt das Speichern wieder auf, sobald die Datei zurueck ist', async () => {
       handle.faelltAus = true;
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
       expect(vault.autoSaveError()).not.toBeNull();
 
       handle.faelltAus = false;
-      store.createClass('10b');
+      store.masterData.createClass('10b');
       await warteAufAutosave();
 
       expect(vault.autoSaveError()).toBeNull();
@@ -247,7 +247,7 @@ describe('VaultService', () => {
     });
 
     it('überschreibt den fremden Stand nicht stillschweigend', async () => {
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       expect(vault.isInOneDrive()).toBeTrue();
@@ -258,7 +258,7 @@ describe('VaultService', () => {
     });
 
     it('behält auf Wunsch den eigenen Stand', async () => {
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       await vault.keepMineAfterConflict();
@@ -273,7 +273,7 @@ describe('VaultService', () => {
     });
 
     it('lädt auf Wunsch den Stand des anderen Geräts', async () => {
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       await vault.takeTheirsAfterConflict();
@@ -302,7 +302,7 @@ describe('VaultService', () => {
       store = TestBed.inject(LocalStore);
 
       await oeffne(vault, handle);
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await vault.save();
     });
 
@@ -362,7 +362,7 @@ describe('VaultService', () => {
     it('loest keine ungefragten Downloads aus', async () => {
       expect(vault.hasFileHandle()).toBeFalse();
 
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       // Der Bestand bleibt offen ungespeichert - die Datei sichert der Benutzer.
@@ -407,7 +407,7 @@ describe('VaultService', () => {
       handle.erlaubt = false;
       await oeffne(vault, handle);
 
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await warteAufAutosave();
 
       expect(handle.geschrieben.length).toBe(0);
@@ -427,7 +427,7 @@ describe('VaultService', () => {
       handle = new FakeHandle();
 
       await oeffne(vault, handle);
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await vault.save();
       await vault.closeVault();
       vault.lastLocalFile.set(handle);
@@ -488,11 +488,11 @@ describe('VaultService', () => {
       vault.setAutoSaveToFile(false);
 
       await oeffne(vault, handle);
-      store.createClass('10a');
+      store.masterData.createClass('10a');
       await vault.save();
 
       // Danach eine Änderung, die nur im Browser landet - dann „stürzt“ die Seite ab.
-      store.createClass('10b');
+      store.masterData.createClass('10b');
       await warteAufAutosave();
     });
 
@@ -566,7 +566,7 @@ describe('VaultService', () => {
     });
 
     it('legt ungesicherte Änderungen verschlüsselt im Zwischenspeicher ab', async () => {
-      store.createClass('BFI10A');
+      store.masterData.createClass('BFI10A');
       const name = vault.fileName();
       await vault.lock();
 

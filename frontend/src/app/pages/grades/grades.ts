@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { ApiService, DateRange } from '../../core/api.service';
+import { ApiService } from '../../core/api.service';
 import {
   AREA_LABELS,
   Assessment,
   AssessmentDetail,
   AssessmentType,
   Course,
+  DateRange,
   GradeArea,
   GradeBook,
   GradeChange,

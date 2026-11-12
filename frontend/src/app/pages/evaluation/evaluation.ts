@@ -14,9 +14,15 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ApiService, DateRange } from '../../core/api.service';
+import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
-import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
+import {
+  AppSettings,
+  CourseScoreboard,
+  DateRange,
+  GradeScale,
+  GradeScaleEntry,
+} from '../../core/models';
 import { formatGrade } from '../../core/logic/assessment.logic';
 import { FilePickerCancelled, isNativeApp } from '../../core/persistence/file-system';
 import { OneDriveService } from '../../core/persistence/onedrive.service';

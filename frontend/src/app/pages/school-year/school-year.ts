@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { ApiService, SchoolYearCounts } from '../../core/api.service';
-import { SchoolClass } from '../../core/models';
+import { ApiService } from '../../core/api.service';
+import { SchoolClass, SchoolYearCounts } from '../../core/models';
 import { FilePickerCancelled } from '../../core/persistence/file-system';
 import { VaultService } from '../../core/persistence/vault.service';
 import { ToastService } from '../../core/ui/toast.service';

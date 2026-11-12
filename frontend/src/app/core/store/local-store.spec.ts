@@ -19,12 +19,12 @@ function setup(): LocalStore {
 
 /** Legt Klasse, Fach, Kurs, einen Schüler und eine passende Stunde an. */
 function withCourse(store: LocalStore) {
-  const schoolClass = store.createClass('10a');
-  const subject = store.createSubject('Mathematik', 'MA');
-  const course = store.createCourse(schoolClass.id, subject.id);
-  const student = store.createStudent(schoolClass.id, 'Anna', 'Musterfrau');
+  const schoolClass = store.masterData.createClass('10a');
+  const subject = store.masterData.createSubject('Mathematik', 'MA');
+  const course = store.masterData.createCourse(schoolClass.id, subject.id);
+  const student = store.masterData.createStudent(schoolClass.id, 'Anna', 'Musterfrau');
 
-  store.createTimetableEntry({
+  store.timetable.createTimetableEntry({
     courseId: course.id,
     dayOfWeek: 1,
     startTime: '08:00',
@@ -38,57 +38,57 @@ function withCourse(store: LocalStore) {
 describe('LocalStore - Stammdaten', () => {
   it('legt eine Klasse an und zählt ihre Schüler', () => {
     const store = setup();
-    const created = store.createClass('10a');
-    store.createStudent(created.id, 'Anna', 'Musterfrau');
+    const created = store.masterData.createClass('10a');
+    store.masterData.createStudent(created.id, 'Anna', 'Musterfrau');
 
-    expect(store.getClasses()[0].studentCount).toBe(1);
+    expect(store.masterData.getClasses()[0].studentCount).toBe(1);
   });
 
   it('lehnt eine doppelte Klasse ab', () => {
     const store = setup();
-    store.createClass('10a');
+    store.masterData.createClass('10a');
 
-    expect(() => store.createClass('10a')).toThrowError(AppError);
+    expect(() => store.masterData.createClass('10a')).toThrowError(AppError);
   });
 
   it('schneidet Leerzeichen an den Rändern ab', () => {
     const store = setup();
-    expect(store.createClass('  10a  ').name).toBe('10a');
+    expect(store.masterData.createClass('  10a  ').name).toBe('10a');
   });
 
   it('lehnt ein doppeltes Fach ab', () => {
     const store = setup();
-    store.createSubject('Mathematik', 'MA');
+    store.masterData.createSubject('Mathematik', 'MA');
 
-    expect(() => store.createSubject('Mathematik', 'M')).toThrowError(AppError);
+    expect(() => store.masterData.createSubject('Mathematik', 'M')).toThrowError(AppError);
   });
 
   it('lehnt denselben Kurs zweimal ab', () => {
     const store = setup();
     const { schoolClass, subject } = withCourse(store);
 
-    expect(() => store.createCourse(schoolClass.id, subject.id)).toThrowError(AppError);
+    expect(() => store.masterData.createCourse(schoolClass.id, subject.id)).toThrowError(AppError);
   });
 
   it('löscht mit der Klasse auch Kurse, Bewertungen und Schüler', () => {
     const store = setup();
     const { schoolClass, course, student } = withCourse(store);
-    store.rate(course.id, student.id, 1);
+    store.ratings.rate(course.id, student.id, 1);
 
-    store.deleteClass(schoolClass.id);
+    store.masterData.deleteClass(schoolClass.id);
 
-    expect(store.getClasses()).toEqual([]);
-    expect(store.getCourses()).toEqual([]);
+    expect(store.masterData.getClasses()).toEqual([]);
+    expect(store.masterData.getCourses()).toEqual([]);
   });
 
   it('sortiert Schüler nach Nachname und Vorname', () => {
     const store = setup();
-    const schoolClass = store.createClass('10a');
-    store.createStudent(schoolClass.id, 'Bert', 'Zander');
-    store.createStudent(schoolClass.id, 'Anna', 'Adler');
-    store.createStudent(schoolClass.id, 'Carla', 'Adler');
+    const schoolClass = store.masterData.createClass('10a');
+    store.masterData.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.masterData.createStudent(schoolClass.id, 'Anna', 'Adler');
+    store.masterData.createStudent(schoolClass.id, 'Carla', 'Adler');
 
-    expect(store.getStudents(schoolClass.id).map((s) => s.firstName)).toEqual([
+    expect(store.masterData.getStudents(schoolClass.id).map((s) => s.firstName)).toEqual([
       'Anna',
       'Carla',
       'Bert',
@@ -97,9 +97,9 @@ describe('LocalStore - Stammdaten', () => {
 
   it('übernimmt beim Sammelimport nur brauchbare Zeilen', () => {
     const store = setup();
-    const schoolClass = store.createClass('10a');
+    const schoolClass = store.masterData.createClass('10a');
 
-    const imported = store.importStudents(schoolClass.id, [
+    const imported = store.masterData.importStudents(schoolClass.id, [
       { firstName: 'Anna', lastName: 'Adler' },
       { firstName: '  ', lastName: '  ' },
       { firstName: 'Bert', lastName: 'Zander' },
@@ -110,9 +110,9 @@ describe('LocalStore - Stammdaten', () => {
 
   it('lehnt einen Import ohne verwertbare Namen ab', () => {
     const store = setup();
-    const schoolClass = store.createClass('10a');
+    const schoolClass = store.masterData.createClass('10a');
 
-    expect(() => store.importStudents(schoolClass.id, [])).toThrowError(AppError);
+    expect(() => store.masterData.importStudents(schoolClass.id, [])).toThrowError(AppError);
   });
 });
 
@@ -121,25 +121,25 @@ describe('LocalStore - Sitzordnung', () => {
     const store = setup();
     const { course } = withCourse(store);
 
-    expect(store.createSeatingPlan(course.id, '', 5, 8).name).toBe('Sitzordnung 1');
+    expect(store.seating.createSeatingPlan(course.id, '', 5, 8).name).toBe('Sitzordnung 1');
   });
 
   it('lässt beliebig viele Sitzordnungen je Kurs zu', () => {
     const store = setup();
     const { course } = withCourse(store);
     for (const name of ['A', 'B', 'C', 'D']) {
-      store.createSeatingPlan(course.id, name, 5, 8);
+      store.seating.createSeatingPlan(course.id, name, 5, 8);
     }
 
-    expect(store.getSeatingPlans(course.id).length).toBe(4);
+    expect(store.seating.getSeatingPlans(course.id).length).toBe(4);
   });
 
   it('speichert die Belegung', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    const plan = store.createSeatingPlan(course.id, 'A', 5, 8);
+    const plan = store.seating.createSeatingPlan(course.id, 'A', 5, 8);
 
-    const saved = store.saveLayout(plan.id, {
+    const saved = store.seating.saveLayout(plan.id, {
       rows: 5,
       columns: 8,
       seats: [{ studentId: student.id, row: 1, column: 2 }],
@@ -151,11 +151,11 @@ describe('LocalStore - Sitzordnung', () => {
   it('lehnt zwei Schüler auf einem Platz ab', () => {
     const store = setup();
     const { schoolClass, course, student } = withCourse(store);
-    const other = store.createStudent(schoolClass.id, 'Bert', 'Zander');
-    const plan = store.createSeatingPlan(course.id, 'A', 5, 8);
+    const other = store.masterData.createStudent(schoolClass.id, 'Bert', 'Zander');
+    const plan = store.seating.createSeatingPlan(course.id, 'A', 5, 8);
 
     expect(() =>
-      store.saveLayout(plan.id, {
+      store.seating.saveLayout(plan.id, {
         rows: 5,
         columns: 8,
         seats: [
@@ -169,10 +169,10 @@ describe('LocalStore - Sitzordnung', () => {
   it('lehnt einen Platz außerhalb des Rasters ab', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    const plan = store.createSeatingPlan(course.id, 'A', 2, 2);
+    const plan = store.seating.createSeatingPlan(course.id, 'A', 2, 2);
 
     expect(() =>
-      store.saveLayout(plan.id, {
+      store.seating.saveLayout(plan.id, {
         rows: 2,
         columns: 2,
         seats: [{ studentId: student.id, row: 5, column: 0 }],
@@ -183,12 +183,12 @@ describe('LocalStore - Sitzordnung', () => {
   it('lehnt einen Schüler aus einer anderen Klasse ab', () => {
     const store = setup();
     const { course } = withCourse(store);
-    const other = store.createClass('10b');
-    const stranger = store.createStudent(other.id, 'Fremd', 'Person');
-    const plan = store.createSeatingPlan(course.id, 'A', 5, 8);
+    const other = store.masterData.createClass('10b');
+    const stranger = store.masterData.createStudent(other.id, 'Fremd', 'Person');
+    const plan = store.seating.createSeatingPlan(course.id, 'A', 5, 8);
 
     expect(() =>
-      store.saveLayout(plan.id, {
+      store.seating.saveLayout(plan.id, {
         rows: 5,
         columns: 8,
         seats: [{ studentId: stranger.id, row: 0, column: 0 }],
@@ -199,14 +199,14 @@ describe('LocalStore - Sitzordnung', () => {
   it('räumt Plätze weg, die aus einem kleineren Raster fallen', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    const plan = store.createSeatingPlan(course.id, 'A', 5, 8);
-    store.saveLayout(plan.id, {
+    const plan = store.seating.createSeatingPlan(course.id, 'A', 5, 8);
+    store.seating.saveLayout(plan.id, {
       rows: 5,
       columns: 8,
       seats: [{ studentId: student.id, row: 4, column: 7 }],
     });
 
-    expect(store.updateSeatingPlan(plan.id, 'A', 2, 2).seats).toEqual([]);
+    expect(store.seating.updateSeatingPlan(plan.id, 'A', 2, 2).seats).toEqual([]);
   });
 });
 
@@ -216,7 +216,7 @@ describe('LocalStore - Stundenplan', () => {
     const { course } = withCourse(store);
 
     expect(() =>
-      store.createTimetableEntry({
+      store.timetable.createTimetableEntry({
         courseId: course.id,
         dayOfWeek: 2,
         startTime: '10:00',
@@ -231,7 +231,7 @@ describe('LocalStore - Stundenplan', () => {
     const { course } = withCourse(store);
 
     expect(() =>
-      store.createTimetableEntry({
+      store.timetable.createTimetableEntry({
         courseId: course.id,
         dayOfWeek: 1,
         startTime: '08:30',
@@ -245,7 +245,7 @@ describe('LocalStore - Stundenplan', () => {
     const store = setup();
     const { course } = withCourse(store);
 
-    const created = store.createTimetableEntry({
+    const created = store.timetable.createTimetableEntry({
       courseId: course.id,
       dayOfWeek: 1,
       startTime: '08:45',
@@ -262,7 +262,7 @@ describe('LocalStore - Stundenplan', () => {
     const { course } = withCourse(store);
 
     expect(() =>
-      store.createTimetableEntry({
+      store.timetable.createTimetableEntry({
         courseId: course.id,
         dayOfWeek: 2,
         startTime: '25:00',
@@ -278,7 +278,7 @@ describe('LocalStore - Bewertungen', () => {
     const store = setup();
     const { course, student } = withCourse(store);
 
-    expect(store.rate(course.id, student.id, 2).value).toBe(2);
+    expect(store.ratings.rate(course.id, student.id, 2).value).toBe(2);
   });
 
   it('sperrt außerhalb der Unterrichtszeit', () => {
@@ -286,16 +286,16 @@ describe('LocalStore - Bewertungen', () => {
     const { course, student } = withCourse(store);
     store.clock.setFixed(new Date('2026-08-31T14:00:00'));
 
-    expect(() => store.rate(course.id, student.id, 1)).toThrowError(AppError);
+    expect(() => store.ratings.rate(course.id, student.id, 1)).toThrowError(AppError);
   });
 
   it('gibt bei aktiver Notfall-Freigabe auch außerhalb frei', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.clock.setFixed(new Date('2026-08-31T14:00:00'));
-    store.saveSettings({ toleranceMinutes: 15, allowRatingOutsideLesson: true });
+    store.settings.saveSettings({ toleranceMinutes: 15, allowRatingOutsideLesson: true });
 
-    expect(store.rate(course.id, student.id, 1).value).toBe(1);
+    expect(store.ratings.rate(course.id, student.id, 1).value).toBe(1);
   });
 
   it('trägt mit Datum jederzeit für genau diesen Tag ein - auch außerhalb der Stunde', () => {
@@ -303,69 +303,71 @@ describe('LocalStore - Bewertungen', () => {
     const { course, student } = withCourse(store);
     store.clock.setFixed(new Date('2026-08-31T14:00:00'));
 
-    const rating = store.rate(course.id, student.id, -1, undefined, '2026-08-25');
+    const rating = store.ratings.rate(course.id, student.id, -1, undefined, '2026-08-25');
 
     expect(rating.lessonDate).toBe('2026-08-25');
-    expect(store.getRatings(course.id, { from: '2026-08-25', to: '2026-08-25' }).length).toBe(1);
+    expect(
+      store.ratings.getRatings(course.id, { from: '2026-08-25', to: '2026-08-25' }).length,
+    ).toBe(1);
   });
 
   it('lehnt ein ungültiges Datum ab', () => {
     const store = setup();
     const { course, student } = withCourse(store);
 
-    expect(() => store.rate(course.id, student.id, 1, undefined, '25.08.2026')).toThrowError(
-      AppError,
-    );
+    expect(() =>
+      store.ratings.rate(course.id, student.id, 1, undefined, '25.08.2026'),
+    ).toThrowError(AppError);
   });
 
   it('nimmt die 0 als mittlere Bewertung an', () => {
     const store = setup();
     const { course, student } = withCourse(store);
 
-    expect(store.rate(course.id, student.id, 0).value).toBe(0);
+    expect(store.ratings.rate(course.id, student.id, 0).value).toBe(0);
   });
 
   it('lehnt einen unzulässigen Wert ab', () => {
     const store = setup();
     const { course, student } = withCourse(store);
 
-    expect(() => store.rate(course.id, student.id, 3 as 2)).toThrowError(AppError);
+    expect(() => store.ratings.rate(course.id, student.id, 3 as 2)).toThrowError(AppError);
   });
 
   it('lehnt einen Schüler aus einer anderen Klasse ab', () => {
     const store = setup();
     const { course } = withCourse(store);
-    const other = store.createClass('10b');
-    const stranger = store.createStudent(other.id, 'Fremd', 'Person');
+    const other = store.masterData.createClass('10b');
+    const stranger = store.masterData.createStudent(other.id, 'Fremd', 'Person');
 
-    expect(() => store.rate(course.id, stranger.id, 1)).toThrowError(AppError);
+    expect(() => store.ratings.rate(course.id, stranger.id, 1)).toThrowError(AppError);
   });
 
   it('nimmt die letzte Bewertung zurück', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 2);
-    store.rate(course.id, student.id, -1);
+    store.ratings.rate(course.id, student.id, 2);
+    store.ratings.rate(course.id, student.id, -1);
 
-    store.undoLastRating(course.id, student.id);
+    store.ratings.undoLastRating(course.id, student.id);
 
-    expect(store.getScoreboard(course.id).students[0].points).toBe(2);
+    expect(store.ratings.getScoreboard(course.id).students[0].points).toBe(2);
   });
 
   it('meldet, wenn es nichts zurückzunehmen gibt', () => {
     const store = setup();
     const { course, student } = withCourse(store);
 
-    expect(() => store.undoLastRating(course.id, student.id)).toThrowError(AppError);
+    expect(() => store.ratings.undoLastRating(course.id, student.id)).toThrowError(AppError);
   });
 
   it('zählt je Unterrichtseinheit nur die letzte Bewertung', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 2);
-    store.rate(course.id, student.id, 2);
+    store.ratings.rate(course.id, student.id, 2);
+    store.ratings.rate(course.id, student.id, 2);
 
-    const row = store.getScoreboard(course.id).students[0];
+    const row = store.ratings.getScoreboard(course.id).students[0];
 
     // Beide Bewertungen fallen in dieselbe Unterrichtseinheit - es zählt nur die letzte.
     expect(row.points).toBe(2);
@@ -377,9 +379,9 @@ describe('LocalStore - Bewertungen', () => {
   it('führt einen Schüler ohne Bewertung mit null Punkten', () => {
     const store = setup();
     const { schoolClass, course } = withCourse(store);
-    store.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.masterData.createStudent(schoolClass.id, 'Bert', 'Zander');
 
-    const rows = store.getScoreboard(course.id).students;
+    const rows = store.ratings.getScoreboard(course.id).students;
 
     expect(rows.length).toBe(2);
     expect(rows.every((r) => r.ratingCount === 0 || r.points === 0)).toBe(true);
@@ -388,10 +390,10 @@ describe('LocalStore - Bewertungen', () => {
   it('gibt allen Unbewerteten einer gehaltenen Stunde die 0', () => {
     const store = setup();
     const { schoolClass, course, student } = withCourse(store);
-    store.createStudent(schoolClass.id, 'Bert', 'Zander');
-    store.rate(course.id, student.id, 2);
+    store.masterData.createStudent(schoolClass.id, 'Bert', 'Zander');
+    store.ratings.rate(course.id, student.id, 2);
 
-    const rows = store.getScoreboard(course.id).students;
+    const rows = store.ratings.getScoreboard(course.id).students;
 
     expect(rows.map((r) => r.ratingCount)).toEqual([1, 1]);
     expect(rows.find((r) => r.studentId !== student.id)!.points).toBe(0);
@@ -401,9 +403,9 @@ describe('LocalStore - Bewertungen', () => {
   it('grenzt den Punktestand auf einen Zeitraum ein', () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 2);
+    store.ratings.rate(course.id, student.id, 2);
 
-    const outside = store.getScoreboard(course.id, { from: '2026-09-01' });
+    const outside = store.ratings.getScoreboard(course.id, { from: '2026-09-01' });
 
     expect(outside.students[0].points).toBe(0);
   });
@@ -411,20 +413,22 @@ describe('LocalStore - Bewertungen', () => {
 
 describe('LocalStore - Notenschlüssel', () => {
   it('bringt einen Standardschlüssel mit', () => {
-    expect(setup().getGlobalGradeScale().entries.length).toBeGreaterThan(0);
+    expect(setup().gradeScales.getGlobalGradeScale().entries.length).toBeGreaterThan(0);
   });
 
   it('lehnt einen Schlüssel ohne Stufen ab', () => {
     const store = setup();
 
-    expect(() => store.saveGradeScale(null, { name: 'X', entries: [] })).toThrowError(AppError);
+    expect(() => store.gradeScales.saveGradeScale(null, { name: 'X', entries: [] })).toThrowError(
+      AppError,
+    );
   });
 
   it('lehnt zwei Stufen mit derselben Punktgrenze ab', () => {
     const store = setup();
 
     expect(() =>
-      store.saveGradeScale(null, {
+      store.gradeScales.saveGradeScale(null, {
         name: 'X',
         entries: [
           { minPoints: 5, grade: '1' },
@@ -437,13 +441,16 @@ describe('LocalStore - Notenschlüssel', () => {
   it('bevorzugt den Schlüssel des Kurses', () => {
     const store = setup();
     const { course } = withCourse(store);
-    store.saveGradeScale(course.id, { name: 'Kurs', entries: [{ minPoints: 0, grade: 'top' }] });
+    store.gradeScales.saveGradeScale(course.id, {
+      name: 'Kurs',
+      entries: [{ minPoints: 0, grade: 'top' }],
+    });
 
-    expect(store.getCourseGradeScale(course.id).name).toBe('Kurs');
+    expect(store.gradeScales.getCourseGradeScale(course.id).name).toBe('Kurs');
 
-    store.deleteCourseGradeScale(course.id);
+    store.gradeScales.deleteCourseGradeScale(course.id);
 
-    expect(store.getCourseGradeScale(course.id).isGlobalDefault).toBe(true);
+    expect(store.gradeScales.getCourseGradeScale(course.id).isGlobalDefault).toBe(true);
   });
 });
 
@@ -451,9 +458,9 @@ describe('LocalStore - Export', () => {
   it('schreibt eine Zeile je Schüler in die Zusammenfassung', async () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 2);
+    store.ratings.rate(course.id, student.id, 2);
 
-    const result = store.exportSummary(course.id);
+    const result = store.exports.exportSummary(course.id);
     const content = await result.blob.text();
 
     expect(result.fileName).toContain('10a-Mathematik');
@@ -463,10 +470,10 @@ describe('LocalStore - Export', () => {
   it('legt die Einzelbewertungen als Querformat-Tabelle an: Schüler je Zeile, Tage je Spalte', async () => {
     const store = setup();
     const { course, student } = withCourse(store);
-    store.rate(course.id, student.id, 1);
-    store.rate(course.id, student.id, -2, 'stört');
+    store.ratings.rate(course.id, student.id, 1);
+    store.ratings.rate(course.id, student.id, -2, 'stört');
 
-    const result = store.exportRatings(course.id);
+    const result = store.exports.exportRatings(course.id);
     const content = await result.blob.text();
 
     expect(result.fileName).toMatch(/^bewertungen-10a-Mathematik-.*\.html$/);
@@ -480,7 +487,7 @@ describe('LocalStore - Export', () => {
   it('meldet, wenn es nichts zu exportieren gibt', () => {
     const store = setup();
 
-    expect(() => store.exportSummary(null)).toThrowError(AppError);
+    expect(() => store.exports.exportSummary(null)).toThrowError(AppError);
   });
 });
 
@@ -490,7 +497,7 @@ describe('LocalStore - Ablage', () => {
 
     expect(store.hasUnsavedChanges()).toBe(false);
 
-    store.createClass('10a');
+    store.masterData.createClass('10a');
     expect(store.hasUnsavedChanges()).toBe(true);
 
     store.markSaved();
@@ -499,23 +506,23 @@ describe('LocalStore - Ablage', () => {
 
   it('gibt eine Kopie heraus, in die niemand hineinschreiben kann', () => {
     const store = setup();
-    store.createClass('10a');
+    store.masterData.createClass('10a');
 
     const snapshot = store.snapshot();
     snapshot.schoolClasses[0].name = 'verändert';
 
-    expect(store.getClasses()[0].name).toBe('10a');
+    expect(store.masterData.getClasses()[0].name).toBe('10a');
   });
 
   it('übernimmt einen geladenen Bestand', () => {
     const store = setup();
-    store.createClass('10a');
+    store.masterData.createClass('10a');
     const snapshot = store.snapshot();
 
     const second = new LocalStore();
     second.load(snapshot);
 
-    expect(second.getClasses()[0].name).toBe('10a');
+    expect(second.masterData.getClasses()[0].name).toBe('10a');
     expect(second.isOpen()).toBe(true);
   });
 });
@@ -540,7 +547,7 @@ describe('Stundenplan-Import', () => {
   it('legt Klasse, Fach, Kurs und Stunde in einem Zug an', () => {
     const store = setup();
 
-    const ergebnis = store.applyTimetableImport([row()]);
+    const ergebnis = store.timetable.applyTimetableImport([row()]);
 
     expect(ergebnis.createdClasses).toBe(1);
     expect(ergebnis.createdSubjects).toBe(1);
@@ -548,7 +555,7 @@ describe('Stundenplan-Import', () => {
     expect(ergebnis.createdLessons).toBe(1);
     expect(ergebnis.skipped).toEqual([]);
 
-    const stunde = store.getTimetable()[0];
+    const stunde = store.timetable.getTimetable()[0];
     expect(stunde.schoolClassName).toBe('10a');
     expect(stunde.subjectName).toBe('Mathematik');
     expect(stunde.room).toBe('A101');
@@ -556,10 +563,10 @@ describe('Stundenplan-Import', () => {
 
   it('benutzt vorhandene Klassen und Faecher weiter', () => {
     const store = setup();
-    store.createClass('10a');
-    store.createSubject('Mathematik', 'MA');
+    store.masterData.createClass('10a');
+    store.masterData.createSubject('Mathematik', 'MA');
 
-    const ergebnis = store.applyTimetableImport([row()]);
+    const ergebnis = store.timetable.applyTimetableImport([row()]);
 
     expect(ergebnis.createdClasses).toBe(0);
     expect(ergebnis.createdSubjects).toBe(0);
@@ -568,18 +575,18 @@ describe('Stundenplan-Import', () => {
 
   it('erkennt ein Fach auch an seinem Kuerzel', () => {
     const store = setup();
-    store.createSubject('Mathematik', 'MA');
+    store.masterData.createSubject('Mathematik', 'MA');
 
-    const ergebnis = store.applyTimetableImport([row({ subjectName: 'MA' })]);
+    const ergebnis = store.timetable.applyTimetableImport([row({ subjectName: 'MA' })]);
 
     expect(ergebnis.createdSubjects).toBe(0);
-    expect(store.getSubjects().length).toBe(1);
+    expect(store.masterData.getSubjects().length).toBe(1);
   });
 
   it('legt fuer zwei Stunden desselben Kurses nur einen Kurs an', () => {
     const store = setup();
 
-    const ergebnis = store.applyTimetableImport([
+    const ergebnis = store.timetable.applyTimetableImport([
       row(),
       row({ dayOfWeek: 3, startTime: '10:00', endTime: '10:45' }),
     ]);
@@ -590,9 +597,9 @@ describe('Stundenplan-Import', () => {
 
   it('ueberspringt eine Stunde, die schon im Stundenplan steht', () => {
     const store = setup();
-    store.applyTimetableImport([row()]);
+    store.timetable.applyTimetableImport([row()]);
 
-    const ergebnis = store.applyTimetableImport([row()]);
+    const ergebnis = store.timetable.applyTimetableImport([row()]);
 
     expect(ergebnis.createdLessons).toBe(0);
     expect(ergebnis.skipped[0]).toContain('steht schon im Stundenplan');
@@ -600,9 +607,9 @@ describe('Stundenplan-Import', () => {
 
   it('ueberspringt eine Stunde, die sich mit einer anderen ueberschneidet', () => {
     const store = setup();
-    store.applyTimetableImport([row()]);
+    store.timetable.applyTimetableImport([row()]);
 
-    const ergebnis = store.applyTimetableImport([
+    const ergebnis = store.timetable.applyTimetableImport([
       row({ startTime: '08:30', endTime: '09:15', subjectName: 'Deutsch' }),
     ]);
 
@@ -613,7 +620,7 @@ describe('Stundenplan-Import', () => {
   it('ueberspringt Zeilen ohne Klasse oder Fach', () => {
     const store = setup();
 
-    const ergebnis = store.applyTimetableImport([row({ schoolClassName: '  ' })]);
+    const ergebnis = store.timetable.applyTimetableImport([row({ schoolClassName: '  ' })]);
 
     expect(ergebnis.createdLessons).toBe(0);
     expect(ergebnis.skipped[0]).toContain('Klasse oder Fach fehlt');
@@ -622,7 +629,7 @@ describe('Stundenplan-Import', () => {
   it('ueberspringt Zeilen mit unlesbarer Uhrzeit', () => {
     const store = setup();
 
-    const ergebnis = store.applyTimetableImport([row({ startTime: '25:99' })]);
+    const ergebnis = store.timetable.applyTimetableImport([row({ startTime: '25:99' })]);
 
     expect(ergebnis.skipped[0]).toContain('unlesbare Uhrzeit');
   });
@@ -630,7 +637,9 @@ describe('Stundenplan-Import', () => {
   it('ueberspringt Zeilen, deren Ende nicht nach dem Beginn liegt', () => {
     const store = setup();
 
-    const ergebnis = store.applyTimetableImport([row({ startTime: '09:00', endTime: '08:00' })]);
+    const ergebnis = store.timetable.applyTimetableImport([
+      row({ startTime: '09:00', endTime: '08:00' }),
+    ]);
 
     expect(ergebnis.skipped[0]).toContain('nicht nach dem Beginn');
   });
@@ -638,7 +647,7 @@ describe('Stundenplan-Import', () => {
   it('verlangt mindestens eine Zeile', () => {
     const store = setup();
 
-    expect(() => store.applyTimetableImport([])).toThrowError(AppError);
+    expect(() => store.timetable.applyTimetableImport([])).toThrowError(AppError);
   });
 
   it('nimmt die Vorschau als Grundlage fuer die Uebernahme', () => {
@@ -654,17 +663,17 @@ describe('Stundenplan-Import', () => {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const vorschau = store.previewTimetableImport(datei);
+    const vorschau = store.timetable.previewTimetableImport(datei);
     expect(vorschau.rows.length).toBe(1);
 
-    const ergebnis = store.applyTimetableImport(vorschau.rows);
+    const ergebnis = store.timetable.applyTimetableImport(vorschau.rows);
     expect(ergebnis.createdLessons).toBe(1);
-    expect(store.getTimetable()[0].startTime).toBe('08:00');
+    expect(store.timetable.getTimetable()[0].startTime).toBe('08:00');
   });
 
   it('zieht bereits angelegte Klassen fuer die Erkennung heran', () => {
     const store = setup();
-    store.createClass('KDM23');
+    store.masterData.createClass('KDM23');
 
     const datei = [
       'BEGIN:VCALENDAR',
@@ -676,7 +685,7 @@ describe('Stundenplan-Import', () => {
       'END:VCALENDAR',
     ].join('\r\n');
 
-    const vorschau = store.previewTimetableImport(datei);
+    const vorschau = store.timetable.previewTimetableImport(datei);
 
     expect(vorschau.rows[0].schoolClassName).toBe('KDM23');
     expect(vorschau.rows[0].subjectName).toBe('Deutsch');
