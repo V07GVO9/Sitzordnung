@@ -28,12 +28,10 @@ import {
   QuarterGrade,
   Rating,
   RatingValue,
-  SeatingPlan,
   Student,
   StudentScore,
   WEEKDAY_NAMES,
   byFirstName,
-  byLastName,
   fullName,
   initials,
   ratingClass,
@@ -43,9 +41,12 @@ import { isValidDateKey, toDateKey } from '../../core/logic/time';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { readPreference, writePreference } from '../../core/ui/preference';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
 import { ParticipationSheet } from './participation-sheet';
+import { DropTarget, seatKey } from './seat-layout';
+import { SeatPlanEditor } from './seat-plan-editor';
 import { SwipeRate } from './swipe-rate';
 
 /** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
@@ -53,13 +54,9 @@ export type ParticipationView = 'liste' | 'sitzplan';
 
 const VIEW_KEY = 'sitzordnung.mitarbeit-ansicht';
 
-/** Die gewählte Ansicht merken - ohne dass ein gesperrter Speicher stört. */
+/** Die zuletzt gewählte Ansicht - ohne Wahl der Sitzplan. */
 function readView(): ParticipationView {
-  try {
-    return localStorage.getItem(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
-  } catch {
-    return 'sitzplan';
-  }
+  return readPreference(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
 }
 
 /** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
@@ -89,23 +86,11 @@ function placePopover(rect: DOMRect): {
   return { left, top: rect.bottom + POPOVER_GAP, bottom: null };
 }
 
-function writeView(view: ParticipationView): void {
-  try {
-    localStorage.setItem(VIEW_KEY, view);
-  } catch {
-    // Dann gilt die Wahl eben nur bis zum Neuladen.
-  }
-}
-
-/** Woher ein gezogener Schüler kommt bzw. wohin er fällt. */
-type DropTarget = { kind: 'pool' } | { kind: 'seat'; row: number; column: number };
-
 /** Ein Platz im Raster, angereichert mit allem, was die Anzeige braucht. */
 export interface SeatCell {
   row: number;
   column: number;
   student: Student | null;
-  score: StudentScore | null;
   target: DropTarget;
 }
 
@@ -127,9 +112,12 @@ export interface SeatCell {
   ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
+  providers: [SeatPlanEditor],
 })
 export class CoursePage implements OnDestroy {
   private readonly store = inject(LocalStore);
+  /** Die Sitzordnungen des Kurses und die Belegung der gewählten. */
+  readonly seating = inject(SeatPlanEditor);
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
@@ -142,10 +130,6 @@ export class CoursePage implements OnDestroy {
   readonly loading = signal(true);
   readonly course = signal<Course | null>(null);
   readonly students = signal<Student[]>([]);
-  readonly plans = signal<SeatingPlan[]>([]);
-  /** Sitzordnungen derselben Klasse aus anderen Fächern - zum Übernehmen. */
-  readonly classPlans = signal<{ course: Course; plans: SeatingPlan[] }[]>([]);
-  readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
   /** Quartalsnoten für die Listenansicht. */
   readonly quarterGrades = signal<QuarterGrade[]>([]);
@@ -195,12 +179,6 @@ export class CoursePage implements OnDestroy {
   /** Sitzordnung ändern statt bewerten - im Bearbeitungsmodus oder bei offenem Schloss. */
   readonly editMode = computed(() => this.appEdit() || this.seatUnlocked());
 
-  /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
-  private readonly placement = signal<Map<string, number>>(new Map());
-
-  readonly rows = signal(5);
-  readonly columns = signal(8);
-
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   readonly fullName = fullName;
   readonly initials = initials;
@@ -215,10 +193,6 @@ export class CoursePage implements OnDestroy {
   /** Die Meldung mit „Rückgängig“ zur letzten Bewertung. */
   private undoToastId: number | null = null;
 
-  readonly activePlan = computed(
-    () => this.plans().find((p) => p.id === this.activePlanId()) ?? null,
-  );
-
   private readonly studentsById = computed(
     () => new Map(this.students().map((s) => [s.id, s] as const)),
   );
@@ -229,20 +203,18 @@ export class CoursePage implements OnDestroy {
 
   /** Das Raster, Zeile für Zeile - die Vorlage rendert direkt daraus. */
   readonly grid = computed<SeatCell[][]>(() => {
-    const placement = this.placement();
+    const placement = this.seating.placement();
     const students = this.studentsById();
-    const scores = this.scoresById();
     const result: SeatCell[][] = [];
 
-    for (let row = 0; row < this.rows(); row++) {
+    for (let row = 0; row < this.seating.rows(); row++) {
       const cells: SeatCell[] = [];
-      for (let column = 0; column < this.columns(); column++) {
-        const studentId = placement.get(`${row}:${column}`);
+      for (let column = 0; column < this.seating.columns(); column++) {
+        const studentId = placement.get(seatKey(row, column));
         cells.push({
           row,
           column,
           student: studentId ? (students.get(studentId) ?? null) : null,
-          score: studentId ? (scores.get(studentId) ?? null) : null,
           target: { kind: 'seat', row, column },
         });
       }
@@ -254,7 +226,7 @@ export class CoursePage implements OnDestroy {
 
   /** Schüler, die noch auf keinem Platz sitzen. */
   readonly unseated = computed(() => {
-    const seated = new Set(this.placement().values());
+    const seated = new Set(this.seating.placement().values());
     return this.students().filter((s) => !seated.has(s.id));
   });
 
@@ -369,15 +341,12 @@ export class CoursePage implements OnDestroy {
     try {
       const course = this.store.masterData.getCourse(courseId);
       const students = this.store.masterData.getCourseStudents(courseId);
-      const plans = this.store.seating.getSeatingPlans(courseId);
 
       this.course.set(course);
       this.quarterGrades.set(this.store.quarterGrades.getQuarterGrades(courseId));
       this.students.set(students);
-      this.plans.set(plans);
+      this.seating.load(course, students);
       this.scores.set(this.store.ratings.getScoreboard(courseId).students);
-      this.selectPlan(plans[0]?.id ?? null);
-      this.loadClassPlans(course);
       this.refreshToday();
       this.refreshLesson();
     } catch (err) {
@@ -386,345 +355,41 @@ export class CoursePage implements OnDestroy {
     this.loading.set(false);
   }
 
-  /** Lädt die Sitzordnungen der anderen Fächer derselben Klasse. */
-  private loadClassPlans(course: Course): void {
-    this.classPlans.set(
-      this.store.masterData
-        .getCourses()
-        .filter(
-          (c) =>
-            c.schoolClassId === course.schoolClassId &&
-            c.id !== course.id &&
-            c.seatingPlanCount > 0,
-        )
-        .map((c) => ({ course: c, plans: this.store.seating.getSeatingPlans(c.id) }))
-        .filter((g) => g.plans.length > 0)
-        .sort((a, b) => a.course.subjectName.localeCompare(b.course.subjectName, 'de')),
+  // --- Sitzordnung ---
+
+  /** Ein Schüler wurde per Drag and Drop auf einen Platz oder in die Liste gezogen. */
+  drop(event: CdkDragDrop<DropTarget>): void {
+    this.seating.move(
+      event.item.data as number,
+      event.previousContainer.data,
+      event.container.data,
     );
   }
 
-  selectPlan(planId: number | null): void {
-    this.activePlanId.set(planId);
-    const plan = this.plans().find((p) => p.id === planId);
-
-    if (!plan) {
-      this.placement.set(new Map());
-      return;
-    }
-
-    this.rows.set(plan.rows);
-    this.columns.set(plan.columns);
-    this.placement.set(new Map(plan.seats.map((s) => [`${s.row}:${s.column}`, s.studentId])));
-  }
-
-  // --- Sitzordnung bearbeiten ---
-
-  drop(event: CdkDragDrop<DropTarget>): void {
-    const from = event.previousContainer.data;
-    const to = event.container.data;
-    const studentId = event.item.data as number;
-
-    if (
-      from.kind === 'seat' &&
-      to.kind === 'seat' &&
-      from.row === to.row &&
-      from.column === to.column
-    ) {
-      return;
-    }
-
-    const next = new Map(this.placement());
-    const fromKey = from.kind === 'seat' ? `${from.row}:${from.column}` : null;
-
-    if (to.kind === 'pool') {
-      if (fromKey) {
-        next.delete(fromKey);
-      }
-    } else {
-      const toKey = `${to.row}:${to.column}`;
-      const occupant = next.get(toKey);
-
-      next.set(toKey, studentId);
-
-      if (fromKey) {
-        // Sitzt schon jemand auf dem Zielplatz, tauschen die beiden die Plätze.
-        if (occupant !== undefined && occupant !== studentId) {
-          next.set(fromKey, occupant);
-        } else {
-          next.delete(fromKey);
-        }
-      }
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  /** Verteilt alle noch nicht gesetzten Schüler der Reihe nach auf freie Plätze. */
-  autoFill(): void {
-    const next = new Map(this.placement());
-    const taken = new Set(next.values());
-    const queue = this.students().filter((s) => !taken.has(s.id));
-
-    for (let row = 0; row < this.rows() && queue.length; row++) {
-      for (let column = 0; column < this.columns() && queue.length; column++) {
-        const key = `${row}:${column}`;
-        if (!next.has(key)) {
-          next.set(key, queue.shift()!.id);
-        }
-      }
-    }
-
-    if (queue.length) {
-      this.toasts.show(
-        `${queue.length} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
-        'error',
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  async clearSeats(): Promise<void> {
-    if (this.placement().size === 0) {
-      return;
-    }
-
-    const confirmed = await this.confirm.ask({
-      title: 'Alle Plätze leeren?',
-      message: 'Alle Schüler wandern zurück in die Liste „Ohne Platz“.',
-      confirmLabel: 'Plätze leeren',
-      danger: true,
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    this.placement.set(new Map());
-    this.persistLayout();
-  }
-
-  /**
-   * Setzt alle Schüler neu - alphabetisch nach Nachnamen oder zufällig - und
-   * füllt das Raster Reihe für Reihe von vorn.
-   */
-  async arrange(order: 'alpha' | 'random'): Promise<void> {
-    if (this.placement().size > 0) {
-      const confirmed = await this.confirm.ask({
-        title: order === 'alpha' ? 'Alphabetisch neu setzen?' : 'Zufällig neu mischen?',
-        message: 'Die bisherige Sitzordnung wird dabei ersetzt.',
-        confirmLabel: order === 'alpha' ? 'Alphabetisch setzen' : 'Mischen',
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    const students = [...this.students()];
-    if (order === 'alpha') {
-      students.sort(byLastName);
-    } else {
-      // Fisher-Yates: jede Reihenfolge ist gleich wahrscheinlich.
-      for (let i = students.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [students[i], students[j]] = [students[j], students[i]];
-      }
-    }
-
-    const next = new Map<string, number>();
-    let index = 0;
-    for (let row = 0; row < this.rows() && index < students.length; row++) {
-      for (let column = 0; column < this.columns() && index < students.length; column++) {
-        next.set(`${row}:${column}`, students[index++].id);
-      }
-    }
-
-    const left = students.length - index;
-    if (left > 0) {
-      this.toasts.show(
-        `${left} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
-        'error',
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  changeGrid(rows: number, columns: number): void {
-    const safeRows = Math.min(20, Math.max(1, Math.round(rows) || 1));
-    const safeColumns = Math.min(20, Math.max(1, Math.round(columns) || 1));
-
-    this.rows.set(safeRows);
-    this.columns.set(safeColumns);
-
-    // Plätze außerhalb des neuen Rasters werden frei und wandern zurück in die Liste.
-    const next = new Map(this.placement());
-    let dropped = 0;
-    for (const key of [...next.keys()]) {
-      const [row, column] = key.split(':').map(Number);
-      if (row >= safeRows || column >= safeColumns) {
-        next.delete(key);
-        dropped++;
-      }
-    }
-
-    if (dropped) {
-      this.toasts.show(
-        `${dropped} ${dropped === 1 ? 'Schüler wurde' : 'Schüler wurden'} zurück in die Liste gelegt.`,
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  private persistLayout(): void {
-    const planId = this.activePlanId();
-    if (!planId) {
-      return;
-    }
-
-    const seats = [...this.placement().entries()].map(([key, studentId]) => {
-      const [row, column] = key.split(':').map(Number);
-      return { studentId, row, column };
-    });
-
-    try {
-      const layout = { rows: this.rows(), columns: this.columns(), seats };
-      this.replacePlan(this.store.seating.saveLayout(planId, layout));
-    } catch (err) {
-      this.toasts.error(err, 'Die Sitzordnung konnte nicht gespeichert werden.');
-      // Nach einem Fehler gilt wieder der zuletzt gespeicherte Stand.
-      this.selectPlan(planId);
-    }
-  }
-
-  private replacePlan(plan: SeatingPlan): void {
-    this.plans.update((list) => list.map((p) => (p.id === plan.id ? plan : p)));
-  }
-
-  // --- Sitzordnungen verwalten ---
-
-  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen oder eine neue anlegen. */
+  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen, eine neue anlegen oder eine übernehmen. */
   onPlanSelect(select: HTMLSelectElement): void {
     const value = select.value;
     if (value === 'new' || value.startsWith('copy:')) {
       // Bis die neue da ist, bleibt die bisherige gewählt.
-      select.value = String(this.activePlanId() ?? '');
+      select.value = String(this.seating.activePlanId() ?? '');
       if (value === 'new') {
         this.addPlan();
       } else {
-        this.copyPlan(Number(value.slice('copy:'.length)));
+        this.seating.copyPlan(Number(value.slice('copy:'.length)));
       }
       return;
     }
-    this.selectPlan(Number(select.value));
+    this.seating.selectPlan(Number(select.value));
   }
 
   addPlan(): void {
-    const courseId = this.courseId();
-    // Der erste freie Name „Sitzordnung n“.
-    const names = new Set(this.plans().map((p) => p.name));
-    let n = 1;
-    while (names.has(`Sitzordnung ${n}`)) {
-      n++;
-    }
-    const name = `Sitzordnung ${n}`;
-
-    try {
-      const plan = this.store.seating.createSeatingPlan(
-        courseId,
-        name,
-        this.rows(),
-        this.columns(),
-      );
-      this.plans.update((list) => [...list, plan]);
-      this.selectPlan(plan.id);
-      this.toasts.success(`„${plan.name}" wurde angelegt.`);
+    if (this.seating.addPlan()) {
       // Gleich benennen: Namensfeld markieren.
       setTimeout(() => {
         const input = this.nameInput()?.nativeElement;
         input?.focus();
         input?.select();
       });
-    } catch (err) {
-      this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.');
-    }
-  }
-
-  /** Übernimmt eine Sitzordnung aus einem anderen Fach derselben Klasse als Kopie. */
-  copyPlan(sourceId: number): void {
-    const group = this.classPlans().find((g) => g.plans.some((p) => p.id === sourceId));
-    const source = group?.plans.find((p) => p.id === sourceId);
-    if (!group || !source) {
-      return;
-    }
-
-    const courseId = this.courseId();
-    const name = `${source.name} (${group.course.subjectShortName || group.course.subjectName})`;
-    // Nur Schüler übernehmen, die es in diesem Kurs gibt.
-    const known = new Set(this.students().map((s) => s.id));
-    const seats = source.seats.filter((s) => known.has(s.studentId));
-
-    try {
-      const created = this.store.seating.createSeatingPlan(
-        courseId,
-        name,
-        source.rows,
-        source.columns,
-      );
-      const plan = this.store.seating.saveLayout(created.id, {
-        rows: source.rows,
-        columns: source.columns,
-        seats,
-      });
-      this.plans.update((list) => [...list, plan]);
-      this.selectPlan(plan.id);
-      this.toasts.success(`„${source.name}" aus ${group.course.subjectName} übernommen.`);
-    } catch (err) {
-      this.toasts.error(err, 'Die Sitzordnung konnte nicht übernommen werden.');
-    }
-  }
-
-  renamePlan(name: string): void {
-    const plan = this.activePlan();
-    if (!plan || !name.trim() || name.trim() === plan.name) {
-      return;
-    }
-
-    try {
-      this.replacePlan(
-        this.store.seating.updateSeatingPlan(plan.id, name.trim(), plan.rows, plan.columns),
-      );
-    } catch (err) {
-      this.toasts.error(err, 'Der Name konnte nicht geändert werden.');
-    }
-  }
-
-  async deletePlan(): Promise<void> {
-    const plan = this.activePlan();
-    if (
-      !plan ||
-      !(await this.confirm.ask({
-        title: `Sitzordnung „${plan.name}" löschen?`,
-        message: 'Die Plätze dieser Sitzordnung gehen verloren. Bewertungen bleiben erhalten.',
-        confirmLabel: 'Löschen',
-        danger: true,
-      }))
-    ) {
-      return;
-    }
-
-    try {
-      this.store.seating.deleteSeatingPlan(plan.id);
-      const remaining = this.plans().filter((p) => p.id !== plan.id);
-      this.plans.set(remaining);
-      this.selectPlan(remaining[0]?.id ?? null);
-      this.toasts.success('Die Sitzordnung wurde gelöscht.');
-    } catch (err) {
-      this.toasts.error(err, 'Die Sitzordnung konnte nicht gelöscht werden.');
     }
   }
 
@@ -737,7 +402,7 @@ export class CoursePage implements OnDestroy {
 
   setView(view: ParticipationView): void {
     this.view.set(view);
-    writeView(view);
+    writePreference(VIEW_KEY, view);
   }
 
   // --- Bewerten ---

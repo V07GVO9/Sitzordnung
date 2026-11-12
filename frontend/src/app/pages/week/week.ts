@@ -9,6 +9,7 @@ import { VaultService } from '../../core/persistence/vault.service';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { readPreference, writePreference } from '../../core/ui/preference';
 import { subjectHue } from '../../core/ui/subject-hue';
 
 /** Eine Zeile des Wochenplans: ein Zeitblock wie 07:45–09:15. */
@@ -175,12 +176,8 @@ export class WeekPage {
 
   /** Fällige Sicherung? „Später“ schiebt die Erinnerung um einen Tag. */
   private checkBackup(): void {
-    let snoozed = false;
-    try {
-      snoozed = localStorage.getItem(SNOOZE_KEY) === toDateKey(new Date());
-    } catch {
-      // Ohne Speicher erinnert die App eben bei jedem Öffnen.
-    }
+    // Ohne Speicher im Browser erinnert die App eben bei jedem Öffnen.
+    const snoozed = readPreference(SNOOZE_KEY) === toDateKey(new Date());
     const last = this.store.settings.getLastBackupAt();
     this.backupReminder.set(
       snoozed ? null : backupDue(last, new Date(), this.entries().length > 0),
@@ -202,11 +199,7 @@ export class WeekPage {
 
   snoozeBackup(): void {
     this.backupReminder.set(null);
-    try {
-      localStorage.setItem(SNOOZE_KEY, toDateKey(new Date()));
-    } catch {
-      // Dann eben bis zum nächsten Öffnen.
-    }
+    writePreference(SNOOZE_KEY, toDateKey(new Date()));
   }
 
   shiftWeek(step: number): void {
