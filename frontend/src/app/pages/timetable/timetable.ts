@@ -2,12 +2,18 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ApiService } from '../../core/api.service';
-import { Course, DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
+import { toTimeKey } from '../../core/logic/time';
+import { DayOfWeek, SCHOOL_DAYS, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
+import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
+
+/** Eine Zeile der Wochenübersicht: ein Zeitblock wie 08:00–09:30. */
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+}
 
 @Component({
   selector: 'app-timetable',
@@ -17,47 +23,46 @@ import { ConfirmService } from '../../core/ui/confirm.service';
   styleUrl: './timetable.scss',
 })
 export class TimetablePage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
 
-  readonly entries = signal<TimetableEntry[]>([]);
-  readonly courses = signal<Course[]>([]);
-  readonly loading = signal(true);
+  readonly entries = signal(this.store.timetable.getTimetable());
+  readonly courses = signal(this.store.masterData.getCourses());
 
   readonly days = SCHOOL_DAYS;
   readonly weekdayNames = WEEKDAY_NAMES;
 
-  readonly formCourseId = signal<number | null>(null);
+  readonly formCourseId = signal<number | null>(this.courses()[0]?.id ?? null);
   readonly formDay = signal<DayOfWeek>(1);
   readonly formStart = signal('08:00');
   readonly formEnd = signal('08:45');
   readonly formRoom = signal('');
 
   /**
-   * Alle vorkommenden Zeitschienen, nach Beginn sortiert. Sie bilden die Zeilen
+   * Alle vorkommenden Zeitblöcke, nach Beginn sortiert. Sie bilden die Zeilen
    * der Tabelle; die Uhrzeit steht dann einmal links statt in jeder Stunde.
    */
-  readonly zeitschienen = computed(() => {
-    const gesehen = new Map<string, { startTime: string; endTime: string }>();
+  readonly timeSlots = computed(() => {
+    const seen = new Map<string, TimeSlot>();
 
-    for (const eintrag of this.entries()) {
-      const schluessel = `${eintrag.startTime}-${eintrag.endTime}`;
-      if (!gesehen.has(schluessel)) {
-        gesehen.set(schluessel, { startTime: eintrag.startTime, endTime: eintrag.endTime });
+    for (const entry of this.entries()) {
+      const key = `${entry.startTime}-${entry.endTime}`;
+      if (!seen.has(key)) {
+        seen.set(key, { startTime: entry.startTime, endTime: entry.endTime });
       }
     }
 
-    return [...gesehen.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return [...seen.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
   });
 
-  /** Die Einträge nach Zeitschiene und Wochentag, für den Zugriff aus der Tabelle. */
-  private readonly raster = computed(() => {
+  /** Die Einträge nach Zeitblock und Wochentag, für den Zugriff aus der Tabelle. */
+  private readonly grid = computed(() => {
     const map = new Map<string, TimetableEntry[]>();
 
-    for (const eintrag of this.entries()) {
-      const schluessel = `${eintrag.startTime}-${eintrag.endTime}|${eintrag.dayOfWeek}`;
-      map.set(schluessel, [...(map.get(schluessel) ?? []), eintrag]);
+    for (const entry of this.entries()) {
+      const key = `${entry.startTime}-${entry.endTime}|${entry.dayOfWeek}`;
+      map.set(key, [...(map.get(key) ?? []), entry]);
     }
 
     return map;
@@ -67,59 +72,36 @@ export class TimetablePage {
    * Für die schmale Ansicht: je Wochentag die Stunden nach Uhrzeit sortiert.
    * So passt der Plan auch aufs Handy, ohne seitlich zu scrollen.
    */
-  readonly wochentage = computed(() => {
-    const eintraege = this.entries();
+  readonly weekdays = computed(() => {
+    const entries = this.entries();
 
     return this.days
       .map((day) => ({
         day,
         name: WEEKDAY_NAMES[day],
-        stunden: eintraege
-          .filter((eintrag) => eintrag.dayOfWeek === day)
+        lessons: entries
+          .filter((entry) => entry.dayOfWeek === day)
           .sort((a, b) => a.startTime.localeCompare(b.startTime)),
       }))
-      .filter((tag) => tag.stunden.length > 0);
+      .filter((weekday) => weekday.lessons.length > 0);
   });
 
   readonly today = new Date().getDay();
 
-  constructor() {
-    this.load();
-  }
-
-  private load(): void {
-    this.loading.set(true);
-    forkJoin({
-      entries: this.api.getTimetable(),
-      courses: this.api.getCourses(),
-    }).subscribe({
-      next: ({ entries, courses }) => {
-        this.entries.set(entries);
-        this.courses.set(courses);
-        this.formCourseId.set(this.formCourseId() ?? courses[0]?.id ?? null);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.toasts.error(err, 'Der Stundenplan konnte nicht geladen werden.');
-        this.loading.set(false);
-      },
-    });
-  }
-
   /** Was steht in dieser Zelle? Meist eine Stunde, in Ausnahmen mehrere. */
-  stundenIn(schiene: { startTime: string; endTime: string }, day: DayOfWeek): TimetableEntry[] {
-    return this.raster().get(`${schiene.startTime}-${schiene.endTime}|${day}`) ?? [];
+  lessonsAt(slot: TimeSlot, day: DayOfWeek): TimetableEntry[] {
+    return this.grid().get(`${slot.startTime}-${slot.endTime}|${day}`) ?? [];
   }
 
   /** Läuft diese Stunde gerade? Dann wird sie in der Tabelle hervorgehoben. */
-  laeuftGerade(entry: TimetableEntry): boolean {
-    const jetzt = new Date();
-    if (entry.dayOfWeek !== jetzt.getDay()) {
+  isRunning(entry: TimetableEntry): boolean {
+    const now = new Date();
+    if (entry.dayOfWeek !== now.getDay()) {
       return false;
     }
 
-    const uhr = `${String(jetzt.getHours()).padStart(2, '0')}:${String(jetzt.getMinutes()).padStart(2, '0')}`;
-    return entry.startTime <= uhr && uhr <= entry.endTime;
+    const time = toTimeKey(now);
+    return entry.startTime <= time && time <= entry.endTime;
   }
 
   add(): void {
@@ -129,22 +111,20 @@ export class TimetablePage {
       return;
     }
 
-    this.api
-      .createTimetableEntry({
+    try {
+      const created = this.store.timetable.createTimetableEntry({
         courseId,
         dayOfWeek: this.formDay(),
         startTime: this.formStart(),
         endTime: this.formEnd(),
         room: this.formRoom().trim() || null,
-      })
-      .subscribe({
-        next: (created) => {
-          this.entries.update((list) => [...list, created]);
-          this.formRoom.set('');
-          this.toasts.success('Die Stunde wurde eingetragen.');
-        },
-        error: (err) => this.toasts.error(err, 'Die Stunde konnte nicht eingetragen werden.'),
       });
+      this.entries.update((list) => [...list, created]);
+      this.formRoom.set('');
+      this.toasts.success('Die Stunde wurde eingetragen.');
+    } catch (err) {
+      this.toasts.error(err, 'Die Stunde konnte nicht eingetragen werden.');
+    }
   }
 
   async remove(entry: TimetableEntry): Promise<void> {
@@ -158,13 +138,13 @@ export class TimetablePage {
       return;
     }
 
-    this.api.deleteTimetableEntry(entry.id).subscribe({
-      next: () => {
-        this.entries.update((list) => list.filter((e) => e.id !== entry.id));
-        this.toasts.show('Die Stunde wurde aus dem Plan genommen.');
-      },
-      error: (err) => this.toasts.error(err, 'Die Stunde konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.timetable.deleteTimetableEntry(entry.id);
+      this.entries.update((list) => list.filter((e) => e.id !== entry.id));
+      this.toasts.show('Die Stunde wurde aus dem Plan genommen.');
+    } catch (err) {
+      this.toasts.error(err, 'Die Stunde konnte nicht gelöscht werden.');
+    }
   }
 
   /** Setzt die Endzeit nach, damit eine Stunde standardmäßig 45 Minuten dauert. */
@@ -173,10 +153,7 @@ export class TimetablePage {
 
     const [hours, minutes] = value.split(':').map(Number);
     if (Number.isFinite(hours) && Number.isFinite(minutes)) {
-      const end = new Date(2000, 0, 1, hours, minutes + 45);
-      this.formEnd.set(
-        `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
-      );
+      this.formEnd.set(toTimeKey(new Date(2000, 0, 1, hours, minutes + 45)));
     }
   }
 }

@@ -80,27 +80,27 @@
           </button>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 3 && !editMode()) {
+        @if (view() === 'sitzplan' && seating.plans().length > 3 && !editMode()) {
           <!-- Bei vielen Sitzordnungen ein Dropdown statt langer Reiter. -->
           <select
             class="plan-select"
             aria-label="Sitzordnung wählen"
-            (change)="selectPlan(+$any($event.target).value)"
+            (change)="seating.selectPlan(+$any($event.target).value)"
           >
-            @for (plan of plans(); track plan.id) {
-              <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+            @for (plan of seating.plans(); track plan.id) {
+              <option [value]="plan.id" [selected]="plan.id === seating.activePlanId()">
                 {{ plan.name }}
               </option>
             }
           </select>
-        } @else if (view() === 'sitzplan' && plans().length > 1 && !editMode()) {
+        } @else if (view() === 'sitzplan' && seating.plans().length > 1 && !editMode()) {
           <div class="tabs plan-switch" role="tablist" aria-label="Sitzordnung wählen">
-            @for (plan of plans(); track plan.id) {
+            @for (plan of seating.plans(); track plan.id) {
               <button
                 type="button"
                 role="tab"
-                [attr.aria-selected]="plan.id === activePlanId()"
-                (click)="selectPlan(plan.id)"
+                [attr.aria-selected]="plan.id === seating.activePlanId()"
+                (click)="seating.selectPlan(plan.id)"
               >
                 {{ plan.name }}
               </button>
@@ -108,7 +108,7 @@
           </div>
         }
 
-        @if (view() === 'sitzplan' && plans().length > 0 && !appEdit()) {
+        @if (view() === 'sitzplan' && seating.plans().length > 0 && !appEdit()) {
           <!-- Das Schloss: zu = Sitzplan fixiert, auf = Plätze lassen sich verschieben. -->
           <button
             class="round-btn edit-toggle"
@@ -135,9 +135,6 @@
           Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
-        @if (saving()) {
-          <span class="small">Wird übernommen …</span>
-        }
         @if (seatUnlocked()) {
           <button class="btn small" type="button" (click)="toggleMode(false)">
             <app-icon name="lock" /> Sperren
@@ -161,7 +158,7 @@
         (openStudent)="openSheet($event)"
       />
     } @else {
-      @if (plans().length === 0) {
+      @if (seating.plans().length === 0) {
         <div class="empty">
           <p>Für diesen Kurs gibt es noch keine Sitzordnung.</p>
           <p class="small">Mitarbeit lässt sich auch ohne Sitzplan in der Liste eintragen.</p>
@@ -173,7 +170,7 @@
               <button class="btn primary" type="button" (click)="addPlan()">
                 <app-icon name="plus" /> Sitzordnung anlegen
               </button>
-              @if (classPlans().length) {
+              @if (seating.classPlans().length) {
                 <select
                   #copySelect
                   class="copy-select"
@@ -181,7 +178,7 @@
                   (change)="onPlanSelect(copySelect)"
                 >
                   <option value="" selected disabled>Aus anderem Fach übernehmen …</option>
-                  @for (group of classPlans(); track group.course.id) {
+                  @for (group of seating.classPlans(); track group.course.id) {
                     <optgroup [label]="group.course.subjectName">
                       @for (plan of group.plans; track plan.id) {
                         <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
@@ -202,14 +199,14 @@
                 Sitzordnung
                 <select #planSelect (change)="onPlanSelect(planSelect)">
                   <optgroup [label]="course()!.subjectName">
-                    @for (plan of plans(); track plan.id) {
-                      <option [value]="plan.id" [selected]="plan.id === activePlanId()">
+                    @for (plan of seating.plans(); track plan.id) {
+                      <option [value]="plan.id" [selected]="plan.id === seating.activePlanId()">
                         {{ plan.name }}
                       </option>
                     }
                   </optgroup>
                   <!-- Sitzordnungen derselben Klasse aus anderen Fächern: Auswahl übernimmt eine Kopie. -->
-                  @for (group of classPlans(); track group.course.id) {
+                  @for (group of seating.classPlans(); track group.course.id) {
                     <optgroup [label]="group.course.subjectName + ' – übernehmen'">
                       @for (plan of group.plans; track plan.id) {
                         <option [value]="'copy:' + plan.id">{{ plan.name }}</option>
@@ -225,8 +222,8 @@
                 <input
                   #nameInput
                   type="text"
-                  [value]="activePlan()?.name ?? ''"
-                  (change)="renamePlan($any($event.target).value)"
+                  [value]="seating.activePlan()?.name ?? ''"
+                  (change)="seating.renamePlan($any($event.target).value)"
                 />
               </label>
               <label>
@@ -235,8 +232,8 @@
                   type="number"
                   min="1"
                   max="20"
-                  [value]="rows()"
-                  (change)="changeGrid(+$any($event.target).value, columns())"
+                  [value]="seating.rows()"
+                  (change)="seating.changeGrid(+$any($event.target).value, seating.columns())"
                 />
               </label>
               <label>
@@ -245,8 +242,8 @@
                   type="number"
                   min="1"
                   max="20"
-                  [value]="columns()"
-                  (change)="changeGrid(rows(), +$any($event.target).value)"
+                  [value]="seating.columns()"
+                  (change)="seating.changeGrid(seating.rows(), +$any($event.target).value)"
                 />
               </label>
             </div>
@@ -255,7 +252,7 @@
               <button
                 class="btn small"
                 type="button"
-                (click)="autoFill()"
+                (click)="seating.autoFill()"
                 title="Freie Plätze der Reihe nach füllen"
               >
                 <app-icon name="wand-sparkles" /> Auffüllen
@@ -263,7 +260,7 @@
               <button
                 class="btn small"
                 type="button"
-                (click)="arrange('alpha')"
+                (click)="seating.arrange('alpha')"
                 title="Alle nach Nachnamen von vorn nach hinten setzen"
               >
                 <app-icon name="arrow-down-a-z" /> Alphabetisch
@@ -271,15 +268,15 @@
               <button
                 class="btn small"
                 type="button"
-                (click)="arrange('random')"
+                (click)="seating.arrange('random')"
                 title="Alle zufällig neu setzen"
               >
                 <app-icon name="shuffle" /> Zufällig
               </button>
-              <button class="btn small" type="button" (click)="clearSeats()">
+              <button class="btn small" type="button" (click)="seating.clearSeats()">
                 <app-icon name="eraser" /> Leeren
               </button>
-              <button class="btn small danger" type="button" (click)="deletePlan()">
+              <button class="btn small danger" type="button" (click)="seating.deletePlan()">
                 <app-icon name="trash-2" /> Löschen
               </button>
             </div>
@@ -291,7 +288,7 @@
           <section class="room card">
             <div class="board">Tafel</div>
 
-            <div class="grid" [style.--cols]="columns()">
+            <div class="grid" [style.--cols]="seating.columns()">
               @for (row of grid(); track $index) {
                 @for (cell of row; track cell.row + ':' + cell.column) {
                   <div

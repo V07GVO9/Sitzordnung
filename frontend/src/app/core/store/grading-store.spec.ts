@@ -268,6 +268,22 @@ describe('LocalStore - Notenbogen', () => {
     expect(store.gradeBook.getGradeReports(course.id).length).toBe(1);
   });
 
+  it('stellt die Bögen zusammen und vermerkt sie in einem Schritt', () => {
+    const { store, course, anna, ben } = setup();
+
+    const reports = store.gradeBook.issueReports(course.id, [anna.id, ben.id], null);
+
+    expect(reports.map((r) => r.firstName)).toEqual(['Anna', 'Ben']);
+    expect(store.gradeBook.getGradeReports(course.id).length).toBe(2);
+  });
+
+  it('gibt ohne ausgewählten Schüler keinen Bogen aus', () => {
+    const { store, course } = setup();
+
+    expect(() => store.gradeBook.issueReports(course.id, [], null)).toThrowError(AppError);
+    expect(store.gradeBook.getGradeReports(course.id)).toEqual([]);
+  });
+
   it('räumt beim Löschen eines Schülers seine Noten mit weg', () => {
     const { store, course, anna } = setup();
     const test = store.assessments.createAssessment(course.id, {

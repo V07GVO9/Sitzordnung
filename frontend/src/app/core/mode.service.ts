@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { ConfirmService } from './ui/confirm.service';
+import { readPreference, writePreference } from './ui/preference';
 
 /**
  * Die App kennt zwei Arbeitsweisen:
@@ -53,19 +54,11 @@ export class ModeService {
 
   private set(mode: AppMode): void {
     this.mode.set(mode);
-    try {
-      localStorage.setItem(STORAGE_KEY, mode);
-    } catch {
-      // Ohne Speicher gilt der Modus eben nur bis zum Neuladen.
-    }
+    writePreference(STORAGE_KEY, mode);
   }
 
   private readStored(): AppMode {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'bearbeiten' ? 'bearbeiten' : 'unterricht';
-    } catch {
-      return 'unterricht';
-    }
+    return readPreference(STORAGE_KEY) === 'bearbeiten' ? 'bearbeiten' : 'unterricht';
   }
 }
 

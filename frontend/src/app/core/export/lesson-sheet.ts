@@ -7,11 +7,15 @@
 
 import { LessonSheet, LessonSheetCell, ratingSymbol } from '../models';
 import { formatGrade } from '../logic/assessment.logic';
-import { escapeHtml } from './report';
 import { formatDateGerman } from '../logic/time';
-
-/** So viele Tage passen lesbar nebeneinander; danach beginnt ein neuer Block. */
-const DATES_PER_BLOCK = 20;
+import {
+  dateBlocks,
+  dateHeaderCell,
+  escapeHtml,
+  nameCell,
+  periodText,
+  printDocument,
+} from './print-document';
 
 function cell(c: LessonSheetCell): string {
   if (c.override) {
@@ -33,22 +37,17 @@ function cell(c: LessonSheetCell): string {
   return `<td class="num">${formatGrade(c.autoGrade, 1)}<small>${ratingSymbol(c.value)}</small></td>`;
 }
 
-function block(sheet: LessonSheet, start: number, withAverage: boolean): string {
-  const dates = sheet.dates.slice(start, start + DATES_PER_BLOCK);
-  const head = dates
-    .map(
-      (d) =>
-        `<th class="date${d.rated ? '' : ' unrated'}"><span>${formatDateGerman(d.date).slice(0, 6)}</span></th>`,
-    )
+/** Die Tabelle für die Tage `start` bis `end` - der letzte Block bekommt den Durchschnitt. */
+function block(sheet: LessonSheet, start: number, end: number, withAverage: boolean): string {
+  const head = sheet.dates
+    .slice(start, end)
+    .map((d) => dateHeaderCell(d.date, d.rated ? '' : ' unrated'))
     .join('');
 
   const rows = sheet.students.map((s) => {
-    const cells = s.cells
-      .slice(start, start + DATES_PER_BLOCK)
-      .map(cell)
-      .join('');
+    const cells = s.cells.slice(start, end).map(cell).join('');
     const avg = withAverage ? `<td class="num avg">${formatGrade(s.average, 2)}</td>` : '';
-    return `<tr><td class="name"><strong>${escapeHtml(s.lastName)}</strong>, ${escapeHtml(s.firstName)}</td>${cells}${avg}</tr>`;
+    return `<tr>${nameCell(s)}${cells}${avg}</tr>`;
   });
 
   return `
@@ -59,10 +58,7 @@ function block(sheet: LessonSheet, start: number, withAverage: boolean): string 
 }
 
 function page(sheet: LessonSheet, issued: string): string {
-  const period =
-    sheet.from && sheet.to
-      ? `${formatDateGerman(sheet.from)} – ${formatDateGerman(sheet.to)}`
-      : 'gesamter Zeitraum';
+  const period = periodText(sheet.from, sheet.to);
 
   let body: string;
   if (sheet.dates.length === 0) {
@@ -70,11 +66,7 @@ function page(sheet: LessonSheet, issued: string): string {
   } else if (sheet.students.length === 0) {
     body = '<p class="muted">Dieser Klasse sind keine Schüler zugeordnet.</p>';
   } else {
-    const blocks: string[] = [];
-    for (let start = 0; start < sheet.dates.length; start += DATES_PER_BLOCK) {
-      blocks.push(block(sheet, start, start + DATES_PER_BLOCK >= sheet.dates.length));
-    }
-    body = blocks.join('');
+    body = dateBlocks(sheet.dates.length, (start, end, isLast) => block(sheet, start, end, isLast));
   }
 
   const unrated = sheet.dates.filter((d) => !d.rated).length;
@@ -104,21 +96,7 @@ function page(sheet: LessonSheet, issued: string): string {
   </section>`;
 }
 
-/** Das komplette Dokument, je Kurs eine Druckseite. */
-export function renderLessonSheets(sheets: LessonSheet[], issued: string): string {
-  const title =
-    sheets.length === 1
-      ? `Noten je Stunde ${sheets[0].schoolClassName} ${sheets[0].subjectName}`
-      : 'Noten je Stunde – alle Kurse';
-
-  return `<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)}</title>
-<style>
-  @page { size: A4 landscape; margin: 10mm; }
+const STYLES = `  @page { size: A4 landscape; margin: 10mm; }
   * { box-sizing: border-box; }
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c2430; margin: 0; background: #f2f4f7; }
   .sheet { background: #fff; max-width: 72rem; margin: 1.5rem auto; padding: 1.5rem; border-radius: 0.5rem; overflow-x: auto; }
@@ -152,10 +130,18 @@ export function renderLessonSheets(sheets: LessonSheet[], issued: string): strin
     table { page-break-inside: auto; }
     tr { page-break-inside: avoid; }
     th, .avg, .unrated-key { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
-</style>
-</head>
-<body>${sheets.map((s) => page(s, issued)).join('')}
-</body>
-</html>`;
+  }`;
+
+/** Das komplette Dokument, je Kurs eine Druckseite. */
+export function renderLessonSheets(sheets: LessonSheet[], issued: string): string {
+  const title =
+    sheets.length === 1
+      ? `Noten je Stunde ${sheets[0].schoolClassName} ${sheets[0].subjectName}`
+      : 'Noten je Stunde – alle Kurse';
+
+  return printDocument(
+    title,
+    STYLES,
+    sheets.map((s) => page(s, issued)),
+  );
 }

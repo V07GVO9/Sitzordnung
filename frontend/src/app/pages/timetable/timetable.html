@@ -104,7 +104,7 @@
     </section>
 
     <section class="card">
-      @if (zeitschienen().length === 0) {
+      @if (timeSlots().length === 0) {
         <div class="empty">
           <p>Im Stundenplan steht noch nichts.</p>
           <p class="muted">
@@ -117,17 +117,17 @@
       } @else {
         <!-- Schmale Bildschirme: ein Block je Wochentag, nichts scrollt seitlich. -->
         <div class="tagesliste">
-          @for (tag of wochentage(); track tag.day) {
-            <section class="tag" [class.heute]="tag.day === today">
+          @for (weekday of weekdays(); track weekday.day) {
+            <section class="tag" [class.heute]="weekday.day === today">
               <h3>
-                {{ tag.name }}
-                @if (tag.day === today) {
+                {{ weekday.name }}
+                @if (weekday.day === today) {
                   <span class="badge today">heute</span>
                 }
               </h3>
 
-              @for (entry of tag.stunden; track entry.id) {
-                <div class="stunde" [class.jetzt]="laeuftGerade(entry)">
+              @for (entry of weekday.lessons; track entry.id) {
+                <div class="stunde" [class.jetzt]="isRunning(entry)">
                   <span class="zeit">
                     <span class="von">{{ entry.startTime }}</span>
                     <span class="bis">{{ entry.endTime }}</span>
@@ -164,17 +164,17 @@
               </tr>
             </thead>
             <tbody>
-              @for (schiene of zeitschienen(); track schiene.startTime + schiene.endTime) {
+              @for (slot of timeSlots(); track slot.startTime + slot.endTime) {
                 <tr>
                   <th class="zeitspalte" scope="row">
-                    <span class="von">{{ schiene.startTime }}</span>
-                    <span class="bis">{{ schiene.endTime }}</span>
+                    <span class="von">{{ slot.startTime }}</span>
+                    <span class="bis">{{ slot.endTime }}</span>
                   </th>
 
                   @for (day of days; track day) {
                     <td [class.heute]="day === today">
-                      @for (entry of stundenIn(schiene, day); track entry.id) {
-                        <div class="stunde" [class.jetzt]="laeuftGerade(entry)">
+                      @for (entry of lessonsAt(slot, day); track entry.id) {
+                        <div class="stunde" [class.jetzt]="isRunning(entry)">
                           <a
                             class="stunde-text"
                             [routerLink]="['/kurs', entry.courseId]"

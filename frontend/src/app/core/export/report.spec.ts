@@ -1,7 +1,8 @@
 /** Notenbogen als HTML. */
 
 import { StudentReport } from '../models';
-import { escapeHtml, renderReports } from './report';
+import { escapeHtml } from './print-document';
+import { renderReports } from './report';
 import { renderLessonSheets } from './lesson-sheet';
 
 const report: StudentReport = {

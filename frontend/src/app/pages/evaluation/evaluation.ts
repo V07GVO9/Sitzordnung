@@ -12,22 +12,25 @@ import {
 import { ActiveCourseService } from '../../core/active-course.service';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
   AppSettings,
   CourseScoreboard,
   DateRange,
+  ExportFile,
   GradeScale,
   GradeScaleEntry,
 } from '../../core/models';
 import { formatGrade } from '../../core/logic/assessment.logic';
-import { FilePickerCancelled, isNativeApp } from '../../core/persistence/file-system';
+import {
+  FilePickerCancelled,
+  downloadExport,
+  isNativeApp,
+} from '../../core/persistence/file-system';
 import { OneDriveService } from '../../core/persistence/onedrive.service';
 import { isStrongPassword } from '../../core/persistence/password-policy';
 import { VaultService } from '../../core/persistence/vault.service';
+import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -44,7 +47,7 @@ const TABS: EvaluationTab[] = ['punkte', 'noten', 'einstellungen', 'datei'];
   styleUrl: './evaluation.scss',
 })
 export class EvaluationPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly vault = inject(VaultService);
@@ -83,7 +86,7 @@ export class EvaluationPage {
   readonly scaleEntries = signal<GradeScaleEntry[]>([]);
   readonly scaleIsCourseSpecific = signal(false);
   readonly loadedScale = signal<GradeScale | null>(null);
-  readonly settings = signal<AppSettings | null>(null);
+  readonly settings = signal(this.store.settings.getSettings());
 
   /** Die Stufen absteigend - so liest sich ein Notenschlüssel. */
   readonly sortedEntries = computed(() =>
@@ -95,16 +98,7 @@ export class EvaluationPage {
   }
 
   constructor() {
-    forkJoin({
-      scale: this.api.getGlobalGradeScale().pipe(catchError(() => of(null))),
-      settings: this.api.getSettings().pipe(catchError(() => of(null))),
-    }).subscribe({
-      next: ({ scale, settings }) => {
-        this.applyScale(scale);
-        this.settings.set(settings);
-      },
-      error: (err) => this.toasts.error(err, 'Die Auswertung konnte nicht geladen werden.'),
-    });
+    this.applyScale(this.readScale(false));
 
     effect(() => {
       const courseId = this.selectedCourseId();
@@ -119,10 +113,11 @@ export class EvaluationPage {
       return;
     }
 
-    this.api.getScoreboard(courseId, this.range).subscribe({
-      next: (board) => this.scoreboard.set(board),
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
-    });
+    try {
+      this.scoreboard.set(this.store.ratings.getScoreboard(courseId, this.range));
+    } catch (err) {
+      this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.');
+    }
   }
 
   /** Mittelwert mit einer Nachkommastelle, etwa 0,7 - ohne Unterricht ein Strich. */
@@ -152,16 +147,21 @@ export class EvaluationPage {
     this.scaleEntries.set(scale ? scale.entries.map((e) => ({ ...e })) : []);
   }
 
+  /** Der Schlüssel des Kurses oder der allgemeine - null, wenn keiner hinterlegt ist. */
+  private readScale(courseSpecific: boolean): GradeScale | null {
+    const courseId = this.selectedCourseId();
+    try {
+      return courseSpecific && courseId
+        ? this.store.gradeScales.getCourseGradeScale(courseId)
+        : this.store.gradeScales.getGlobalGradeScale();
+    } catch {
+      return null;
+    }
+  }
+
   switchScaleTarget(courseSpecific: boolean): void {
     this.scaleIsCourseSpecific.set(courseSpecific);
-
-    const courseId = this.selectedCourseId();
-    const request =
-      courseSpecific && courseId
-        ? this.api.getCourseGradeScale(courseId)
-        : this.api.getGlobalGradeScale();
-
-    request.pipe(catchError(() => of(null))).subscribe((scale) => this.applyScale(scale));
+    this.applyScale(this.readScale(courseSpecific));
   }
 
   addScaleEntry(): void {
@@ -197,19 +197,15 @@ export class EvaluationPage {
     const input = { name: this.scaleName().trim() || 'Notenschlüssel', entries };
     const courseId = this.selectedCourseId();
 
-    const request =
-      this.scaleIsCourseSpecific() && courseId
-        ? this.api.saveCourseGradeScale(courseId, input)
-        : this.api.saveGlobalGradeScale(input);
-
-    request.subscribe({
-      next: (scale) => {
-        this.applyScale(scale);
-        this.toasts.success('Der Notenschlüssel wurde gespeichert.');
-        this.refreshScoreboard();
-      },
-      error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht gespeichert werden.'),
-    });
+    try {
+      // Ohne Kurs (null) gilt der Schlüssel für alle Kurse.
+      const target = this.scaleIsCourseSpecific() && courseId ? courseId : null;
+      this.applyScale(this.store.gradeScales.saveGradeScale(target, input));
+      this.toasts.success('Der Notenschlüssel wurde gespeichert.');
+      this.refreshScoreboard();
+    } catch (err) {
+      this.toasts.error(err, 'Der Notenschlüssel konnte nicht gespeichert werden.');
+    }
   }
 
   async deleteCourseScale(): Promise<void> {
@@ -226,27 +222,23 @@ export class EvaluationPage {
       return;
     }
 
-    this.api.deleteCourseGradeScale(courseId).subscribe({
-      next: () => {
-        this.toasts.success('Für diesen Kurs gilt wieder der allgemeine Notenschlüssel.');
-        this.switchScaleTarget(false);
-        this.refreshScoreboard();
-      },
-      error: (err) => this.toasts.error(err, 'Der Notenschlüssel konnte nicht entfernt werden.'),
-    });
+    try {
+      this.store.gradeScales.deleteCourseGradeScale(courseId);
+      this.toasts.success('Für diesen Kurs gilt wieder der allgemeine Notenschlüssel.');
+      this.switchScaleTarget(false);
+      this.refreshScoreboard();
+    } catch (err) {
+      this.toasts.error(err, 'Der Notenschlüssel konnte nicht entfernt werden.');
+    }
   }
 
   saveSettings(partial: Partial<AppSettings>): void {
-    const current = this.settings() || { toleranceMinutes: 0, allowRatingOutsideLesson: false };
-    const updated = { ...current, ...partial };
-
-    this.api.saveSettings(updated).subscribe({
-      next: (settings) => {
-        this.settings.set(settings);
-        this.toasts.success('Einstellungen gespeichert.');
-      },
-      error: (err) => this.toasts.error(err, 'Einstellungen konnten nicht gespeichert werden.'),
-    });
+    try {
+      this.settings.set(this.store.settings.saveSettings({ ...this.settings(), ...partial }));
+      this.toasts.success('Einstellungen gespeichert.');
+    } catch (err) {
+      this.toasts.error(err, 'Einstellungen konnten nicht gespeichert werden.');
+    }
   }
 
   // --- Datenbestand ---
@@ -318,26 +310,36 @@ export class EvaluationPage {
   // --- Export ---
 
   /** Baut die CSV-Datei im Browser und legt sie in den Download-Ordner. */
-  exportCsv(allCourses: boolean): void {
-    this.api.exportCsv(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
-      next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
-      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
-    });
+  exportCsv(allCourses: boolean): Promise<void> {
+    return this.export('Die CSV-Datei wurde erzeugt.', () =>
+      this.store.exports.exportSummary(allCourses ? null : this.selectedCourseId(), this.range),
+    );
   }
 
   /** Einzelbewertungen im Querformat: Schüler in Zeilen, Bewertungstage in Spalten. */
-  exportRatings(): void {
-    this.api.exportRatings(this.selectedCourseId(), this.range).subscribe({
-      next: () => this.toasts.success('Die Einzelbewertungen wurden erzeugt.'),
-      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
-    });
+  exportRatings(): Promise<void> {
+    return this.export('Die Einzelbewertungen wurden erzeugt.', () =>
+      this.store.exports.exportRatings(this.selectedCourseId(), this.range),
+    );
   }
 
   /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
-  exportLessonSheets(allCourses: boolean): void {
-    this.api.exportLessonSheets(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
-      next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),
-      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
-    });
+  exportLessonSheets(allCourses: boolean): Promise<void> {
+    return this.export('Die Übersicht wurde erzeugt.', () =>
+      this.store.exports.exportLessonSheets(
+        allCourses ? null : this.selectedCourseId(),
+        this.range,
+      ),
+    );
+  }
+
+  /** Erzeugt eine Exportdatei, bietet sie an und meldet Erfolg oder Fehler. */
+  private async export(done: string, create: () => ExportFile): Promise<void> {
+    try {
+      await downloadExport(create());
+      this.toasts.success(done);
+    } catch (err) {
+      this.toasts.error(err, 'Der Export ist fehlgeschlagen.');
+    }
   }
 }

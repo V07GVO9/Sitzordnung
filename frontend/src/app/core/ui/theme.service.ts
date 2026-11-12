@@ -1,4 +1,5 @@
 import { Injectable, effect, signal } from '@angular/core';
+import { readPreference, writePreference } from './preference';
 
 /** Hell, dunkel oder wie im Betriebssystem eingestellt. */
 export type ThemeChoice = 'system' | 'light' | 'dark';
@@ -25,11 +26,7 @@ export class ThemeService {
         root.setAttribute('data-theme', choice);
       }
 
-      try {
-        localStorage.setItem(STORAGE_KEY, choice);
-      } catch {
-        // Ohne Speicher (privates Fenster) gilt die Wahl nur bis zum Neuladen.
-      }
+      writePreference(STORAGE_KEY, choice);
     });
   }
 
@@ -41,14 +38,7 @@ export class ThemeService {
 }
 
 function readChoice(): ThemeChoice {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
-    }
-  } catch {
-    // Kein Zugriff auf den Speicher - dann gilt die Systemeinstellung.
-  }
-
-  return 'system';
+  const stored = readPreference(STORAGE_KEY);
+  // Ohne gespeicherte Wahl gilt die Systemeinstellung.
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
 }

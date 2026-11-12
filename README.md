@@ -251,7 +251,6 @@ den Browser findet Karma über die Umgebungsvariable `CHROME_BIN`.
 frontend/
   src/app/
     core/
-      api.service.ts     Schnittstelle für die Seiten (früher HTTP, jetzt lokal)
       models.ts          Datenstrukturen der Oberfläche
       store/             Der Datenbestand im Speicher
         database.ts        Aufbau des Bestands
@@ -268,7 +267,8 @@ frontend/
         assessment.logic.ts  Notenberechnung: Leistungsnachweise, Mitarbeit, Gesamtnote
         quarter.logic.ts     Quartale und Schuljahr
         school-calendar.ts   Feiertage und Ferien
-      export/            CSV und druckfertiges HTML (Notenbogen, Übersichten)
+      export/            CSV und druckfertiges HTML (Notenbogen, Übersichten);
+                         print-document.ts ist deren gemeinsames Gerüst
       import/            Stundenplan (ICS), Mitarbeitsübersicht (PDF), Fotos
       persistence/       Ablage des Bestands
         vault-crypto.ts    Ver- und Entschlüsselung der Datei
@@ -279,11 +279,20 @@ frontend/
       ui/                Gemeinsame Bausteine: Symbole, Meldungen, Dunkelmodus,
                          Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
-    pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Noten, Verwaltung,
-                         Stundenplan, Auswertung
+    pages/               Je Seite ein Ordner: Wochenplan, Kurs, Noten, Verwaltung,
+                         Stundenplan, Auswertung, Einrichtung, Schuljahreswechsel
+      course/              Kursseite (bewerten), dazu seat-plan-editor.ts
+                           (Sitzordnungen verwalten) und seat-layout.ts
+                           (Belegung als reine Funktionen)
+      grades/              Notenseite: grades.ts ist der Kopf, jeder Reiter
+                           eine eigene Komponente (*-tab.ts)
 backend/
   Sitzordnung.Host/      Liefert die gebauten Dateien aus - sonst nichts
 ```
+
+Die Seiten rufen den Datenspeicher direkt und synchron auf, etwa
+`store.ratings.rate(...)`. Eine Zwischenschicht mit Observables gibt es nicht
+mehr - sie stammte aus der Zeit, als hinter der Oberfläche ein Server stand.
 
 ### Datenmodell in Kürze
 

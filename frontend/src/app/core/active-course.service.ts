@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { ApiService } from './api.service';
 import { ModeService } from './mode.service';
 import { Course } from './models';
 import { LocalStore } from './store/local-store';
@@ -12,15 +11,11 @@ import { LocalStore } from './store/local-store';
  */
 @Injectable({ providedIn: 'root' })
 export class ActiveCourseService {
-  private readonly api = inject(ApiService);
   private readonly store = inject(LocalStore);
 
   readonly course = signal<Course | null>(null);
   readonly courseId = computed(() => this.course()?.id ?? null);
   readonly hasCourse = computed(() => this.course() !== null);
-
-  /** Zählt die Anfragen mit, damit eine verspätete Antwort kein Fach zurückholt. */
-  private request = 0;
 
   constructor() {
     // Ein anderer Bestand oder ein gelöschter Kurs: das Fach neu nachschlagen.
@@ -47,16 +42,16 @@ export class ActiveCourseService {
 
   /** Kein Fach mehr aktiv - etwa sobald der Wochenplan offen ist. */
   clear(): void {
-    this.request++;
     this.course.set(null);
   }
 
   private load(courseId: number): void {
-    const request = ++this.request;
-    this.api.getCourse(courseId).subscribe({
-      next: (course) => request === this.request && this.course.set(course),
-      error: () => request === this.request && this.course.set(null),
-    });
+    try {
+      this.course.set(this.store.masterData.getCourse(courseId));
+    } catch {
+      // Den Kurs gibt es nicht (mehr) - dann ist kein Fach aktiv.
+      this.course.set(null);
+    }
   }
 }
 
