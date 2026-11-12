@@ -10,14 +10,13 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { formatGrade, parseGrade } from '../../core/logic/assessment.logic';
+import { formatGrade } from '../../core/logic/assessment.logic';
 import { formatDateGerman, toDateKey } from '../../core/logic/time';
 import {
   AREA_LABELS,
   Assessment,
   AssessmentDetail,
   AssessmentInput,
-  AssessmentResultInput,
   Course,
   GradeBook,
   ResultStatus,
@@ -25,17 +24,8 @@ import {
 } from '../../core/models';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
+import { collectResults, ResultRow } from './assessment-results';
 import { GradesParticipationImport } from './participation-import';
-
-/** Eine Zeile der Eingabetabelle - Punkte und Note als Text, wie getippt. */
-interface ResultRow {
-  studentId: number;
-  name: string;
-  status: ResultStatus;
-  points: string;
-  grade: string;
-  comment: string;
-}
 
 /** Ein Leistungsnachweis im Formular. */
 interface AssessmentForm {
@@ -200,34 +190,6 @@ export class GradesAssessmentsTab {
     );
   }
 
-  /** Wandelt die Eingabetabelle in Ergebnisse um - oder meldet die erste unbrauchbare Zeile. */
-  private collectResults(): AssessmentResultInput[] {
-    const results: AssessmentResultInput[] = [];
-
-    for (const row of this.resultRows()) {
-      const grade = parseGrade(row.grade);
-      if (Number.isNaN(grade)) {
-        throw new Error(`Die Note für ${row.name} ist keine Note zwischen 1,0 und 6,0.`);
-      }
-
-      const pointsText = row.points.trim().replace(',', '.');
-      const points = pointsText === '' ? null : Number(pointsText);
-      if (points !== null && !Number.isFinite(points)) {
-        throw new Error(`Die Punkte für ${row.name} sind keine Zahl.`);
-      }
-
-      results.push({
-        studentId: row.studentId,
-        points,
-        grade,
-        status: row.status,
-        comment: row.comment.trim() || null,
-      });
-    }
-
-    return results;
-  }
-
   saveAssessment(): void {
     const detail = this.detail();
     if (!detail) {
@@ -236,7 +198,7 @@ export class GradesAssessmentsTab {
 
     let results;
     try {
-      results = this.collectResults();
+      results = collectResults(this.resultRows());
     } catch (error) {
       this.toasts.error(error);
       return;

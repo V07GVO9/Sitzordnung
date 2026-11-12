@@ -8,6 +8,13 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 12.11.2026
+
+**Behoben**
+- **Leistungsnachweise:** Beim Speichern mit einer ungültigen Note (z. B. 9)
+  oder unlesbaren Punkten (z. B. „abc“) nennt die Meldung jetzt den Schüler und
+  den Fehler statt nur „Es ist ein Fehler aufgetreten.“
+
 ## 10.11.2026 – Version 1.0.0 (erstes Release)
 
 **Geändert**
