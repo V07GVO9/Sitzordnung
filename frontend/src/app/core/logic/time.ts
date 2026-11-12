@@ -40,6 +40,12 @@ export function formatDateGerman(dateKey: string): string {
   return `${day}.${month}.${year}`;
 }
 
+/** Ein Zeitpunkt (ISO-8601) als `31.08.2026 08:15` in Ortszeit. */
+export function formatDateTimeGerman(iso: string): string {
+  const date = new Date(iso);
+  return `${formatDateGerman(toDateKey(date))} ${toTimeKey(date)}`;
+}
+
 /**
  * Liefert die aktuelle Zeit. In Tests lässt sich die Uhr fest einstellen -
  * das war früher die Aufgabe von IClock im Backend.

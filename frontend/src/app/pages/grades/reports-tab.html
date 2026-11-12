@@ -1,0 +1,76 @@
+@if (active()) {
+  @let b = book();
+  <section class="card">
+    <h2>Notenbögen für Schüler</h2>
+    <p class="muted small">
+      Jeder Schüler bekommt einen eigenen Bogen mit seinen Noten, dem aktuellen Stand und dem Datum.
+      Nur freigegebene Leistungsnachweise erscheinen. Bitte einzeln aushändigen oder einzeln über
+      Moodle/Teams verschicken - nie als Klassenliste.
+    </p>
+    <div class="actions">
+      <button class="btn small" type="button" (click)="selectAllForReport(true)">Alle</button>
+      <button class="btn small" type="button" (click)="selectAllForReport(false)">Keinen</button>
+    </div>
+    <div class="checks">
+      @for (s of b.students; track s.studentId) {
+        <label class="check">
+          <input
+            type="checkbox"
+            [checked]="reportSelection().has(s.studentId)"
+            (change)="toggleReportStudent(s.studentId, $any($event.target).checked)"
+          />
+          {{ s.lastName }}, {{ s.firstName }}
+          <span class="muted small">{{ formatGrade(s.overall) }}</span>
+        </label>
+      }
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="button" (click)="printReports()">
+        Drucken / als PDF speichern
+      </button>
+      <button class="btn" type="button" (click)="downloadReports()">
+        Je Schüler als HTML-Datei
+      </button>
+    </div>
+    <p class="muted small">
+      Jede Ausgabe wird mit dem damaligen Stand vermerkt. Zeitraum:
+      {{ period()?.name ?? 'Gesamter Zeitraum' }}.
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>Ausgegebene Notenbögen</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ausgegeben</th>
+            <th>Schüler</th>
+            <th>Zeitraum</th>
+            <th class="num">Schriftl.</th>
+            <th class="num">Mündl.</th>
+            <th class="num">Gesamt</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of reports(); track r.id) {
+            <tr>
+              <td>{{ formatDateTime(r.issuedAt) }}</td>
+              <td>{{ r.studentName }}</td>
+              <td>{{ r.periodName ?? 'Gesamter Zeitraum' }}</td>
+              <td class="num">{{ formatGrade(r.written) }}</td>
+              <td class="num">{{ formatGrade(r.oral) }}</td>
+              <td class="num">
+                <strong>{{ formatGrade(r.overall) }}</strong>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="muted">Noch keine Notenbögen ausgegeben.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}

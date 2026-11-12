@@ -1,0 +1,244 @@
+@if (active()) {
+  @let b = book();
+  @if (schemeDraft(); as draft) {
+    <section class="card">
+      <h2>Bewertungsschema · {{ b.subjectName }}</h2>
+      @if (b.scheme.isDefault) {
+        <div class="banner warn small">
+          Für diesen Kurs ist noch kein Schema gespeichert - angezeigt wird der Vorschlag.
+          Gewichtung und Schlüssel bitte mit den Beschlüssen der Bildungsgangkonferenz abgleichen.
+        </div>
+      }
+
+      <h3>Gewichtung der Bereiche</h3>
+      <div class="filter">
+        <label>
+          Schriftlich (%)
+          <input
+            class="short"
+            type="number"
+            min="0"
+            max="100"
+            [ngModel]="draft.writtenPercent"
+            (ngModelChange)="patchScheme({ writtenPercent: toNumber($event) })"
+            name="writtenPercent"
+          />
+        </label>
+        <span class="muted">Mündlich/sonstig: {{ 100 - draft.writtenPercent }} %</span>
+      </div>
+
+      <h3>Arten von Leistungsnachweisen</h3>
+      <p class="muted small">
+        Jede Einzelnote zählt mit dem Gewicht ihrer Art. Beispiel: Klassenarbeit 2, Test 1 - eine
+        Klassenarbeit zählt doppelt so viel wie ein Test.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Bezeichnung</th>
+              <th>Bereich</th>
+              <th class="num">Gewicht</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of draft.types; track t.key; let i = $index) {
+              <tr>
+                <td>
+                  <input
+                    type="text"
+                    [ngModel]="t.label"
+                    (ngModelChange)="patchType(i, { label: $event })"
+                    [name]="'typeLabel' + i"
+                  />
+                </td>
+                <td>
+                  <select
+                    [ngModel]="t.area"
+                    (ngModelChange)="patchType(i, { area: $event })"
+                    [name]="'typeArea' + i"
+                  >
+                    @for (area of areas; track area) {
+                      <option [value]="area">{{ areaLabels[area] }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    [ngModel]="t.weight"
+                    (ngModelChange)="patchType(i, { weight: toNumber($event) })"
+                    [name]="'typeWeight' + i"
+                  />
+                </td>
+                <td>
+                  <button class="btn small danger" type="button" (click)="removeType(i)">
+                    Entfernen
+                  </button>
+                </td>
+              </tr>
+            }
+            <tr>
+              <td>Mitarbeit (Ø der Doppelstunden)</td>
+              <td>{{ areaLabels.oral }}</td>
+              <td class="num">
+                <input
+                  class="short"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [ngModel]="draft.participationWeight"
+                  (ngModelChange)="patchScheme({ participationWeight: toNumber($event) })"
+                  name="participationWeight"
+                />
+              </td>
+              <td class="muted small">fest</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn small" type="button" (click)="addType()">Art hinzufügen</button>
+
+      <div class="cols">
+        <div>
+          <h3>Punkteschlüssel</h3>
+          <p class="muted small">Ab wie viel Prozent der Punkte gilt welche Note? (Vorlage: IHK)</p>
+          <table>
+            <thead>
+              <tr>
+                <th class="num">ab %</th>
+                <th class="num">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of draft.percentScale; track $index; let i = $index) {
+                <tr>
+                  <td class="num">
+                    <input
+                      class="short"
+                      type="number"
+                      min="0"
+                      max="100"
+                      [ngModel]="e.minPercent"
+                      (ngModelChange)="patchScale(i, { minPercent: toNumber($event) })"
+                      [name]="'scaleMin' + i"
+                    />
+                  </td>
+                  <td class="num">{{ e.grade }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h3>Mitarbeit je Doppelstunde</h3>
+          <p class="muted small">
+            Mehrere Bewertungen einer Stunde werden addiert (höchstens ++, mindestens −−).
+          </p>
+          <table>
+            <tbody>
+              <tr>
+                <td>++</td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="text"
+                    inputmode="decimal"
+                    [ngModel]="formatGrade(draft.participationGrades.plusPlus, 1)"
+                    (change)="patchParticipation('plusPlus', $any($event.target).value)"
+                    name="pPlusPlus"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>+</td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="text"
+                    inputmode="decimal"
+                    [ngModel]="formatGrade(draft.participationGrades.plus, 1)"
+                    (change)="patchParticipation('plus', $any($event.target).value)"
+                    name="pPlus"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>0 / ohne Bewertung</td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="text"
+                    inputmode="decimal"
+                    [ngModel]="formatGrade(draft.participationGrades.neutral, 1)"
+                    (change)="patchParticipation('neutral', $any($event.target).value)"
+                    name="pNeutral"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>−</td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="text"
+                    inputmode="decimal"
+                    [ngModel]="formatGrade(draft.participationGrades.minus, 1)"
+                    (change)="patchParticipation('minus', $any($event.target).value)"
+                    name="pMinus"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>−−</td>
+                <td class="num">
+                  <input
+                    class="short"
+                    type="text"
+                    inputmode="decimal"
+                    [ngModel]="formatGrade(draft.participationGrades.minusMinus, 1)"
+                    (change)="patchParticipation('minusMinus', $any($event.target).value)"
+                    name="pMinusMinus"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="button" (click)="saveScheme()">Schema speichern</button>
+        <button class="btn" type="button" (click)="resetSchemeDraft()">Verwerfen</button>
+      </div>
+    </section>
+
+    @if (otherCourses().length) {
+      <section class="card">
+        <h2>Schema auf andere Kurse übertragen</h2>
+        <p class="muted small">
+          Überträgt das <strong>gespeicherte</strong> Schema. Vorausgewählt sind die übrigen
+          Lernfelder dieser Klasse.
+        </p>
+        <div class="checks">
+          @for (c of otherCourses(); track c.id) {
+            <label class="check">
+              <input
+                type="checkbox"
+                [checked]="copyTargets().has(c.id)"
+                (change)="toggleCopyTarget(c.id, $any($event.target).checked)"
+              />
+              {{ c.schoolClassName }} · {{ c.subjectName }}
+            </label>
+          }
+        </div>
+        <button class="btn" type="button" (click)="copyScheme()">Übertragen</button>
+      </section>
+    }
+  }
+}

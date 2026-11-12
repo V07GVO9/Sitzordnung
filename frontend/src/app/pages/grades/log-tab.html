@@ -1,0 +1,38 @@
+@if (active()) {
+  <section class="card">
+    <h2>Änderungsprotokoll</h2>
+    <p class="muted small">
+      Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Zeitpunkt</th>
+            <th>Schüler</th>
+            <th>Was</th>
+            <th>Vorher</th>
+            <th>Nachher</th>
+            <th>Begründung</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of changes(); track c.id) {
+            <tr>
+              <td>{{ formatDateTime(c.changedAt) }}</td>
+              <td>{{ c.studentName }}</td>
+              <td>{{ c.what }}</td>
+              <td>{{ c.oldValue }}</td>
+              <td>{{ c.newValue }}</td>
+              <td>{{ c.reason ?? '–' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="muted">Noch keine Änderungen.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
