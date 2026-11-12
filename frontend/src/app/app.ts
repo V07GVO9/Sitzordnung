@@ -11,7 +11,6 @@ import {
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ActiveCourseService } from './core/active-course.service';
-import { ApiService } from './core/api.service';
 import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson } from './core/models';
 import { FilePickerCancelled, SaveConflictError } from './core/persistence/file-system';
@@ -86,7 +85,6 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   },
 })
 export class App implements OnDestroy {
-  private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
@@ -340,14 +338,6 @@ export class App implements OnDestroy {
   }
 
   private refreshLesson(): void {
-    if (!this.store.isOpen()) {
-      this.lesson.set(null);
-      return;
-    }
-
-    this.api.getCurrentLesson().subscribe({
-      next: (lesson) => this.lesson.set(lesson),
-      error: () => this.lesson.set(null),
-    });
+    this.lesson.set(this.store.isOpen() ? this.store.timetable.getCurrentLesson() : null);
   }
 }

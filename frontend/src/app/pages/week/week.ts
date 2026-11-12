@@ -1,13 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ApiService } from '../../core/api.service';
-import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
+import { TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { freeDayReason } from '../../core/logic/school-calendar';
 import { toDateKey } from '../../core/logic/time';
 import { backupDue } from '../../core/logic/backup.logic';
 import { FilePickerCancelled } from '../../core/persistence/file-system';
 import { VaultService } from '../../core/persistence/vault.service';
+import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { subjectHue } from '../../core/ui/subject-hue';
@@ -48,17 +47,16 @@ const DAY_SHORT: Record<number, string> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 
   },
 })
 export class WeekPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
   private readonly vault = inject(VaultService);
 
   /** Erinnerung an die Sicherungskopie - null, wenn keine fällig ist. */
   readonly backupReminder = signal<{ days: number | null } | null>(null);
 
-  readonly loading = signal(true);
-  readonly entries = signal<TimetableEntry[]>([]);
-  readonly courses = signal<Course[]>([]);
-  readonly lesson = signal<CurrentLesson | null>(null);
+  readonly entries = signal(this.store.timetable.getTimetable());
+  readonly courses = signal(this.store.masterData.getCourses());
+  readonly lesson = signal(this.store.timetable.getCurrentLesson());
 
   /** 0 = diese Woche, -1 = letzte, 1 = nächste. */
   readonly weekOffset = signal(0);
@@ -168,26 +166,7 @@ export class WeekPage {
   private readonly slideDirection = signal<'next' | 'prev' | null>(null);
 
   constructor() {
-    forkJoin({
-      entries: this.api.getTimetable(),
-      courses: this.api.getCourses(),
-    }).subscribe({
-      next: ({ entries, courses }) => {
-        this.entries.set(entries);
-        this.courses.set(courses);
-        this.loading.set(false);
-        this.checkBackup();
-      },
-      error: (err) => {
-        this.toasts.error(err, 'Der Stundenplan konnte nicht geladen werden.');
-        this.loading.set(false);
-      },
-    });
-
-    this.api.getCurrentLesson().subscribe({
-      next: (lesson) => this.lesson.set(lesson),
-      error: () => this.lesson.set(null),
-    });
+    this.checkBackup();
   }
 
   cellsAt(dayOfWeek: number, slot: Slot): Cell[] {
@@ -202,13 +181,10 @@ export class WeekPage {
     } catch {
       // Ohne Speicher erinnert die App eben bei jedem Öffnen.
     }
-    this.api
-      .getLastBackupAt()
-      .subscribe((last) =>
-        this.backupReminder.set(
-          snoozed ? null : backupDue(last, new Date(), this.entries().length > 0),
-        ),
-      );
+    const last = this.store.settings.getLastBackupAt();
+    this.backupReminder.set(
+      snoozed ? null : backupDue(last, new Date(), this.entries().length > 0),
+    );
   }
 
   async backupNow(): Promise<void> {

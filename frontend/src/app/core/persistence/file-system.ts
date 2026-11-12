@@ -13,6 +13,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { ExportFile } from '../models';
 
 /** Der Teil der File System Access API, den die App benutzt. */
 export interface FileHandle {
@@ -234,6 +235,11 @@ export async function download(
   link.click();
   // Erst freigeben, wenn der Browser den Download übernommen hat.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** Bietet eine erzeugte Exportdatei an - in der Android-App samt Teilen-Menü. */
+export function downloadExport(file: ExportFile): Promise<void> {
+  return download(file.blob, file.fileName, { share: true });
 }
 
 /**

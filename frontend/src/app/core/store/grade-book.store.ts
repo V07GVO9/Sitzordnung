@@ -133,6 +133,17 @@ export class GradeBookStore extends StorePart {
       });
   }
 
+  /** Stellt die Notenbögen zusammen und vermerkt ihre Ausgabe. */
+  issueReports(courseId: number, studentIds: number[], periodId: number | null): StudentReport[] {
+    const reports = this.getStudentReports(courseId, studentIds, periodId);
+    if (reports.length === 0) {
+      throw new AppError('Es ist kein Schüler ausgewählt.');
+    }
+
+    this.recordReports(courseId, reports, periodId);
+    return reports;
+  }
+
   /** Vermerkt, dass die Notenbögen ausgegeben wurden - mit dem Stand von damals. */
   recordReports(courseId: number, reports: StudentReport[], periodId: number | null): void {
     requireCourse(this.db, courseId);

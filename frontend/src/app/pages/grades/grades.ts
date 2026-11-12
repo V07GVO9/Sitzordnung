@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ApiService } from '../../core/api.service';
 import {
   AREA_LABELS,
   Assessment,
@@ -36,7 +34,8 @@ import {
   subjectMatches,
 } from '../../core/import/participation-import';
 import { readPdfPages } from '../../core/import/pdf-text';
-import { download, isNativeApp } from '../../core/persistence/file-system';
+import { download, downloadExport, isNativeApp } from '../../core/persistence/file-system';
+import { LocalStore } from '../../core/store/local-store';
 import { renderReports } from '../../core/export/report';
 import { formatDateGerman, toDateKey } from '../../core/logic/time';
 import { Icon } from '../../core/ui/icon';
@@ -94,7 +93,7 @@ const OVERRIDE_GRADES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
   styleUrl: './grades.scss',
 })
 export class GradesPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
 
@@ -259,46 +258,39 @@ export class GradesPage {
   }
 
   private loadAll(): void {
-    forkJoin({
-      courses: this.api.getCourses(),
-      periods: this.api.getPeriods(),
-    }).subscribe({
-      next: ({ courses, periods }) => {
-        this.courses.set(courses);
-        this.periods.set(periods);
+    const periods = this.store.periods.getPeriods();
+    this.courses.set(this.store.masterData.getCourses());
+    this.periods.set(periods);
 
-        // Voreingestellt ist der Zeitraum, in dem heute liegt.
-        const today = toDateKey(new Date());
-        this.periodId.set(periods.find((p) => p.start <= today && p.end >= today)?.id ?? null);
-        this.refresh();
-      },
-      error: (err) => this.toasts.error(err, 'Die Noten konnten nicht geladen werden.'),
-    });
+    // Voreingestellt ist der Zeitraum, in dem heute liegt.
+    const today = toDateKey(new Date());
+    this.periodId.set(periods.find((p) => p.start <= today && p.end >= today)?.id ?? null);
+    this.refresh();
   }
 
   /** Lädt die Notenübersicht neu - nach jeder Änderung. */
   refresh(): void {
     const courseId = this.courseId();
 
-    this.api.getGradeBook(courseId, this.range).subscribe({
-      next: (book) => {
-        this.book.set(book);
+    try {
+      const book = this.store.gradeBook.getGradeBook(courseId, this.range);
+      this.book.set(book);
 
-        if (!this.newForm().typeKey && book.scheme.types.length) {
-          this.newForm.update((f) => ({ ...f, typeKey: book.scheme.types[0].key }));
-        }
-        if (this.reportSelection().size === 0) {
-          this.reportSelection.set(new Set(book.students.map((s) => s.studentId)));
-        }
-        if (!this.schemeDraft()) {
-          this.resetSchemeDraft();
-        }
-      },
-      error: (err) => this.toasts.error(err, 'Die Noten konnten nicht geladen werden.'),
-    });
+      if (!this.newForm().typeKey && book.scheme.types.length) {
+        this.newForm.update((f) => ({ ...f, typeKey: book.scheme.types[0].key }));
+      }
+      if (this.reportSelection().size === 0) {
+        this.reportSelection.set(new Set(book.students.map((s) => s.studentId)));
+      }
+      if (!this.schemeDraft()) {
+        this.resetSchemeDraft();
+      }
 
-    this.api.getGradeChanges(courseId).subscribe((changes) => this.changes.set(changes));
-    this.api.getGradeReports(courseId).subscribe((reports) => this.reports.set(reports));
+      this.changes.set(this.store.gradeBook.getGradeChanges(courseId));
+      this.reports.set(this.store.gradeBook.getGradeReports(courseId));
+    } catch (err) {
+      this.toasts.error(err, 'Die Noten konnten nicht geladen werden.');
+    }
   }
 
   selectTab(tab: Tab): void {
@@ -322,16 +314,16 @@ export class GradesPage {
   }
 
   savePeriod(): void {
-    this.api.savePeriod(null, this.periodForm()).subscribe({
-      next: (period) => {
-        this.periods.update((list) =>
-          [...list, period].sort((a, b) => a.start.localeCompare(b.start)),
-        );
-        this.periodForm.set({ name: '', start: '', end: '' });
-        this.toasts.success(`„${period.name}" wurde angelegt.`);
-      },
-      error: (err) => this.toasts.error(err, 'Der Zeitraum konnte nicht angelegt werden.'),
-    });
+    try {
+      const period = this.store.periods.savePeriod(null, this.periodForm());
+      this.periods.update((list) =>
+        [...list, period].sort((a, b) => a.start.localeCompare(b.start)),
+      );
+      this.periodForm.set({ name: '', start: '', end: '' });
+      this.toasts.success(`„${period.name}" wurde angelegt.`);
+    } catch (err) {
+      this.toasts.error(err, 'Der Zeitraum konnte nicht angelegt werden.');
+    }
   }
 
   deletePeriod(period: GradingPeriod): void {
@@ -339,15 +331,15 @@ export class GradesPage {
       return;
     }
 
-    this.api.deletePeriod(period.id).subscribe({
-      next: () => {
-        this.periods.update((list) => list.filter((p) => p.id !== period.id));
-        if (this.periodId() === period.id) {
-          this.selectPeriod(null);
-        }
-      },
-      error: (err) => this.toasts.error(err, 'Der Zeitraum konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.periods.deletePeriod(period.id);
+      this.periods.update((list) => list.filter((p) => p.id !== period.id));
+      if (this.periodId() === period.id) {
+        this.selectPeriod(null);
+      }
+    } catch (err) {
+      this.toasts.error(err, 'Der Zeitraum konnte nicht gelöscht werden.');
+    }
   }
 
   // --- Übersicht ---
@@ -356,11 +348,13 @@ export class GradesPage {
     return student.assessmentGrades[assessment.id] ?? null;
   }
 
-  exportCsv(): void {
-    this.api.exportGradeBook(this.courseId(), this.range).subscribe({
-      next: () => this.toasts.success('Die CSV-Datei wurde erzeugt.'),
-      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
-    });
+  async exportCsv(): Promise<void> {
+    try {
+      await downloadExport(this.store.exports.exportGradeBook(this.courseId(), this.range));
+      this.toasts.success('Die CSV-Datei wurde erzeugt.');
+    } catch (err) {
+      this.toasts.error(err, 'Der Export ist fehlgeschlagen.');
+    }
   }
 
   // --- Leistungsnachweise ---
@@ -386,15 +380,18 @@ export class GradesPage {
   }
 
   createAssessment(): void {
-    this.api.createAssessment(this.courseId(), GradesPage.toInput(this.newForm())).subscribe({
-      next: (assessment) => {
-        this.newForm.update((f) => ({ ...f, title: '', maxPoints: '' }));
-        this.toasts.success(`„${assessment.title}" wurde angelegt. Jetzt die Noten eintragen.`);
-        this.refresh();
-        this.openAssessment(assessment.id);
-      },
-      error: (err) => this.toasts.error(err, 'Der Leistungsnachweis konnte nicht angelegt werden.'),
-    });
+    try {
+      const assessment = this.store.assessments.createAssessment(
+        this.courseId(),
+        GradesPage.toInput(this.newForm()),
+      );
+      this.newForm.update((f) => ({ ...f, title: '', maxPoints: '' }));
+      this.toasts.success(`„${assessment.title}" wurde angelegt. Jetzt die Noten eintragen.`);
+      this.refresh();
+      this.openAssessment(assessment.id);
+    } catch (err) {
+      this.toasts.error(err, 'Der Leistungsnachweis konnte nicht angelegt werden.');
+    }
   }
 
   // --- Übernahme aus anderem Werkzeug (PDF) ---
@@ -498,8 +495,8 @@ export class GradesPage {
     const rows = this.importReady();
     const period = (this.importReports() ?? []).find((r) => r.from && r.to);
 
-    this.api
-      .importAssessment(this.courseId(), {
+    try {
+      const assessment = this.store.assessments.importAssessment(this.courseId(), {
         typeKey: form.typeKey,
         title: form.title,
         date: form.date,
@@ -513,25 +510,24 @@ export class GradesPage {
               : ''
           }`,
         })),
-      })
-      .subscribe({
-        next: (assessment) => {
-          this.cancelImport();
-          this.toasts.success(
-            `„${assessment.title}" wurde mit ${rows.length} Noten angelegt und freigegeben.`,
-          );
-          this.refresh();
-          this.openAssessment(assessment.id);
-        },
-        error: (err) => this.toasts.error(err, 'Die Übernahme ist fehlgeschlagen.'),
       });
+      this.cancelImport();
+      this.toasts.success(
+        `„${assessment.title}" wurde mit ${rows.length} Noten angelegt und freigegeben.`,
+      );
+      this.refresh();
+      this.openAssessment(assessment.id);
+    } catch (err) {
+      this.toasts.error(err, 'Die Übernahme ist fehlgeschlagen.');
+    }
   }
 
   openAssessment(id: number): void {
-    this.api.getAssessmentDetail(id).subscribe({
-      next: (detail) => this.applyDetail(detail),
-      error: (err) => this.toasts.error(err, 'Der Leistungsnachweis konnte nicht geladen werden.'),
-    });
+    try {
+      this.applyDetail(this.store.assessments.getAssessmentDetail(id));
+    } catch (err) {
+      this.toasts.error(err, 'Der Leistungsnachweis konnte nicht geladen werden.');
+    }
   }
 
   closeAssessment(): void {
@@ -612,19 +608,20 @@ export class GradesPage {
     }
 
     const id = detail.assessment.id;
-    this.api.updateAssessment(id, GradesPage.toInput(this.detailForm())).subscribe({
-      next: () =>
-        this.api.saveResults(id, results, this.changeReason()).subscribe({
-          next: (updated) => {
-            this.applyDetail(updated);
-            this.toasts.success('Gespeichert.');
-            this.refresh();
-          },
-          error: (err) => this.toasts.error(err, 'Die Noten konnten nicht gespeichert werden.'),
-        }),
-      error: (err) =>
-        this.toasts.error(err, 'Der Leistungsnachweis konnte nicht gespeichert werden.'),
-    });
+    try {
+      this.store.assessments.updateAssessment(id, GradesPage.toInput(this.detailForm()));
+    } catch (err) {
+      this.toasts.error(err, 'Der Leistungsnachweis konnte nicht gespeichert werden.');
+      return;
+    }
+
+    try {
+      this.applyDetail(this.store.assessments.saveResults(id, results, this.changeReason()));
+      this.toasts.success('Gespeichert.');
+      this.refresh();
+    } catch (err) {
+      this.toasts.error(err, 'Die Noten konnten nicht gespeichert werden.');
+    }
   }
 
   setReleased(released: boolean): void {
@@ -640,16 +637,16 @@ export class GradesPage {
       return;
     }
 
-    this.api.setAssessmentReleased(detail.assessment.id, released).subscribe({
-      next: () => {
-        this.toasts.success(
-          released ? 'Freigegeben - die Noten zählen jetzt.' : 'Die Freigabe wurde zurückgenommen.',
-        );
-        this.openAssessment(detail.assessment.id);
-        this.refresh();
-      },
-      error: (err) => this.toasts.error(err, 'Die Freigabe konnte nicht geändert werden.'),
-    });
+    try {
+      this.store.assessments.setAssessmentReleased(detail.assessment.id, released);
+      this.toasts.success(
+        released ? 'Freigegeben - die Noten zählen jetzt.' : 'Die Freigabe wurde zurückgenommen.',
+      );
+      this.openAssessment(detail.assessment.id);
+      this.refresh();
+    } catch (err) {
+      this.toasts.error(err, 'Die Freigabe konnte nicht geändert werden.');
+    }
   }
 
   deleteAssessment(): void {
@@ -658,14 +655,14 @@ export class GradesPage {
       return;
     }
 
-    this.api.deleteAssessment(detail.assessment.id).subscribe({
-      next: () => {
-        this.detail.set(null);
-        this.toasts.success('Der Leistungsnachweis wurde gelöscht.');
-        this.refresh();
-      },
-      error: (err) => this.toasts.error(err, 'Der Leistungsnachweis konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.assessments.deleteAssessment(detail.assessment.id);
+      this.detail.set(null);
+      this.toasts.success('Der Leistungsnachweis wurde gelöscht.');
+      this.refresh();
+    } catch (err) {
+      this.toasts.error(err, 'Der Leistungsnachweis konnte nicht gelöscht werden.');
+    }
   }
 
   // --- Mitarbeit ---
@@ -696,15 +693,19 @@ export class GradesPage {
       return;
     }
 
-    this.api
-      .setParticipationOverride(this.courseId(), student.studentId, lesson.date, grade, reason)
-      .subscribe({
-        next: () => this.refresh(),
-        error: (err) => {
-          this.toasts.error(err, 'Die Note konnte nicht gesetzt werden.');
-          select.value = this.lessonChoice(lesson);
-        },
-      });
+    try {
+      this.store.participation.setParticipationOverride(
+        this.courseId(),
+        student.studentId,
+        lesson.date,
+        grade,
+        reason,
+      );
+      this.refresh();
+    } catch (err) {
+      this.toasts.error(err, 'Die Note konnte nicht gesetzt werden.');
+      select.value = this.lessonChoice(lesson);
+    }
   }
 
   // --- Bewertungsschema ---
@@ -791,14 +792,14 @@ export class GradesPage {
       return;
     }
 
-    this.api.saveScheme(this.courseId(), draft).subscribe({
-      next: () => {
-        this.toasts.success('Das Bewertungsschema wurde gespeichert.');
-        this.schemeDraft.set(null);
-        this.refresh();
-      },
-      error: (err) => this.toasts.error(err, 'Das Schema konnte nicht gespeichert werden.'),
-    });
+    try {
+      this.store.schemes.saveScheme(this.courseId(), draft);
+      this.toasts.success('Das Bewertungsschema wurde gespeichert.');
+      this.schemeDraft.set(null);
+      this.refresh();
+    } catch (err) {
+      this.toasts.error(err, 'Das Schema konnte nicht gespeichert werden.');
+    }
   }
 
   toggleCopyTarget(courseId: number, checked: boolean): void {
@@ -824,11 +825,12 @@ export class GradesPage {
       !this.book()?.scheme.isDefault ||
       confirm('Das Schema ist noch nicht gespeichert. Den Vorschlag übertragen?')
     ) {
-      this.api.copyScheme(this.courseId(), targets).subscribe({
-        next: () =>
-          this.toasts.success(`Das Schema gilt jetzt auch für ${targets.length} weitere Kurse.`),
-        error: (err) => this.toasts.error(err, 'Das Schema konnte nicht übertragen werden.'),
-      });
+      try {
+        this.store.schemes.copyScheme(this.courseId(), targets);
+        this.toasts.success(`Das Schema gilt jetzt auch für ${targets.length} weitere Kurse.`);
+      } catch (err) {
+        this.toasts.error(err, 'Das Schema konnte nicht übertragen werden.');
+      }
     }
   }
 
@@ -896,16 +898,16 @@ export class GradesPage {
   private issue(deliver: (reports: StudentReport[]) => void): void {
     const ids = [...this.reportSelection()];
 
-    this.api.issueReports(this.courseId(), ids, this.periodId()).subscribe({
-      next: (reports) => {
-        deliver(reports);
-        this.toasts.success(
-          `${reports.length} ${reports.length === 1 ? 'Notenbogen' : 'Notenbögen'} erzeugt und vermerkt.`,
-        );
-        this.api.getGradeReports(this.courseId()).subscribe((list) => this.reports.set(list));
-      },
-      error: (err) => this.toasts.error(err, 'Die Notenbögen konnten nicht erzeugt werden.'),
-    });
+    try {
+      const reports = this.store.gradeBook.issueReports(this.courseId(), ids, this.periodId());
+      deliver(reports);
+      this.toasts.success(
+        `${reports.length} ${reports.length === 1 ? 'Notenbogen' : 'Notenbögen'} erzeugt und vermerkt.`,
+      );
+      this.reports.set(this.store.gradeBook.getGradeReports(this.courseId()));
+    } catch (err) {
+      this.toasts.error(err, 'Die Notenbögen konnten nicht erzeugt werden.');
+    }
   }
 
   formatDateTime(iso: string): string {

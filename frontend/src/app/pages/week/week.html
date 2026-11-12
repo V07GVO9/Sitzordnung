@@ -37,98 +37,96 @@
 
   @for (offset of [weekOffset()]; track offset) {
     <div class="week-pane" [class]="slideClass()">
-    @if (loading()) {
-      <p class="muted">Stundenplan wird geladen …</p>
-    } @else if (entries().length === 0) {
-      <div class="empty">
-        <p>Im Stundenplan steht noch kein Unterricht.</p>
-        <p class="muted small">
-          Der Assistent führt Schritt für Schritt durch Klassen, Schüler, Stundenplan und
+      @if (entries().length === 0) {
+        <div class="empty">
+          <p>Im Stundenplan steht noch kein Unterricht.</p>
+          <p class="muted small">
+            Der Assistent führt Schritt für Schritt durch Klassen, Schüler, Stundenplan und
             Sitzordnung.
-        </p>
-        <a class="btn primary" routerLink="/einrichtung">
-          <app-icon name="list-plus" /> Einrichtung starten
-        </a>
-      </div>
-    } @else if (days().length === 0) {
-      <div class="empty">
-        <p>Diese Woche ist unterrichtsfrei.</p>
-        @for (free of freeDays(); track free.reason) {
-          <p class="muted small">{{ free.reason }} ({{ free.days }})</p>
-        }
-      </div>
-    } @else {
-      @if (freeDays().length) {
-        <p class="muted small free-days">
-          Ausgeblendet:
-          @for (free of freeDays(); track free.reason; let last = $last) {
-            {{ free.days }} – {{ free.reason }}{{ last ? '' : ' · ' }}
+          </p>
+          <a class="btn primary" routerLink="/einrichtung">
+            <app-icon name="list-plus" /> Einrichtung starten
+          </a>
+        </div>
+      } @else if (days().length === 0) {
+        <div class="empty">
+          <p>Diese Woche ist unterrichtsfrei.</p>
+          @for (free of freeDays(); track free.reason) {
+            <p class="muted small">{{ free.reason }} ({{ free.days }})</p>
           }
-        </p>
-      }
-      <div class="grid-wrap">
-        <table class="week-grid">
-          <thead>
-            <tr>
-              <th class="slot-col" scope="col"><span class="sr-only">Zeit</span></th>
-              @for (day of days(); track day.dayOfWeek) {
-                <th scope="col" [class.today]="day.isToday" [title]="day.long">
-                  <span class="day-short">{{ day.short }}</span>
-                  <span class="day-date">{{ day.label }}</span>
-                </th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (slot of slots(); track slot.startTime + slot.endTime; let i = $index) {
+        </div>
+      } @else {
+        @if (freeDays().length) {
+          <p class="muted small free-days">
+            Ausgeblendet:
+            @for (free of freeDays(); track free.reason; let last = $last) {
+              {{ free.days }} – {{ free.reason }}{{ last ? '' : ' · ' }}
+            }
+          </p>
+        }
+        <div class="grid-wrap">
+          <table class="week-grid">
+            <thead>
               <tr>
-                <th class="slot-col" scope="row">
-                  <span class="slot-no">{{ i + 1 }}</span>
-                  <span class="slot-time">{{ slot.startTime }}</span>
-                  <span class="slot-time">{{ slot.endTime }}</span>
-                </th>
+                <th class="slot-col" scope="col"><span class="sr-only">Zeit</span></th>
                 @for (day of days(); track day.dayOfWeek) {
-                  <td [class.today]="day.isToday">
-                    @for (cell of cellsAt(day.dayOfWeek, slot); track cell.entry.id) {
-                      <a
-                        class="lesson"
-                        [class.running]="cell.running"
-                        [style.--hue]="hue(cell.entry.subjectName)"
-                        [routerLink]="['/kurs', cell.entry.courseId]"
-                        [queryParams]="{
-                          datum: cell.date,
-                          von: cell.entry.startTime,
-                          bis: cell.entry.endTime,
-                        }"
-                        [attr.aria-label]="
-                          day.long +
-                          ' ' +
-                          cell.entry.startTime +
-                          ': ' +
-                          cell.entry.subjectName +
-                          ', ' +
-                          cell.entry.schoolClassName
-                        "
-                      >
-                        <strong>{{ cell.short }}</strong>
-                        <span class="cls">{{ cell.entry.schoolClassName }}</span>
-                        @if (cell.entry.room) {
-                          <span class="room">{{ cell.entry.room }}</span>
-                        }
-                      </a>
-                    }
-                  </td>
+                  <th scope="col" [class.today]="day.isToday" [title]="day.long">
+                    <span class="day-short">{{ day.short }}</span>
+                    <span class="day-date">{{ day.label }}</span>
+                  </th>
                 }
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="muted small hint">
-        Tippe auf eine Stunde, um sie zu öffnen und zu bewerten – auch rückwirkend. Wischen blättert
-        die Woche.
-      </p>
-    }
+            </thead>
+            <tbody>
+              @for (slot of slots(); track slot.startTime + slot.endTime; let i = $index) {
+                <tr>
+                  <th class="slot-col" scope="row">
+                    <span class="slot-no">{{ i + 1 }}</span>
+                    <span class="slot-time">{{ slot.startTime }}</span>
+                    <span class="slot-time">{{ slot.endTime }}</span>
+                  </th>
+                  @for (day of days(); track day.dayOfWeek) {
+                    <td [class.today]="day.isToday">
+                      @for (cell of cellsAt(day.dayOfWeek, slot); track cell.entry.id) {
+                        <a
+                          class="lesson"
+                          [class.running]="cell.running"
+                          [style.--hue]="hue(cell.entry.subjectName)"
+                          [routerLink]="['/kurs', cell.entry.courseId]"
+                          [queryParams]="{
+                            datum: cell.date,
+                            von: cell.entry.startTime,
+                            bis: cell.entry.endTime,
+                          }"
+                          [attr.aria-label]="
+                            day.long +
+                            ' ' +
+                            cell.entry.startTime +
+                            ': ' +
+                            cell.entry.subjectName +
+                            ', ' +
+                            cell.entry.schoolClassName
+                          "
+                        >
+                          <strong>{{ cell.short }}</strong>
+                          <span class="cls">{{ cell.entry.schoolClassName }}</span>
+                          @if (cell.entry.room) {
+                            <span class="room">{{ cell.entry.room }}</span>
+                          }
+                        </a>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small hint">
+          Tippe auf eine Stunde, um sie zu öffnen und zu bewerten – auch rückwirkend. Wischen
+          blättert die Woche.
+        </p>
+      }
     </div>
   }
 </div>

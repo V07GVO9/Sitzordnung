@@ -135,9 +135,6 @@
           Änderungen werden sofort übernommen.
         </span>
         <span class="spacer"></span>
-        @if (saving()) {
-          <span class="small">Wird übernommen …</span>
-        }
         @if (seatUnlocked()) {
           <button class="btn small" type="button" (click)="toggleMode(false)">
             <app-icon name="lock" /> Sperren

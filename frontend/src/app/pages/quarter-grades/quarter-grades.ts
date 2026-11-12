@@ -8,10 +8,21 @@ import {
   untracked,
 } from '@angular/core';
 import { ActiveCourseService } from '../../core/active-course.service';
-import { ApiService } from '../../core/api.service';
-import { GradeArea, QUARTERS, Quarter, QuarterGrade, Student, fullName } from '../../core/models';
+import {
+  GradeArea,
+  QUARTERS,
+  Quarter,
+  QuarterGrade,
+  Student,
+  byLastName,
+  fullName,
+} from '../../core/models';
+import { germanNumber } from '../../core/logic/text';
 import { formatGrade, parseGrade } from '../../core/logic/assessment.logic';
 import { quarterOf, quarterRange } from '../../core/logic/quarter.logic';
+import { formatDateGerman } from '../../core/logic/time';
+import { downloadExport } from '../../core/persistence/file-system';
+import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 
@@ -242,7 +253,7 @@ interface Row {
   `,
 })
 export class QuarterGradesPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
 
   readonly fullName = fullName;
@@ -257,8 +268,7 @@ export class QuarterGradesPage {
   /** „01.11.2026 – 31.01.2027“ für das geöffnete Quartal. */
   readonly quarterLabel = computed(() => {
     const { from, to } = quarterRange(this.quarter(), new Date());
-    const de = (key: string) => key.split('-').reverse().join('.');
-    return `${de(from)} – ${de(to)}`;
+    return `${formatDateGerman(from)} – ${formatDateGerman(to)}`;
   });
   readonly students = signal<Student[]>([]);
   readonly grades = signal<QuarterGrade[]>([]);
@@ -270,17 +280,11 @@ export class QuarterGradesPage {
         byKey.set(`${g.studentId}:${g.area}`, g);
       }
     }
-    return [...this.students()]
-      .sort(
-        (a, b) =>
-          a.lastName.localeCompare(b.lastName, 'de') ||
-          a.firstName.localeCompare(b.firstName, 'de'),
-      )
-      .map((student) => ({
-        student,
-        written: byKey.get(`${student.id}:written`) ?? null,
-        oral: byKey.get(`${student.id}:oral`) ?? null,
-      }));
+    return [...this.students()].sort(byLastName).map((student) => ({
+      student,
+      written: byKey.get(`${student.id}:written`) ?? null,
+      oral: byKey.get(`${student.id}:oral`) ?? null,
+    }));
   });
 
   constructor() {
@@ -294,15 +298,16 @@ export class QuarterGradesPage {
   }
 
   private load(id: number): void {
-    this.api.getCourseStudents(id).subscribe({
-      next: (students) => this.students.set(students),
-      error: (err) => this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.'),
-    });
+    try {
+      this.students.set(this.store.masterData.getCourseStudents(id));
+    } catch (err) {
+      this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.');
+    }
     this.reload();
   }
 
   percentText(g: QuarterGrade | null): string {
-    return g?.percent == null ? '' : String(g.percent).replace('.', ',');
+    return g?.percent == null ? '' : germanNumber(g.percent);
   }
 
   gradeText(g: QuarterGrade | null, empty = '–'): string {
@@ -335,16 +340,18 @@ export class QuarterGradesPage {
   }
 
   /** Noten je Stunde eines Schülers im gewählten Quartal. */
-  exportLessonSheet(student: Student): void {
+  async exportLessonSheet(student: Student): Promise<void> {
     const courseId = this.courseId();
     if (courseId === null) {
       return;
     }
     const range = quarterRange(this.quarter(), new Date());
-    this.api.exportLessonSheets(courseId, range, student.id).subscribe({
-      next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),
-      error: (err) => this.toasts.error(err, 'Der Export ist fehlgeschlagen.'),
-    });
+    try {
+      await downloadExport(this.store.exports.exportLessonSheets(courseId, range, student.id));
+      this.toasts.success('Die Übersicht wurde erzeugt.');
+    } catch (err) {
+      this.toasts.error(err, 'Der Export ist fehlgeschlagen.');
+    }
   }
 
   resetOral(student: Student): void {
@@ -364,10 +371,13 @@ export class QuarterGradesPage {
     if (courseId === null) {
       return;
     }
-    this.api.setQuarterGrade(courseId, student.id, this.quarter(), area, value).subscribe({
-      next: () => this.reload(),
-      error: (err) => this.toasts.error(err, 'Die Note konnte nicht gespeichert werden.'),
-    });
+    try {
+      this.store.quarterGrades.setQuarterGrade(courseId, student.id, this.quarter(), area, value);
+    } catch (err) {
+      this.toasts.error(err, 'Die Note konnte nicht gespeichert werden.');
+      return;
+    }
+    this.reload();
   }
 
   private reload(): void {
@@ -375,9 +385,10 @@ export class QuarterGradesPage {
     if (courseId === null) {
       return;
     }
-    this.api.getQuarterGrades(courseId).subscribe({
-      next: (grades) => this.grades.set(grades),
-      error: (err) => this.toasts.error(err, 'Die Noten konnten nicht geladen werden.'),
-    });
+    try {
+      this.grades.set(this.store.quarterGrades.getQuarterGrades(courseId));
+    } catch (err) {
+      this.toasts.error(err, 'Die Noten konnten nicht geladen werden.');
+    }
   }
 }

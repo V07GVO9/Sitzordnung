@@ -1,10 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { forkJoin, of, switchMap } from 'rxjs';
-import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import { Course, SchoolClass, Student, TimetableEntry } from '../../core/models';
-import { ToastService } from '../../core/ui/toast.service';
+import { LocalStore } from '../../core/store/local-store';
 import { Icon } from '../../core/ui/icon';
 import { IconName } from '../../core/ui/icons';
 
@@ -122,148 +120,143 @@ export function setupSteps(state: SetupState): SetupStep[] {
         </div>
       </div>
 
-      @if (loading()) {
-        <p class="muted">Wird geladen …</p>
-      } @else {
-        <div
-          class="progress"
-          role="progressbar"
-          [attr.aria-valuenow]="doneCount()"
-          aria-valuemin="0"
-          [attr.aria-valuemax]="requiredCount()"
-        >
-          <span [style.width.%]="(doneCount() / requiredCount()) * 100"></span>
-        </div>
-        <p class="small muted">
-          {{ doneCount() }} von {{ requiredCount() }} Schritten erledigt
-          @if (doneCount() === requiredCount()) {
-            – fertig! Im Wochenplan eine Stunde antippen und loslegen.
-          }
-        </p>
+      <div
+        class="progress"
+        role="progressbar"
+        [attr.aria-valuenow]="doneCount()"
+        aria-valuemin="0"
+        [attr.aria-valuemax]="requiredCount()"
+      >
+        <span [style.width.%]="(doneCount() / requiredCount()) * 100"></span>
+      </div>
+      <p class="small muted">
+        {{ doneCount() }} von {{ requiredCount() }} Schritten erledigt
+        @if (doneCount() === requiredCount()) {
+          – fertig! Im Wochenplan eine Stunde antippen und loslegen.
+        }
+      </p>
 
-        <ol class="steps">
-          @for (step of steps(); track step.key; let i = $index) {
-            <li class="step card" [class.done]="step.done" [class.next]="step.key === nextKey()">
-              <span class="mark" aria-hidden="true">
-                @if (step.done) {
-                  <app-icon name="circle-check" />
-                } @else {
-                  {{ i + 1 }}
+      <ol class="steps">
+        @for (step of steps(); track step.key; let i = $index) {
+          <li class="step card" [class.done]="step.done" [class.next]="step.key === nextKey()">
+            <span class="mark" aria-hidden="true">
+              @if (step.done) {
+                <app-icon name="circle-check" />
+              } @else {
+                {{ i + 1 }}
+              }
+            </span>
+            <div class="body">
+              <h2>
+                {{ step.title }}
+                @if (step.optional) {
+                  <span class="muted small">(optional)</span>
                 }
-              </span>
-              <div class="body">
-                <h2>
-                  {{ step.title }}
-                  @if (step.optional) {
-                    <span class="muted small">(optional)</span>
-                  }
-                </h2>
-                <p class="small muted">{{ step.status }}</p>
+              </h2>
+              <p class="small muted">{{ step.status }}</p>
 
-                @switch (step.key) {
-                  @case ('basis') {
-                    <p class="small">
-                      Am schnellsten: den Stundenplan aus <strong>WebUntis</strong> importieren –
-                      dabei entstehen Klassen, Fächer und Kurse automatisch.
-                    </p>
-                    <div class="row">
+              @switch (step.key) {
+                @case ('basis') {
+                  <p class="small">
+                    Am schnellsten: den Stundenplan aus <strong>WebUntis</strong> importieren –
+                    dabei entstehen Klassen, Fächer und Kurse automatisch.
+                  </p>
+                  <div class="row">
+                    <button
+                      class="btn"
+                      [class.primary]="!step.done"
+                      type="button"
+                      (click)="go('/stundenplan/import')"
+                    >
+                      <app-icon name="calendar-days" /> Aus WebUntis importieren
+                    </button>
+                    <button
+                      class="btn"
+                      type="button"
+                      (click)="go('/verwaltung', { tab: 'klassen' })"
+                    >
+                      <app-icon name="plus" /> Von Hand anlegen
+                    </button>
+                  </div>
+                }
+                @case ('schueler') {
+                  <p class="small">
+                    Namensliste einfügen (z. B. aus der Schulverwaltung) oder einzeln anlegen.
+                  </p>
+                  <div class="row">
+                    @for (c of emptyClasses(); track c.id) {
                       <button
                         class="btn"
                         [class.primary]="!step.done"
                         type="button"
-                        (click)="go('/stundenplan/import')"
+                        (click)="go('/verwaltung', { tab: 'schueler', klasse: c.id })"
                       >
-                        <app-icon name="calendar-days" /> Aus WebUntis importieren
+                        <app-icon name="users" /> {{ c.name }}
                       </button>
-                      <button
-                        class="btn"
-                        type="button"
-                        (click)="go('/verwaltung', { tab: 'klassen' })"
-                      >
-                        <app-icon name="plus" /> Von Hand anlegen
-                      </button>
-                    </div>
-                  }
-                  @case ('schueler') {
-                    <p class="small">
-                      Namensliste einfügen (z. B. aus der Schulverwaltung) oder einzeln anlegen.
-                    </p>
-                    <div class="row">
-                      @for (c of emptyClasses(); track c.id) {
-                        <button
-                          class="btn"
-                          [class.primary]="!step.done"
-                          type="button"
-                          (click)="go('/verwaltung', { tab: 'schueler', klasse: c.id })"
-                        >
-                          <app-icon name="users" /> {{ c.name }}
-                        </button>
-                      } @empty {
-                        <button
-                          class="btn"
-                          type="button"
-                          [disabled]="!classes().length"
-                          (click)="go('/verwaltung', { tab: 'schueler' })"
-                        >
-                          <app-icon name="users" /> Schüler verwalten
-                        </button>
-                      }
-                    </div>
-                  }
-                  @case ('stundenplan') {
-                    <div class="row">
-                      <button
-                        class="btn"
-                        [class.primary]="!step.done"
-                        type="button"
-                        [disabled]="!courses().length"
-                        (click)="go('/stundenplan')"
-                      >
-                        <app-icon name="calendar-days" /> Stundenplan öffnen
-                      </button>
-                    </div>
-                  }
-                  @case ('sitzplan') {
-                    <p class="small">
-                      Im Kurs mit „Auffüllen“, „Alphabetisch“ oder „Zufällig“ alle auf einmal
-                      setzen.
-                    </p>
-                    <div class="row">
-                      @for (c of coursesWithoutPlan(); track c.id) {
-                        <button
-                          class="btn"
-                          [class.primary]="!step.done"
-                          type="button"
-                          (click)="go('/kurs/' + c.id)"
-                        >
-                          <app-icon name="layout-grid" />
-                          {{ c.subjectShortName || c.subjectName }} · {{ c.schoolClassName }}
-                        </button>
-                      }
-                    </div>
-                  }
-                  @case ('fotos') {
-                    <p class="small">
-                      Unter Schüler aufs Bild tippen (Galerie) oder auf das Kamera-Symbol (Foto
-                      direkt aufnehmen). Für Fotos braucht es in der Regel eine Einwilligung.
-                    </p>
-                    <div class="row">
+                    } @empty {
                       <button
                         class="btn"
                         type="button"
                         [disabled]="!classes().length"
                         (click)="go('/verwaltung', { tab: 'schueler' })"
                       >
-                        <app-icon name="camera" /> Fotos hinzufügen
+                        <app-icon name="users" /> Schüler verwalten
                       </button>
-                    </div>
-                  }
+                    }
+                  </div>
                 }
-              </div>
-            </li>
-          }
-        </ol>
-      }
+                @case ('stundenplan') {
+                  <div class="row">
+                    <button
+                      class="btn"
+                      [class.primary]="!step.done"
+                      type="button"
+                      [disabled]="!courses().length"
+                      (click)="go('/stundenplan')"
+                    >
+                      <app-icon name="calendar-days" /> Stundenplan öffnen
+                    </button>
+                  </div>
+                }
+                @case ('sitzplan') {
+                  <p class="small">
+                    Im Kurs mit „Auffüllen“, „Alphabetisch“ oder „Zufällig“ alle auf einmal setzen.
+                  </p>
+                  <div class="row">
+                    @for (c of coursesWithoutPlan(); track c.id) {
+                      <button
+                        class="btn"
+                        [class.primary]="!step.done"
+                        type="button"
+                        (click)="go('/kurs/' + c.id)"
+                      >
+                        <app-icon name="layout-grid" />
+                        {{ c.subjectShortName || c.subjectName }} · {{ c.schoolClassName }}
+                      </button>
+                    }
+                  </div>
+                }
+                @case ('fotos') {
+                  <p class="small">
+                    Unter Schüler aufs Bild tippen (Galerie) oder auf das Kamera-Symbol (Foto direkt
+                    aufnehmen). Für Fotos braucht es in der Regel eine Einwilligung.
+                  </p>
+                  <div class="row">
+                    <button
+                      class="btn"
+                      type="button"
+                      [disabled]="!classes().length"
+                      (click)="go('/verwaltung', { tab: 'schueler' })"
+                    >
+                      <app-icon name="camera" /> Fotos hinzufügen
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          </li>
+        }
+      </ol>
     </div>
   `,
   styles: `
@@ -349,16 +342,17 @@ export function setupSteps(state: SetupState): SetupStep[] {
   `,
 })
 export class SetupPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly mode = inject(ModeService);
   private readonly router = inject(Router);
-  private readonly toasts = inject(ToastService);
 
-  readonly loading = signal(true);
-  readonly classes = signal<SchoolClass[]>([]);
-  readonly courses = signal<Course[]>([]);
-  private readonly timetable = signal<TimetableEntry[]>([]);
-  private readonly students = signal<Map<number, Student[]>>(new Map());
+  readonly classes = signal(this.store.masterData.getClasses());
+  readonly courses = signal(this.store.masterData.getCourses());
+  private readonly timetable = signal(this.store.timetable.getTimetable());
+  /** Schüler je Klasse. */
+  private readonly students = signal(
+    new Map(this.classes().map((c) => [c.id, this.store.masterData.getStudents(c.id)])),
+  );
 
   readonly steps = computed(() =>
     setupSteps({
@@ -379,32 +373,6 @@ export class SetupPage {
   readonly coursesWithoutPlan = computed(() =>
     this.courses().filter((c) => c.seatingPlanCount === 0),
   );
-
-  constructor() {
-    forkJoin({
-      classes: this.api.getClasses(),
-      courses: this.api.getCourses(),
-      timetable: this.api.getTimetable(),
-    })
-      .pipe(
-        switchMap(({ classes, courses, timetable }) => {
-          this.classes.set(classes);
-          this.courses.set(courses);
-          this.timetable.set(timetable);
-          return classes.length ? forkJoin(classes.map((c) => this.api.getStudents(c.id))) : of([]);
-        }),
-      )
-      .subscribe({
-        next: (lists) => {
-          this.students.set(new Map(this.classes().map((c, i) => [c.id, lists[i] ?? []])));
-          this.loading.set(false);
-        },
-        error: (err) => {
-          this.toasts.error(err, 'Der Stand der Einrichtung konnte nicht geladen werden.');
-          this.loading.set(false);
-        },
-      });
-  }
 
   /** Einrichten heißt bearbeiten: vorher in den Bearbeitungsmodus (mit Rückfrage). */
   async go(path: string, queryParams?: Record<string, string | number>): Promise<void> {

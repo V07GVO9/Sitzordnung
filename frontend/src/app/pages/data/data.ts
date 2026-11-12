@@ -1,9 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ApiService } from '../../core/api.service';
-import { Course, SchoolClass, Student, Subject, fullName, initials } from '../../core/models';
+import { readPhoto } from '../../core/import/photo';
+import {
+  Course,
+  SchoolClass,
+  Student,
+  Subject,
+  byName,
+  fullName,
+  initials,
+} from '../../core/models';
+import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -19,7 +27,7 @@ const TABS: DataTab[] = ['klassen', 'schueler', 'faecher'];
   styleUrl: './data.scss',
 })
 export class DataPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
@@ -68,24 +76,16 @@ export class DataPage {
 
   private loadAll(keepClassId = true): void {
     const previous = this.selectedClassId();
+    const classes = this.store.masterData.getClasses();
 
-    forkJoin({
-      classes: this.api.getClasses(),
-      subjects: this.api.getSubjects(),
-      courses: this.api.getCourses(),
-    }).subscribe({
-      next: ({ classes, subjects, courses }) => {
-        this.classes.set(classes);
-        this.subjects.set(subjects);
-        this.courses.set(courses);
+    this.classes.set(classes);
+    this.subjects.set(this.store.masterData.getSubjects());
+    this.courses.set(this.store.masterData.getCourses());
 
-        const stillThere = keepClassId && classes.some((c) => c.id === previous);
-        const wanted = Number(this.klasse());
-        const fromLink = classes.some((c) => c.id === wanted) ? wanted : null;
-        this.selectClass(stillThere ? previous : (fromLink ?? classes[0]?.id ?? null));
-      },
-      error: (err) => this.toasts.error(err, 'Die Stammdaten konnten nicht geladen werden.'),
-    });
+    const stillThere = keepClassId && classes.some((c) => c.id === previous);
+    const wanted = Number(this.klasse());
+    const fromLink = classes.some((c) => c.id === wanted) ? wanted : null;
+    this.selectClass(stillThere ? previous : (fromLink ?? classes[0]?.id ?? null));
   }
 
   setTab(tab: DataTab): void {
@@ -100,24 +100,29 @@ export class DataPage {
       return;
     }
 
-    this.api.getStudents(id).subscribe({
-      next: (students) => this.students.set(students),
-      error: (err) => this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.'),
-    });
+    try {
+      this.students.set(this.store.masterData.getStudents(id));
+    } catch (err) {
+      this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.');
+    }
   }
 
+  /** Liest die Schüler der gewählten Klasse neu und zieht deren Anzahl nach. */
   private reloadStudents(): void {
     const id = this.selectedClassId();
-    if (id !== null) {
-      this.api.getStudents(id).subscribe({
-        next: (students) => {
-          this.students.set(students);
-          this.classes.update((list) =>
-            list.map((c) => (c.id === id ? { ...c, studentCount: students.length } : c)),
-          );
-        },
-      });
+    if (id === null) {
+      return;
     }
+
+    const students = this.store.masterData.getStudents(id);
+    this.students.set(students);
+    this.classes.update((list) =>
+      list.map((c) => (c.id === id ? { ...c, studentCount: students.length } : c)),
+    );
+  }
+
+  private replaceStudent(updated: Student): void {
+    this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
   }
 
   // --- Klassen ---
@@ -128,17 +133,15 @@ export class DataPage {
       return;
     }
 
-    this.api.createClass(name).subscribe({
-      next: (created) => {
-        this.newClassName.set('');
-        this.classes.update((list) =>
-          [...list, created].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        this.selectClass(created.id);
-        this.toasts.success(`Klasse „${created.name}" angelegt.`);
-      },
-      error: (err) => this.toasts.error(err, 'Die Klasse konnte nicht angelegt werden.'),
-    });
+    try {
+      const created = this.store.masterData.createClass(name);
+      this.newClassName.set('');
+      this.classes.update((list) => [...list, created].sort(byName));
+      this.selectClass(created.id);
+      this.toasts.success(`Klasse „${created.name}" angelegt.`);
+    } catch (err) {
+      this.toasts.error(err, 'Die Klasse konnte nicht angelegt werden.');
+    }
   }
 
   async deleteClass(schoolClass: SchoolClass): Promise<void> {
@@ -152,14 +155,14 @@ export class DataPage {
       return;
     }
 
-    this.api.deleteClass(schoolClass.id).subscribe({
-      next: () => {
-        this.toasts.success('Die Klasse wurde gelöscht.');
-        this.selectedClassId.set(null);
-        this.loadAll(false);
-      },
-      error: (err) => this.toasts.error(err, 'Die Klasse konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.masterData.deleteClass(schoolClass.id);
+      this.toasts.success('Die Klasse wurde gelöscht.');
+      this.selectedClassId.set(null);
+      this.loadAll(false);
+    } catch (err) {
+      this.toasts.error(err, 'Die Klasse konnte nicht gelöscht werden.');
+    }
   }
 
   // --- Fächer ---
@@ -172,17 +175,15 @@ export class DataPage {
 
     const short = this.newSubjectShort().trim() || name.slice(0, 2).toUpperCase();
 
-    this.api.createSubject(name, short).subscribe({
-      next: (created) => {
-        this.newSubjectName.set('');
-        this.newSubjectShort.set('');
-        this.subjects.update((list) =>
-          [...list, created].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-        this.toasts.success(`Fach „${created.name}" angelegt.`);
-      },
-      error: (err) => this.toasts.error(err, 'Das Fach konnte nicht angelegt werden.'),
-    });
+    try {
+      const created = this.store.masterData.createSubject(name, short);
+      this.newSubjectName.set('');
+      this.newSubjectShort.set('');
+      this.subjects.update((list) => [...list, created].sort(byName));
+      this.toasts.success(`Fach „${created.name}" angelegt.`);
+    } catch (err) {
+      this.toasts.error(err, 'Das Fach konnte nicht angelegt werden.');
+    }
   }
 
   async deleteSubject(subject: Subject): Promise<void> {
@@ -196,13 +197,13 @@ export class DataPage {
       return;
     }
 
-    this.api.deleteSubject(subject.id).subscribe({
-      next: () => {
-        this.toasts.success('Das Fach wurde gelöscht.');
-        this.loadAll();
-      },
-      error: (err) => this.toasts.error(err, 'Das Fach konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.masterData.deleteSubject(subject.id);
+      this.toasts.success('Das Fach wurde gelöscht.');
+      this.loadAll();
+    } catch (err) {
+      this.toasts.error(err, 'Das Fach konnte nicht gelöscht werden.');
+    }
   }
 
   // --- Kurse ---
@@ -216,14 +217,14 @@ export class DataPage {
       return;
     }
 
-    this.api.createCourse(classId, subjectId).subscribe({
-      next: (created) => {
-        this.courses.update((list) => [...list, created]);
-        this.courseSubjectId.set(null);
-        this.toasts.success(`${created.subjectName} in ${created.schoolClassName} angelegt.`);
-      },
-      error: (err) => this.toasts.error(err, 'Der Kurs konnte nicht angelegt werden.'),
-    });
+    try {
+      const created = this.store.masterData.createCourse(classId, subjectId);
+      this.courses.update((list) => [...list, created]);
+      this.courseSubjectId.set(null);
+      this.toasts.success(`${created.subjectName} in ${created.schoolClassName} angelegt.`);
+    } catch (err) {
+      this.toasts.error(err, 'Der Kurs konnte nicht angelegt werden.');
+    }
   }
 
   async deleteCourse(course: Course): Promise<void> {
@@ -237,13 +238,13 @@ export class DataPage {
       return;
     }
 
-    this.api.deleteCourse(course.id).subscribe({
-      next: () => {
-        this.courses.update((list) => list.filter((c) => c.id !== course.id));
-        this.toasts.success('Der Kurs wurde gelöscht.');
-      },
-      error: (err) => this.toasts.error(err, 'Der Kurs konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.masterData.deleteCourse(course.id);
+      this.courses.update((list) => list.filter((c) => c.id !== course.id));
+      this.toasts.success('Der Kurs wurde gelöscht.');
+    } catch (err) {
+      this.toasts.error(err, 'Der Kurs konnte nicht gelöscht werden.');
+    }
   }
 
   // --- Schüler ---
@@ -257,14 +258,14 @@ export class DataPage {
       return;
     }
 
-    this.api.createStudent(classId, first, last).subscribe({
-      next: () => {
-        this.newFirstName.set('');
-        this.newLastName.set('');
-        this.reloadStudents();
-      },
-      error: (err) => this.toasts.error(err, 'Der Schüler konnte nicht angelegt werden.'),
-    });
+    try {
+      this.store.masterData.createStudent(classId, first, last);
+      this.newFirstName.set('');
+      this.newLastName.set('');
+      this.reloadStudents();
+    } catch (err) {
+      this.toasts.error(err, 'Der Schüler konnte nicht angelegt werden.');
+    }
   }
 
   /**
@@ -297,15 +298,15 @@ export class DataPage {
       return;
     }
 
-    this.api.importStudents(classId, parsed).subscribe({
-      next: (created) => {
-        this.importText.set('');
-        this.showImport.set(false);
-        this.reloadStudents();
-        this.toasts.success(`${created.length} Schüler übernommen.`);
-      },
-      error: (err) => this.toasts.error(err, 'Die Liste konnte nicht übernommen werden.'),
-    });
+    try {
+      const created = this.store.masterData.importStudents(classId, parsed);
+      this.importText.set('');
+      this.showImport.set(false);
+      this.reloadStudents();
+      this.toasts.success(`${created.length} Schüler übernommen.`);
+    } catch (err) {
+      this.toasts.error(err, 'Die Liste konnte nicht übernommen werden.');
+    }
   }
 
   renameStudent(student: Student, firstName: string, lastName: string): void {
@@ -313,12 +314,11 @@ export class DataPage {
       return;
     }
 
-    this.api.updateStudent(student.id, firstName, lastName).subscribe({
-      next: (updated) => {
-        this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
-      },
-      error: (err) => this.toasts.error(err, 'Der Name konnte nicht geändert werden.'),
-    });
+    try {
+      this.replaceStudent(this.store.masterData.updateStudent(student.id, firstName, lastName));
+    } catch (err) {
+      this.toasts.error(err, 'Der Name konnte nicht geändert werden.');
+    }
   }
 
   /** Tauscht Vor- und Nachname aller Schüler der Klasse - z. B. nach einem Import „Nachname Vorname“. */
@@ -339,13 +339,15 @@ export class DataPage {
       return;
     }
 
-    forkJoin(list.map((s) => this.api.updateStudent(s.id, s.lastName, s.firstName))).subscribe({
-      next: () => {
-        this.reloadStudents();
-        this.toasts.success('Vor- und Nachnamen getauscht.');
-      },
-      error: (err) => this.toasts.error(err, 'Die Namen konnten nicht getauscht werden.'),
-    });
+    try {
+      for (const s of list) {
+        this.store.masterData.updateStudent(s.id, s.lastName, s.firstName);
+      }
+      this.reloadStudents();
+      this.toasts.success('Vor- und Nachnamen getauscht.');
+    } catch (err) {
+      this.toasts.error(err, 'Die Namen konnten nicht getauscht werden.');
+    }
   }
 
   async deleteStudent(student: Student): Promise<void> {
@@ -359,39 +361,43 @@ export class DataPage {
       return;
     }
 
-    this.api.deleteStudent(student.id).subscribe({
-      next: () => this.reloadStudents(),
-      error: (err) => this.toasts.error(err, 'Der Schüler konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.masterData.deleteStudent(student.id);
+      this.reloadStudents();
+    } catch (err) {
+      this.toasts.error(err, 'Der Schüler konnte nicht gelöscht werden.');
+    }
   }
 
-  uploadPhoto(student: Student, event: Event): void {
+  /**
+   * Nimmt das Foto entgegen. Es wird vorher verkleinert - die Bilder wandern
+   * in dieselbe Datei wie alles andere, ein Foto in Kameragröße würde sie
+   * unnötig aufblähen.
+   */
+  async uploadPhoto(student: Student, event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) {
       return;
     }
 
-    this.api.uploadPhoto(student.id, file).subscribe({
-      next: (updated) => {
-        // Das Bild steckt jetzt als Data-URL im Datensatz - es gibt nichts
-        // nachzuladen, der neue Wert reicht.
-        this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
-        input.value = '';
-      },
-      error: (err) => {
-        this.toasts.error(err, 'Das Foto konnte nicht hochgeladen werden.');
-        input.value = '';
-      },
-    });
+    try {
+      const dataUrl = await readPhoto(file);
+      // Das Bild steckt jetzt als Data-URL im Datensatz - es gibt nichts
+      // nachzuladen, der neue Wert reicht.
+      this.replaceStudent(this.store.masterData.setPhoto(student.id, dataUrl));
+    } catch (err) {
+      this.toasts.error(err, 'Das Foto konnte nicht hochgeladen werden.');
+    } finally {
+      input.value = '';
+    }
   }
 
   deletePhoto(student: Student): void {
-    this.api.deletePhoto(student.id).subscribe({
-      next: (updated) => {
-        this.students.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
-      },
-      error: (err) => this.toasts.error(err, 'Das Foto konnte nicht entfernt werden.'),
-    });
+    try {
+      this.replaceStudent(this.store.masterData.deletePhoto(student.id));
+    } catch (err) {
+      this.toasts.error(err, 'Das Foto konnte nicht entfernt werden.');
+    }
   }
 }
