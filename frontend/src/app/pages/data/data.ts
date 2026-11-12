@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, SchoolClass, Student, Subject, fullName, initials } from '../../core/models';
-import { ToastService } from '../../core/toast.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 

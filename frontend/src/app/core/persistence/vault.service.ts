@@ -7,9 +7,9 @@
  */
 
 import { Injectable, effect, inject, signal } from '@angular/core';
-import { ToastService } from '../toast.service';
+import { ToastService } from '../ui/toast.service';
 import { ConfirmService } from '../ui/confirm.service';
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import {
   clearAutosave,
   clearLastFileHandle,
@@ -21,7 +21,7 @@ import {
   writeLastFileHandle,
   writeRemembered,
 } from './browser-storage';
-import { Database, createEmptyDatabase } from './database';
+import { Database, createEmptyDatabase } from '../store/database';
 import {
   FileHandle,
   FilePickerCancelled,
@@ -37,7 +37,7 @@ import {
   supportsFileHandles,
   writeFile,
 } from './file-system';
-import { LocalStore } from './local-store';
+import { LocalStore } from '../store/local-store';
 import { OneDriveFile, OneDriveService } from './onedrive.service';
 import { unmetPasswordRules } from './password-policy';
 import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-crypto';
@@ -359,7 +359,7 @@ export class VaultService {
 
     // Ohne Datei steht noch nichts auf der Festplatte. Das zählt als
     // ungesicherte Änderung, damit die App zum Speichern auffordert.
-    this.store.revision.update((value) => value + 1);
+    this.store.markChanged();
 
     if (!this.canWriteInPlace) {
       // Ohne Dateizugriff (z. B. Firefox, Safari) gleich einmal herunterladen,
@@ -573,7 +573,7 @@ export class VaultService {
     await this.loadContent(await file.text(), password, handle.name, handle, false);
 
     // Der Bestand bleibt offen - alle Seiten sollen den neuen Stand zeigen.
-    this.store.revision.update((value) => value + 1);
+    this.store.markChanged();
     this.store.markSaved();
     this.lastSavedAt.set(new Date());
   }
@@ -607,7 +607,7 @@ export class VaultService {
 
     if (pending) {
       // Die Änderungen stehen noch in keiner Datei - die App fordert zum Speichern auf.
-      this.store.revision.update((value) => value + 1);
+      this.store.markChanged();
       this.toasts.success('Ungesicherte Änderungen wiederhergestellt.');
     }
   }
@@ -730,7 +730,7 @@ export class VaultService {
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     await saveCopyWithPicker(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
-    this.store.markBackup();
+    this.store.settings.markBackup();
   }
 
   /** Fragt nach einer neuen Datei und speichert dorthin. */

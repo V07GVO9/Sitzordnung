@@ -1,7 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { App } from './app/app';
-import { AUTH_REDIRECT_PATH } from './app/core/store/onedrive.config';
+import { AUTH_REDIRECT_PATH } from './app/core/persistence/onedrive.config';
 
 if (location.pathname === AUTH_REDIRECT_PATH) {
   // Rückkehr von der Microsoft-Anmeldung (Anmeldefenster oder verstecktes

@@ -10,9 +10,9 @@ import {
 import { ActiveCourseService } from '../../core/active-course.service';
 import { ApiService } from '../../core/api.service';
 import { GradeArea, QUARTERS, Quarter, QuarterGrade, Student, fullName } from '../../core/models';
-import { formatGrade, parseGrade } from '../../core/store/assessment.logic';
-import { quarterOf, quarterRange } from '../../core/store/quarter.logic';
-import { ToastService } from '../../core/toast.service';
+import { formatGrade, parseGrade } from '../../core/logic/assessment.logic';
+import { quarterOf, quarterRange } from '../../core/logic/quarter.logic';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 
 interface Row {

@@ -3,12 +3,12 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { Course, CurrentLesson, TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
-import { freeDayReason } from '../../core/store/school-calendar';
-import { toDateKey } from '../../core/store/time';
-import { backupDue } from '../../core/store/backup.logic';
-import { FilePickerCancelled } from '../../core/store/file-system';
-import { VaultService } from '../../core/store/vault.service';
-import { ToastService } from '../../core/toast.service';
+import { freeDayReason } from '../../core/logic/school-calendar';
+import { toDateKey } from '../../core/logic/time';
+import { backupDue } from '../../core/logic/backup.logic';
+import { FilePickerCancelled } from '../../core/persistence/file-system';
+import { VaultService } from '../../core/persistence/vault.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { subjectHue } from '../../core/ui/subject-hue';
 
@@ -59,7 +59,6 @@ export class WeekPage {
   readonly entries = signal<TimetableEntry[]>([]);
   readonly courses = signal<Course[]>([]);
   readonly lesson = signal<CurrentLesson | null>(null);
-  /** Bewertungen je "Kurs|Datum" in der gezeigten Woche. */
 
   /** 0 = diese Woche, -1 = letzte, 1 = nächste. */
   readonly weekOffset = signal(0);

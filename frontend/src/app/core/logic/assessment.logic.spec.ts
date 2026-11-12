@@ -11,7 +11,7 @@ import {
   resultGrade,
   weightedAverage,
 } from './assessment.logic';
-import { AssessmentRecord, createDefaultScheme } from './database';
+import { AssessmentRecord, createDefaultScheme } from '../store/database';
 
 const scheme = createDefaultScheme(1);
 

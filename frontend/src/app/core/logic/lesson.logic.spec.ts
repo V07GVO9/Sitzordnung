@@ -3,7 +3,7 @@
  * im Backend abgedeckt haben.
  */
 
-import { AppSettingsRecord, TimetableEntryRecord } from './database';
+import { AppSettingsRecord, TimetableEntryRecord } from '../store/database';
 import { LessonContext, covers, currentLesson, ratingWindow } from './lesson.logic';
 
 function entry(partial: Partial<TimetableEntryRecord> = {}): TimetableEntryRecord {

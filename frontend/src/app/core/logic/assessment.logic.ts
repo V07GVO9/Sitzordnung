@@ -23,7 +23,7 @@ import {
   ParticipationGradesRecord,
   ParticipationOverrideRecord,
   PercentScaleEntryRecord,
-} from './database';
+} from '../store/database';
 
 /** Die beste und die schlechteste Note. */
 export const BEST_GRADE = 1;
@@ -51,6 +51,11 @@ export function lastRatingPerDay(
   }
 
   return new Map([...latest].map(([date, r]) => [date, r.value]));
+}
+
+/** Die Punkte aus den Tagesbewertungen: ihre Summe - je Tag zählt nur die letzte Bewertung. */
+export function sumOfDays(perDay: Map<string, number>): number {
+  return [...perDay.values()].reduce((sum, v) => sum + v, 0);
 }
 
 /** Die Note einer Doppelstunde. value null = in dieser Stunde nicht bewertet. */

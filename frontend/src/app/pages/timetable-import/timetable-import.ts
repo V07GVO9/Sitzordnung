@@ -9,7 +9,7 @@ import {
   TimetableImportRow,
   WEEKDAY_NAMES,
 } from '../../core/models';
-import { ToastService } from '../../core/toast.service';
+import { ToastService } from '../../core/ui/toast.service';
 
 /** Größer als jeder realistische Jahresexport. */
 const MAX_BYTES = 5 * 1024 * 1024;

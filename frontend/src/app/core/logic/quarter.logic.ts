@@ -15,9 +15,14 @@ export function quarterOf(date: Date): Quarter {
   return 4;
 }
 
+/** Das Kalenderjahr, in dem das Schuljahr des Datums begonnen hat - es beginnt am 1. August. */
+export function schoolYearOf(date: Date): number {
+  return date.getMonth() + 1 >= 8 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
 /** Erster und letzter Tag eines Quartals im Schuljahr, in dem `today` liegt. */
 export function quarterRange(quarter: Quarter, today: Date): { from: string; to: string } {
-  const startYear = today.getMonth() + 1 >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+  const startYear = schoolYearOf(today);
   const ranges: Record<Quarter, [Date, Date]> = {
     1: [new Date(startYear, 7, 1), new Date(startYear, 9, 31)],
     2: [new Date(startYear, 10, 1), new Date(startYear + 1, 0, 31)],

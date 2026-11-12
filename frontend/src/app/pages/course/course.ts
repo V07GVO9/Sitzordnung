@@ -39,8 +39,8 @@ import {
   ratingClass,
   ratingSymbol,
 } from '../../core/models';
-import { isValidDateKey, toDateKey } from '../../core/store/time';
-import { ToastService } from '../../core/toast.service';
+import { isValidDateKey, toDateKey } from '../../core/logic/time';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
@@ -151,7 +151,6 @@ export class CoursePage implements OnDestroy {
 
   readonly saving = signal(false);
 
-  /** Die anderen Fächer derselben Klasse - als Reiter oben. */
   /** Was laut Stundenplan gerade läuft. */
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */

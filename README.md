@@ -253,20 +253,30 @@ frontend/
     core/
       api.service.ts     Schnittstelle für die Seiten (früher HTTP, jetzt lokal)
       models.ts          Datenstrukturen der Oberfläche
-      store/
-        database.ts      Der Datenbestand als Ganzes
-        local-store.ts   Die Fachlogik der früheren Controller
-        lesson.logic.ts  Stundenplanprüfung
-        grading.logic.ts Notenschlüssel (Mitarbeitspunkte)
+      store/             Der Datenbestand im Speicher
+        database.ts        Aufbau des Bestands
+        local-store.ts     Bestand, Lebenszyklus und die Teilspeicher
+        *.store.ts         Je Fachbereich ein Teilspeicher mit seinen Regeln:
+                           masterData, seating, timetable, ratings, gradeScales,
+                           participation, periods, schemes, assessments,
+                           quarterGrades, gradeBook, exports, settings, schoolYear
+        lookups.ts         Gemeinsame Abfragen auf dem Bestand
+        grade-log.ts       Änderungsprotokoll der Noten
+      logic/             Reine Fachlogik ohne Zugriff auf den Bestand
+        lesson.logic.ts      Stundenplanprüfung
+        grading.logic.ts     Notenschlüssel (Mitarbeitspunkte)
         assessment.logic.ts  Notenberechnung: Leistungsnachweise, Mitarbeit, Gesamtnote
-        report.ts        Notenbogen als HTML
-        csv.ts           CSV-Erzeugung
-        vault-crypto.ts  Ver- und Entschlüsselung der Datei
-        vault.service.ts Datei, Passwort und Zwischenspeicher
-        file-system.ts   Zugriff auf Dateien im Browser
-        photo.ts         Fotos einlesen und verkleinern
-        browser-storage.ts  Zwischenspeicher in IndexedDB
-      ui/                Gemeinsame Bausteine: Symbole, Dunkelmodus,
+        quarter.logic.ts     Quartale und Schuljahr
+        school-calendar.ts   Feiertage und Ferien
+      export/            CSV und druckfertiges HTML (Notenbogen, Übersichten)
+      import/            Stundenplan (ICS), Mitarbeitsübersicht (PDF), Fotos
+      persistence/       Ablage des Bestands
+        vault-crypto.ts    Ver- und Entschlüsselung der Datei
+        vault.service.ts   Datei, Passwort und Zwischenspeicher
+        file-system.ts     Zugriff auf Dateien im Browser
+        browser-storage.ts Zwischenspeicher in IndexedDB
+        onedrive.*         Ablage in OneDrive
+      ui/                Gemeinsame Bausteine: Symbole, Meldungen, Dunkelmodus,
                          Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
     pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Noten, Verwaltung,

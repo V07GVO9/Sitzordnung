@@ -12,10 +12,10 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { FilePickerCancelled } from '../core/store/file-system';
-import { isStrongPassword } from '../core/store/password-policy';
-import { VaultService } from '../core/store/vault.service';
-import { ToastService } from '../core/toast.service';
+import { FilePickerCancelled } from '../core/persistence/file-system';
+import { isStrongPassword } from '../core/persistence/password-policy';
+import { VaultService } from '../core/persistence/vault.service';
+import { ToastService } from '../core/ui/toast.service';
 import { Icon } from '../core/ui/icon';
 import { PasswordRules } from './password-rules';
 

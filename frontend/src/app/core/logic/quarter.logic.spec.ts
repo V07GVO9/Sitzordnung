@@ -1,4 +1,4 @@
-import { quarterOf, quarterRange } from './quarter.logic';
+import { quarterOf, quarterRange, schoolYearOf } from './quarter.logic';
 
 describe('Quartale', () => {
   it('ordnet Monate dem Schuljahresquartal zu', () => {
@@ -7,6 +7,12 @@ describe('Quartale', () => {
     expect(quarterOf(new Date(2027, 0, 20))).toBe(2);
     expect(quarterOf(new Date(2027, 2, 1))).toBe(3);
     expect(quarterOf(new Date(2027, 5, 1))).toBe(4);
+  });
+
+  it('lässt das Schuljahr am 1. August beginnen', () => {
+    expect(schoolYearOf(new Date(2026, 6, 31))).toBe(2025);
+    expect(schoolYearOf(new Date(2026, 7, 1))).toBe(2026);
+    expect(schoolYearOf(new Date(2027, 0, 10))).toBe(2026);
   });
 
   it('liefert die Daten im laufenden Schuljahr', () => {

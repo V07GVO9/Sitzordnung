@@ -12,8 +12,8 @@ import {
   initials,
   ratingClass,
 } from '../../core/models';
-import { formatGrade } from '../../core/store/assessment.logic';
-import { quarterOf } from '../../core/store/quarter.logic';
+import { formatGrade } from '../../core/logic/assessment.logic';
+import { quarterOf } from '../../core/logic/quarter.logic';
 import { RouterLink } from '@angular/router';
 import { SwipeRate } from './swipe-rate';
 

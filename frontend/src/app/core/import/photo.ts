@@ -7,7 +7,7 @@
  * Bildschirm genügt eine Kantenlänge von 400 Bildpunkten.
  */
 
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 
 /** Größte Kantenlänge des gespeicherten Bildes. */
 const MAX_EDGE = 400;

@@ -14,15 +14,21 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ApiService, DateRange } from '../../core/api.service';
+import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
-import { AppSettings, CourseScoreboard, GradeScale, GradeScaleEntry } from '../../core/models';
-import { formatGrade } from '../../core/store/assessment.logic';
-import { FilePickerCancelled, isNativeApp } from '../../core/store/file-system';
-import { OneDriveService } from '../../core/store/onedrive.service';
-import { isStrongPassword } from '../../core/store/password-policy';
-import { VaultService } from '../../core/store/vault.service';
-import { ToastService } from '../../core/toast.service';
+import {
+  AppSettings,
+  CourseScoreboard,
+  DateRange,
+  GradeScale,
+  GradeScaleEntry,
+} from '../../core/models';
+import { formatGrade } from '../../core/logic/assessment.logic';
+import { FilePickerCancelled, isNativeApp } from '../../core/persistence/file-system';
+import { OneDriveService } from '../../core/persistence/onedrive.service';
+import { isStrongPassword } from '../../core/persistence/password-policy';
+import { VaultService } from '../../core/persistence/vault.service';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { PasswordRules } from '../../vault/password-rules';
@@ -243,8 +249,6 @@ export class EvaluationPage {
     });
   }
 
-  // --- Export ---
-
   // --- Datenbestand ---
 
   setAutoSave(enabled: boolean): void {
@@ -321,7 +325,6 @@ export class EvaluationPage {
     });
   }
 
-  /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
   /** Einzelbewertungen im Querformat: Schüler in Zeilen, Bewertungstage in Spalten. */
   exportRatings(): void {
     this.api.exportRatings(this.selectedCourseId(), this.range).subscribe({
@@ -330,6 +333,7 @@ export class EvaluationPage {
     });
   }
 
+  /** Je Kurs eine Seite mit der Note jedes Schülers an jedem Unterrichtstag. */
   exportLessonSheets(allCourses: boolean): void {
     this.api.exportLessonSheets(allCourses ? null : this.selectedCourseId(), this.range).subscribe({
       next: () => this.toasts.success('Die Übersicht wurde erzeugt.'),

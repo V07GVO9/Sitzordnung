@@ -17,7 +17,7 @@
 
 import { Injectable, signal } from '@angular/core';
 import type { AccountInfo, IPublicClientApplication } from '@azure/msal-browser';
-import { AppError } from './app-error';
+import { AppError } from '../app-error';
 import { FileHandle, FilePickerCancelled, SaveConflictError, VAULT_EXTENSION } from './file-system';
 import { AUTH_REDIRECT_PATH, ONEDRIVE_CONFIG } from './onedrive.config';
 

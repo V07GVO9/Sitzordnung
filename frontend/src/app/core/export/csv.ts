@@ -5,7 +5,7 @@
  * Portiert aus dem früheren CsvBuilder des Backends.
  */
 
-import { formatDateGerman } from './time';
+import { formatDateGerman } from '../logic/time';
 
 /**
  * Ein Wert aus einer festen Auswahl der App - etwa das Bewertungszeichen "++".

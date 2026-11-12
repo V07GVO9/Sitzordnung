@@ -8,8 +8,8 @@
  */
 
 import { AREA_LABELS, GradeArea, ReportItem, STATUS_LABELS, StudentReport } from '../models';
-import { formatGrade } from './assessment.logic';
-import { formatDateGerman, toDateKey } from './time';
+import { formatGrade } from '../logic/assessment.logic';
+import { formatDateGerman, toDateKey } from '../logic/time';
 
 /** Maskiert Text für die Ausgabe in HTML. */
 export function escapeHtml(value: string): string {

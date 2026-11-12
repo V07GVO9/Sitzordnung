@@ -7,7 +7,7 @@
 
 import { ratingSymbol } from '../models';
 import { escapeHtml } from './report';
-import { formatDateGerman } from './time';
+import { formatDateGerman } from '../logic/time';
 
 /** So viele Tage passen lesbar nebeneinander; danach beginnt ein neuer Block. */
 const DATES_PER_BLOCK = 20;
