@@ -122,11 +122,15 @@ export interface StudentScore {
   studentId: number;
   firstName: string;
   lastName: string;
-  /** Mitarbeitsnote: Durchschnitt der Tagesnoten (1–5); null ohne Bewertung. */
-  average: number | null;
+  points: number;
+  /** Gehaltene Unterrichtseinheiten - bei allen Schülern des Kurses gleich. */
   ratingCount: number;
-  /** Die Tagesnote von heute (1–5); null, wenn heute nicht bewertet. */
-  todayGrade: number | null;
+  /** Mittelwert der Tagesbewertungen (ohne Bewertung 0); null ohne Unterricht. */
+  average: number | null;
+  pointsToday: number;
+  grade: string | null;
+  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
+  currentLessonValue: number | null;
 }
 
 export interface CourseScoreboard {
@@ -196,19 +200,6 @@ export function ratingSymbol(value: number): string {
     default:
       return String(value);
   }
-}
-
-/**
- * Tagesnote aus der Summe der Bewertungen eines Tages: ++ = 1, + = 2, 0 = 3,
- * − = 4, −− = 5. Die Summe wird vorher auf -2 bis +2 begrenzt.
- */
-export function dayGrade(daySum: number): number {
-  return 3 - Math.max(-2, Math.min(2, daySum));
-}
-
-/** Eine Durchschnittsnote mit einer Nachkommastelle, etwa „2,3"; „–" ohne Wert. */
-export function formatAverage(value: number | null | undefined): string {
-  return value === null || value === undefined ? '–' : value.toFixed(1).replace('.', ',');
 }
 
 export function fullName(student: { firstName: string; lastName: string }): string {
@@ -319,7 +310,6 @@ export interface ParticipationGrades {
   neutral: number;
   minus: number;
   minusMinus: number;
-  unrated: number;
 }
 
 export interface GradingSchemeInput {
@@ -362,6 +352,15 @@ export interface AssessmentInput {
   comment: string | null;
 }
 
+/** Ein Leistungsnachweis mit fertigen Noten - etwa aus einem anderen Werkzeug übernommen. */
+export interface ImportedAssessmentInput {
+  typeKey: string;
+  title: string;
+  date: string;
+  comment: string | null;
+  results: { studentId: number; grade: number; comment: string | null }[];
+}
+
 export interface AssessmentResultInput {
   studentId: number;
   points: number | null;
@@ -385,8 +384,8 @@ export interface AssessmentDetail {
 /** Eine Doppelstunde aus Sicht eines Schülers. */
 export interface LessonGrade {
   date: string;
-  /** Summe der Bewertungen, begrenzt auf -2 bis +2; null = nicht bewertet. */
-  value: number | null;
+  /** Summe der Bewertungen, begrenzt auf -2 bis +2; ohne Bewertung 0. */
+  value: number;
   /** Die Note, die sich aus den Bewertungen ergibt. */
   autoGrade: number;
   /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */
@@ -419,6 +418,42 @@ export interface GradeBook {
   assessments: Assessment[];
   lessonDates: string[];
   students: StudentGrades[];
+}
+
+/** Eine Zelle der Stundenübersicht: die Note eines Schülers an einem Unterrichtstag. */
+export interface LessonSheetCell {
+  date: string;
+  /** Wurde der Schüler an diesem Tag bewertet? Sonst gilt die Note für "keine Bewertung". */
+  rated: boolean;
+  /** Summe der Bewertungen des Tages, begrenzt auf -2 bis +2. */
+  value: number;
+  /** Die Note aus den Bewertungen. */
+  autoGrade: number;
+  /** Von Hand gesetzt? Dann gilt deren Note - null heißt "fehlte". */
+  override: { grade: number | null; reason: string | null } | null;
+  /**
+   * Die Note, die zählt - null, wenn die Stunde nicht zählt (fehlte, oder in
+   * der Stundenübersicht: an diesem Tag wurde im Kurs niemand bewertet).
+   */
+  grade: number | null;
+}
+
+/** Die Stundenübersicht eines Kurses: je Unterrichtstag die Note jedes Schülers. */
+export interface LessonSheet {
+  courseId: number;
+  schoolClassName: string;
+  subjectName: string;
+  from: string | null;
+  to: string | null;
+  /** Alle Unterrichtstage laut Stundenplan und alle Tage mit Bewertungen. */
+  dates: { date: string; rated: boolean }[];
+  students: {
+    studentId: number;
+    firstName: string;
+    lastName: string;
+    cells: LessonSheetCell[];
+    average: number | null;
+  }[];
 }
 
 export interface GradeChange {
@@ -476,6 +511,24 @@ export interface StudentReport {
   oral: number | null;
   overall: number | null;
   partial: boolean;
+}
+
+/** Die vier Quartale des Schuljahres. */
+export type Quarter = 1 | 2 | 3 | 4;
+
+export const QUARTERS: Quarter[] = [1, 2, 3, 4];
+
+/**
+ * Eine Quartalsnote. Schriftlich mit Prozent und Note, mündlich nur als Note.
+ * suggested = nicht eingetragen, sondern der Durchschnitt der Mitarbeit.
+ */
+export interface QuarterGrade {
+  studentId: number;
+  quarter: Quarter;
+  area: GradeArea;
+  percent: number | null;
+  grade: number | null;
+  suggested: boolean;
 }
 
 /** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */

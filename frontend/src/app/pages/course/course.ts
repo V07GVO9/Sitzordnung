@@ -7,6 +7,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import {
   ChangeDetectionStrategy,
+  ElementRef,
   Component,
   HostListener,
   OnDestroy,
@@ -15,16 +16,18 @@ import {
   inject,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Observable, forkJoin, switchMap } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
   Course,
   CurrentLesson,
+  QuarterGrade,
   Rating,
   RatingValue,
   SeatingPlan,
@@ -35,7 +38,6 @@ import {
   initials,
   ratingClass,
   ratingSymbol,
-  formatAverage,
 } from '../../core/models';
 import { isValidDateKey, toDateKey } from '../../core/store/time';
 import { ToastService } from '../../core/toast.service';
@@ -43,6 +45,7 @@ import { Icon } from '../../core/ui/icon';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
 import { ParticipationSheet } from './participation-sheet';
+import { SwipeRate } from './swipe-rate';
 
 /** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
 export type ParticipationView = 'liste' | 'sitzplan';
@@ -61,7 +64,7 @@ function readView(): ParticipationView {
 /** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
 const POPOVER_WIDTH = 240;
 /** Ungefähre Höhe: eine Knopfreihe plus „Verlauf“. */
-const POPOVER_HEIGHT = 100;
+const POPOVER_HEIGHT = 110;
 const POPOVER_GAP = 6;
 
 /**
@@ -119,6 +122,7 @@ export interface SeatCell {
     Icon,
     ParticipationList,
     ParticipationSheet,
+    SwipeRate,
   ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
@@ -133,32 +137,33 @@ export class CoursePage implements OnDestroy {
   /** Die Uhrzeit der gewählten Stunde, falls aus dem Wochenplan geöffnet. */
   readonly lessonTime = signal<{ from: string; to: string } | null>(null);
   readonly isToday = computed(() => this.lessonDate() === toDateKey(new Date()));
-  /** Für Hinweise wie „keine Bewertung heute“ bzw. „… am 05.10.“. */
-  readonly dayWord = computed(() =>
-    this.isToday()
-      ? 'heute'
-      : 'am ' +
-        new Date(`${this.lessonDate()}T12:00:00`).toLocaleDateString('de-DE', {
-          day: '2-digit',
-          month: '2-digit',
-        }),
-  );
-
   readonly courseId = signal(0);
   readonly loading = signal(true);
   readonly course = signal<Course | null>(null);
   readonly students = signal<Student[]>([]);
   readonly plans = signal<SeatingPlan[]>([]);
+  /** Sitzordnungen derselben Klasse aus anderen Fächern - zum Übernehmen. */
+  readonly classPlans = signal<{ course: Course; plans: SeatingPlan[] }[]>([]);
   readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
+  /** Quartalsnoten für die Listenansicht. */
+  readonly quarterGrades = signal<QuarterGrade[]>([]);
+
   readonly saving = signal(false);
 
   /** Die anderen Fächer derselben Klasse - als Reiter oben. */
-  readonly siblings = signal<Course[]>([]);
   /** Was laut Stundenplan gerade läuft. */
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
   readonly todayRatings = signal<Map<number, Rating[]>>(new Map());
+
+  /** Wer an diesem Tag als „fehlt“ markiert ist - zählt nicht, wird nicht ausgelost. */
+  readonly absentIds = signal<Set<number>>(new Set());
+  readonly absentCount = computed(() => this.absentIds().size);
+
+  /** Der zuletzt ausgeloste Schüler - leuchtet kurz auf. */
+  readonly pickedId = signal<number | null>(null);
+  private pickTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Liste oder Sitzplan - die Wahl bleibt im Browser gespeichert. */
   readonly view = signal<ParticipationView>(readView());
@@ -198,7 +203,7 @@ export class CoursePage implements OnDestroy {
   readonly rows = signal(5);
   readonly columns = signal(8);
 
-  readonly maxPlans = 2;
+  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   readonly fullName = fullName;
   readonly initials = initials;
 
@@ -358,6 +363,9 @@ export class CoursePage implements OnDestroy {
     if (this.flashTimer) {
       clearTimeout(this.flashTimer);
     }
+    if (this.pickTimer) {
+      clearTimeout(this.pickTimer);
+    }
   }
 
   private load(courseId: number): void {
@@ -367,18 +375,19 @@ export class CoursePage implements OnDestroy {
 
     forkJoin({
       course: this.api.getCourse(courseId),
-      courses: this.api.getCourses(),
       students: this.api.getCourseStudents(courseId),
       plans: this.api.getSeatingPlans(courseId),
       scoreboard: this.api.getScoreboard(courseId),
+      quarterGrades: this.api.getQuarterGrades(courseId),
     }).subscribe({
-      next: ({ course, courses, students, plans, scoreboard }) => {
+      next: ({ course, students, plans, scoreboard, quarterGrades }) => {
         this.course.set(course);
-        this.siblings.set(courses.filter((c) => c.schoolClassId === course.schoolClassId));
+        this.quarterGrades.set(quarterGrades);
         this.students.set(students);
         this.plans.set(plans);
         this.scores.set(scoreboard.students);
         this.selectPlan(plans[0]?.id ?? null);
+        this.loadClassPlans(course);
         this.refreshToday();
         this.refreshLesson();
         this.loading.set(false);
@@ -387,6 +396,35 @@ export class CoursePage implements OnDestroy {
         this.toasts.error(err, 'Der Kurs konnte nicht geladen werden.');
         this.loading.set(false);
       },
+    });
+  }
+
+  /** Lädt die Sitzordnungen der anderen Fächer derselben Klasse. */
+  private loadClassPlans(course: Course): void {
+    this.classPlans.set([]);
+    this.api.getCourses().subscribe({
+      next: (courses) => {
+        const others = courses.filter(
+          (c) =>
+            c.schoolClassId === course.schoolClassId &&
+            c.id !== course.id &&
+            c.seatingPlanCount > 0,
+        );
+        if (!others.length) {
+          return;
+        }
+        forkJoin(others.map((c) => this.api.getSeatingPlans(c.id))).subscribe({
+          next: (lists) =>
+            this.classPlans.set(
+              others
+                .map((c, i) => ({ course: c, plans: lists[i] }))
+                .filter((g) => g.plans.length > 0)
+                .sort((a, b) => a.course.subjectName.localeCompare(b.course.subjectName, 'de')),
+            ),
+          error: () => this.classPlans.set([]),
+        });
+      },
+      error: () => this.classPlans.set([]),
     });
   }
 
@@ -599,18 +637,77 @@ export class CoursePage implements OnDestroy {
 
   // --- Sitzordnungen verwalten ---
 
+  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen oder eine neue anlegen. */
+  onPlanSelect(select: HTMLSelectElement): void {
+    const value = select.value;
+    if (value === 'new' || value.startsWith('copy:')) {
+      // Bis die neue da ist, bleibt die bisherige gewählt.
+      select.value = String(this.activePlanId() ?? '');
+      if (value === 'new') {
+        this.addPlan();
+      } else {
+        this.copyPlan(Number(value.slice('copy:'.length)));
+      }
+      return;
+    }
+    this.selectPlan(Number(select.value));
+  }
+
   addPlan(): void {
     const courseId = this.courseId();
-    const name = this.plans().length === 0 ? 'Sitzordnung 1' : 'Sitzordnung 2';
+    // Der erste freie Name „Sitzordnung n“.
+    const names = new Set(this.plans().map((p) => p.name));
+    let n = 1;
+    while (names.has(`Sitzordnung ${n}`)) {
+      n++;
+    }
+    const name = `Sitzordnung ${n}`;
 
     this.api.createSeatingPlan(courseId, name, this.rows(), this.columns()).subscribe({
       next: (plan) => {
         this.plans.update((list) => [...list, plan]);
         this.selectPlan(plan.id);
         this.toasts.success(`„${plan.name}" wurde angelegt.`);
+        // Gleich benennen: Namensfeld markieren.
+        setTimeout(() => {
+          const input = this.nameInput()?.nativeElement;
+          input?.focus();
+          input?.select();
+        });
       },
       error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
     });
+  }
+
+  /** Übernimmt eine Sitzordnung aus einem anderen Fach derselben Klasse als Kopie. */
+  copyPlan(sourceId: number): void {
+    const group = this.classPlans().find((g) => g.plans.some((p) => p.id === sourceId));
+    const source = group?.plans.find((p) => p.id === sourceId);
+    if (!group || !source) {
+      return;
+    }
+
+    const courseId = this.courseId();
+    const name = `${source.name} (${group.course.subjectShortName || group.course.subjectName})`;
+    // Nur Schüler übernehmen, die es in diesem Kurs gibt.
+    const known = new Set(this.students().map((s) => s.id));
+    const seats = source.seats.filter((s) => known.has(s.studentId));
+
+    this.api
+      .createSeatingPlan(courseId, name, source.rows, source.columns)
+      .pipe(
+        switchMap((plan) =>
+          this.api.saveLayout(plan.id, { rows: source.rows, columns: source.columns, seats }),
+        ),
+      )
+      .subscribe({
+        next: (plan) => {
+          this.plans.update((list) => [...list, plan]);
+          this.selectPlan(plan.id);
+          this.toasts.success(`„${source.name}" aus ${group.course.subjectName} übernommen.`);
+        },
+        error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht übernommen werden.'),
+      });
   }
 
   renamePlan(name: string): void {
@@ -670,6 +767,7 @@ export class CoursePage implements OnDestroy {
     this.rate(request.student, request.value);
   }
 
+  /** Je Schüler und Tag eine Bewertung - der letzte Klick ersetzt die vorige. */
   rate(student: Student, value: RatingValue): void {
     if (this.editMode()) {
       return;
@@ -677,8 +775,11 @@ export class CoursePage implements OnDestroy {
     // Nach dem Bewerten klappt die Kachel wieder zusammen.
     this.selectedId.set(null);
     const courseId = this.courseId();
+    // Merken, was vorher galt - „Rückgängig“ stellt es wieder her.
+    const previous = (this.todayRatings().get(student.id)?.at(-1)?.value ??
+      null) as RatingValue | null;
 
-    this.api.rate(courseId, student.id, value, undefined, this.lessonDate()).subscribe({
+    this.api.rate(courseId, student.id, value, undefined, this.lessonDate(), true).subscribe({
       next: (rating) => {
         this.refreshScores();
         this.flashTile(student.id, value);
@@ -692,17 +793,105 @@ export class CoursePage implements OnDestroy {
           `${fullName(student)}: ${ratingSymbol(value)}`,
           'success',
           6000,
-          { label: 'Rückgängig', run: () => this.undoRating(rating.id) },
+          { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
         );
       },
       error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
     });
   }
 
-  /** Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. */
-  private undoRating(ratingId: number): void {
+  /** Schnellbewertung per Wischen über Kachel oder Zeile. */
+  onSwipe(student: Student, value: RatingValue): void {
+    if (this.absentIds().has(student.id)) {
+      return;
+    }
+    this.rate(student, value);
+  }
+
+  // --- Abwesende ---
+
+  /** Markiert einen Schüler für diesen Tag als fehlend - oder wieder als anwesend. */
+  toggleAbsent(student: Student, undo = true): void {
+    if (this.editMode()) {
+      return;
+    }
+    this.selectedId.set(null);
+    const absent = !this.absentIds().has(student.id);
+    this.api.setAbsent(this.courseId(), student.id, this.lessonDate(), absent).subscribe({
+      next: () => {
+        this.refreshScores();
+        if (this.undoToastId !== null) {
+          this.toasts.dismiss(this.undoToastId);
+        }
+        this.undoToastId = this.toasts.show(
+          `${fullName(student)}: ${absent ? 'fehlt' : 'wieder anwesend'}`,
+          'success',
+          6000,
+          undo ? { label: 'Rückgängig', run: () => this.toggleAbsent(student, false) } : undefined,
+        );
+      },
+      error: (err) => this.toasts.error(err, 'Die Anwesenheit konnte nicht gespeichert werden.'),
+    });
+  }
+
+  // --- Auslosen ---
+
+  /**
+   * Lost einen anwesenden Schüler aus - bevorzugt jemanden, der an diesem Tag
+   * noch keine Bewertung hat. Im Sitzplan öffnen sich gleich seine Knöpfe.
+   */
+  pickRandom(): void {
+    const present = this.students().filter((s) => !this.absentIds().has(s.id));
+    if (!present.length) {
+      this.toasts.show('Es ist niemand anwesend, der ausgelost werden kann.', 'info');
+      return;
+    }
+    const open = present.filter((s) => !this.lastToday().has(s.id));
+    const pool = open.length ? open : present;
+    const student = pool[Math.floor(Math.random() * pool.length)];
+
+    if (this.pickTimer) {
+      clearTimeout(this.pickTimer);
+    }
+    this.pickedId.set(null);
+    requestAnimationFrame(() => {
+      this.pickedId.set(student.id);
+      this.pickTimer = setTimeout(() => this.pickedId.set(null), 3600);
+      const el = document.querySelector<HTMLElement>(`[data-student="${student.id}"]`);
+      el?.scrollIntoView({ block: 'center' });
+      // Im Sitzplan gleich die Bewertungsknöpfe öffnen, sobald die Kachel steht.
+      if (el?.classList.contains('student')) {
+        setTimeout(() => {
+          this.popover.set(placePopover(el.getBoundingClientRect()));
+          this.selectedId.set(student.id);
+        }, 200);
+      }
+    });
+    this.toasts.show(
+      `Ausgelost: ${fullName(student)}${open.length ? '' : ' (alle schon bewertet)'}`,
+      'info',
+      4000,
+    );
+  }
+
+  /**
+   * Nimmt genau die Bewertung zurück, zu der die Meldung gehörte. Hat sie
+   * eine frühere ersetzt, gilt danach wieder diese.
+   */
+  private undoRating(rating: Rating, previous: RatingValue | null): void {
     this.undoToastId = null;
-    this.api.deleteRating(ratingId).subscribe({
+    const undo$: Observable<unknown> =
+      previous === null
+        ? this.api.deleteRating(rating.id)
+        : this.api.rate(
+            rating.courseId,
+            rating.studentId,
+            previous,
+            undefined,
+            rating.lessonDate,
+            true,
+          );
+    undo$.subscribe({
       next: () => {
         this.toasts.show('Die Bewertung wurde zurückgenommen.');
         this.refreshScores();
@@ -716,7 +905,7 @@ export class CoursePage implements OnDestroy {
     const date = new Date(`${rating.lessonDate}T12:00:00`).toLocaleDateString('de-DE');
     const confirmed = await this.confirm.ask({
       title: `Bewertung ${ratingSymbol(rating.value)} vom ${date} löschen?`,
-      message: 'Die Mitarbeitsnote wird sofort neu berechnet.',
+      message: 'Der Punktestand wird sofort neu berechnet.',
       confirmLabel: 'Löschen',
       danger: true,
     });
@@ -742,11 +931,6 @@ export class CoursePage implements OnDestroy {
       this.flash.set({ studentId, value });
       this.flashTimer = setTimeout(() => this.flash.set(null), 700);
     });
-  }
-
-  /** Mitarbeitsnote mit einer Nachkommastelle, etwa 2,3. */
-  scoreText(value: number | null | undefined): string {
-    return formatAverage(value);
   }
 
   // --- Kachel auswählen ---
@@ -820,7 +1004,11 @@ export class CoursePage implements OnDestroy {
   private refreshScores(): void {
     this.api.getScoreboard(this.courseId()).subscribe({
       next: (board) => this.scores.set(board.students),
-      error: (err) => this.toasts.error(err, 'Die Mitarbeitsnoten konnten nicht geladen werden.'),
+      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
+    });
+    // Der mündliche Vorschlag (Ø Mitarbeit) ändert sich mit jeder Bewertung.
+    this.api.getQuarterGrades(this.courseId()).subscribe({
+      next: (grades) => this.quarterGrades.set(grades),
     });
     this.refreshToday();
     if (this.sheetStudentId() !== null) {
@@ -838,6 +1026,9 @@ export class CoursePage implements OnDestroy {
         }
         this.todayRatings.set(map);
       },
+    });
+    this.api.getAbsentStudentIds(this.courseId(), day).subscribe({
+      next: (ids) => this.absentIds.set(new Set(ids)),
     });
   }
 

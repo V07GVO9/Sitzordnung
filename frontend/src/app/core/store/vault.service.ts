@@ -7,9 +7,10 @@
  */
 
 import { Injectable, effect, inject, signal } from '@angular/core';
+import { ToastService } from '../toast.service';
+import { ConfirmService } from '../ui/confirm.service';
 import { AppError } from './app-error';
 import {
-  AutosaveEntry,
   clearAutosave,
   clearLastFileHandle,
   clearRemembered,
@@ -20,7 +21,7 @@ import {
   writeLastFileHandle,
   writeRemembered,
 } from './browser-storage';
-import { createEmptyDatabase } from './database';
+import { Database, createEmptyDatabase } from './database';
 import {
   FileHandle,
   FilePickerCancelled,
@@ -32,6 +33,7 @@ import {
   isNativeApp,
   openFile,
   readHandle,
+  saveCopyWithPicker,
   supportsFileHandles,
   writeFile,
 } from './file-system';
@@ -43,23 +45,51 @@ import { VaultPasswordError, decryptDatabase, encryptDatabase } from './vault-cr
 /** So lange nach der letzten Änderung wird in den Zwischenspeicher geschrieben. */
 const AUTOSAVE_DELAY_MS = 2_000;
 
-/** So lange nach der letzten Änderung wird automatisch in die Datei geschrieben. */
-const FILE_AUTOSAVE_DELAY_MS = 3_000;
+/**
+ * So kurz nach einer Änderung wird automatisch in die Datei geschrieben -
+ * praktisch sofort. Die kleine Pause fasst nur schnelle Folgen (Ziehen,
+ * mehrere Klicks) zu einem Schreibvorgang zusammen.
+ */
+const FILE_AUTOSAVE_DELAY_MS = 300;
 
 /** Die Wahl „automatisch speichern“ gilt je Gerät und liegt deshalb im Browser. */
 const AUTOSAVE_PREF_KEY = 'sitzordnung.autoSaveToFile';
 
 const DEFAULT_FILE_NAME = 'sitzordnung' + VAULT_EXTENSION;
 
+/**
+ * Nach so langer Untätigkeit sperrt sich der Bestand von selbst. Schützt
+ * Schülerdaten, wenn ein Rechner im Klassenraum unbeaufsichtigt bleibt.
+ */
+export const IDLE_LOCK_MS = 15 * 60_000;
+
+/** So oft wird geprüft, ob die Sperrfrist abgelaufen ist. */
+const IDLE_CHECK_MS = 30_000;
+
+/** Diese Eingaben zählen als Tätigkeit und schieben die Sperre hinaus. */
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+
+/** Prüfsumme einer Datei, um zu erkennen, ob sie anderswo geändert wurde. */
+async function fingerprint(content: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 @Injectable({ providedIn: 'root' })
 export class VaultService {
   private readonly store = inject(LocalStore);
   private readonly oneDrive = inject(OneDriveService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly toasts = inject(ToastService);
 
   private password: string | null = null;
+  /** Prüfsumme der Datei, wie sie zuletzt geöffnet oder gespeichert wurde. */
+  private baseHash: string | null = null;
   private handle: FileHandle | null = null;
   private autosaveTimer: ReturnType<typeof setTimeout> | null = null;
   private fileAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Eine Änderung kam während einer Speicherung - danach gleich noch einmal schreiben. */
+  private pendingAutoSave = false;
 
   /** Name der geöffneten Datei, zur Anzeige in der Kopfzeile. */
   readonly fileName = signal<string | null>(null);
@@ -101,6 +131,10 @@ export class VaultService {
 
   /** Von selbst geöffnet wird nur einmal je Seitenaufruf - nicht nach dem Schließen. */
   private autoOpenDone = false;
+  private lastActivity = Date.now();
+
+  /** Wurde der Bestand wegen Untätigkeit gesperrt? Die Startseite sagt es dann. */
+  readonly lockedByIdle = signal(false);
 
   constructor() {
     // Der Zwischenspeicher zieht bei jeder Änderung nach.
@@ -111,12 +145,77 @@ export class VaultService {
       void readLastFileHandle<FileHandle>().then((handle) => this.lastLocalFile.set(handle));
     }
 
+    // Wird die Seite verlassen oder die App weggeschaltet, sofort schreiben.
+    const flush = () => this.flushAutoSave();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        flush();
+      }
+    });
+
+    this.watchIdle();
+
     window.addEventListener('beforeunload', (event) => {
       if (this.store.isOpen() && this.store.hasUnsavedChanges()) {
         event.preventDefault();
         event.returnValue = '';
       }
     });
+  }
+
+  /** Sperrt den Bestand nach {@link IDLE_LOCK_MS} ohne Eingabe. */
+  private watchIdle(): void {
+    const touch = () => (this.lastActivity = Date.now());
+    for (const name of ACTIVITY_EVENTS) {
+      document.addEventListener(name, touch, { passive: true, capture: true });
+    }
+
+    // Per Intervall statt eines langen Timers: Ein Timer in einem Tab im
+    // Hintergrund oder im Ruhezustand läuft nicht zuverlässig weiter.
+    setInterval(() => {
+      if (this.store.isOpen() && Date.now() - this.lastActivity >= IDLE_LOCK_MS) {
+        void this.lock();
+      }
+    }, IDLE_CHECK_MS);
+  }
+
+  /**
+   * Sperrt den Bestand: Ungesicherte Änderungen landen verschlüsselt im
+   * Zwischenspeicher, dann wird das Passwort aus dem Speicher genommen.
+   * Beim nächsten Öffnen derselben Datei kommen die Änderungen zurück.
+   */
+  async lock(): Promise<void> {
+    if (!this.store.isOpen() || this.isSaving()) {
+      // Eine laufende Speicherung erst abwarten - die nächste Prüfung sperrt.
+      return;
+    }
+
+    if (this.autosaveTimer) {
+      clearTimeout(this.autosaveTimer);
+      this.autosaveTimer = null;
+    }
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+      this.fileAutosaveTimer = null;
+    }
+
+    try {
+      if (this.store.hasUnsavedChanges()) {
+        await this.writeAutosaveEntry();
+      }
+    } catch {
+      // Ohne Zwischenspeicher lieber offen lassen als Änderungen verlieren.
+      return;
+    }
+
+    this.password = null;
+    this.baseHash = null;
+    this.setHandle(null);
+    this.fileName.set(null);
+    this.lastSavedAt.set(null);
+    this.store.close();
+    this.lockedByIdle.set(true);
   }
 
   private watchChanges(): void {
@@ -129,13 +228,31 @@ export class VaultService {
       }
       this.autosaveTimer = setTimeout(() => void this.writeAutosaveEntry(), AUTOSAVE_DELAY_MS);
 
-      if (this.fileAutosaveTimer) {
-        clearTimeout(this.fileAutosaveTimer);
-      }
       if (this.autoSaveToFile()) {
-        this.fileAutosaveTimer = setTimeout(() => void this.autoSave(), FILE_AUTOSAVE_DELAY_MS);
+        this.scheduleAutoSave();
       }
     });
+  }
+
+  private scheduleAutoSave(): void {
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+    }
+    this.fileAutosaveTimer = setTimeout(() => {
+      this.fileAutosaveTimer = null;
+      void this.autoSave();
+    }, FILE_AUTOSAVE_DELAY_MS);
+  }
+
+  /** Schreibt eine anstehende automatische Speicherung ohne Wartezeit. */
+  private flushAutoSave(): void {
+    if (this.fileAutosaveTimer) {
+      clearTimeout(this.fileAutosaveTimer);
+      this.fileAutosaveTimer = null;
+    }
+    if (this.autoSaveToFile()) {
+      void this.autoSave();
+    }
   }
 
   setAutoSaveToFile(enabled: boolean): void {
@@ -153,9 +270,13 @@ export class VaultService {
    */
   private async autoSave(): Promise<void> {
     const handle = this.handle;
+    if (this.isSaving()) {
+      // Läuft gerade eine Speicherung, kommt diese Änderung gleich danach dran.
+      this.pendingAutoSave = true;
+      return;
+    }
     if (
       !handle ||
-      this.isSaving() ||
       !this.store.isOpen() ||
       !this.store.hasUnsavedChanges() ||
       this.saveConflict() ||
@@ -193,12 +314,8 @@ export class VaultService {
       savedAt: new Date().toISOString(),
       fileName: this.fileName(),
       dirty: this.store.hasUnsavedChanges(),
+      baseHash: this.baseHash,
     });
-  }
-
-  /** Gibt es einen Zwischenstand von der letzten Sitzung? */
-  async findAutosave(): Promise<AutosaveEntry | null> {
-    return readAutosave();
   }
 
   // --- Öffnen und Anlegen -------------------------------------------------
@@ -209,6 +326,8 @@ export class VaultService {
 
     this.password = password;
     this.store.load(createEmptyDatabase());
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
 
     if (this.canWriteInPlace) {
       try {
@@ -217,18 +336,36 @@ export class VaultService {
         await this.save();
         await this.rememberLocalFile(this.handle);
         return;
-      } catch {
-        // Der Bestand steht bereits - wählt die Lehrkraft jetzt keine Datei,
-        // geht es ohne weiter und das Speichern läuft über einen Download.
+      } catch (error) {
+        if (error instanceof FilePickerCancelled) {
+          // Ohne gewählte Datei entsteht kein Bestand - sonst arbeitete man an
+          // etwas, das nirgends liegt, und öffnete später die alte Datei.
+          this.password = null;
+          this.setHandle(null);
+          this.store.close();
+          throw error;
+        }
+        // Der Browser lässt die Datei nicht anlegen: weiter ohne Datei,
+        // gespeichert wird dann über einen Download.
         this.setHandle(null);
       }
     }
 
     this.fileName.set(DEFAULT_FILE_NAME);
 
+    // Die zuletzt benutzte Datei ist nicht diese - sie darf beim nächsten
+    // Start nicht als „letzte Datei“ angeboten werden.
+    await this.forgetLastLocalFile();
+
     // Ohne Datei steht noch nichts auf der Festplatte. Das zählt als
     // ungesicherte Änderung, damit die App zum Speichern auffordert.
     this.store.revision.update((value) => value + 1);
+
+    if (!this.canWriteInPlace) {
+      // Ohne Dateizugriff (z. B. Firefox, Safari) gleich einmal herunterladen,
+      // damit die neue Datei sofort existiert.
+      await this.save().catch(() => undefined);
+    }
   }
 
   /** Öffnet eine Datei und entschlüsselt sie. */
@@ -288,10 +425,14 @@ export class VaultService {
     await this.oneDrive.ensureToken(true);
 
     const database = createEmptyDatabase();
-    const handle = await this.oneDrive.create(name, await encryptDatabase(database, password));
+    const blob = await encryptDatabase(database, password);
+    const handle = await this.oneDrive.create(name, blob);
 
+    this.baseHash = await fingerprint(await blob.text());
     this.password = password;
     this.store.load(database);
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
     this.setHandle(handle);
     this.fileName.set(handle.name);
     this.lastSavedAt.set(new Date());
@@ -305,14 +446,15 @@ export class VaultService {
 
     // Erst anmelden, solange das Anmeldefenster noch als Folge des Klicks gilt.
     await this.oneDrive.ensureToken(true);
-    const handle = await this.oneDrive.create(
-      name,
-      await encryptDatabase(this.store.snapshot(), this.password),
-    );
+    const blob = await encryptDatabase(this.store.snapshot(), this.password);
+    const handle = await this.oneDrive.create(name, blob);
+    const previousName = this.fileName();
+    this.baseHash = await fingerprint(await blob.text());
     this.setHandle(handle);
     this.fileName.set(handle.name);
     this.store.markSaved();
     this.lastSavedAt.set(new Date());
+    await this.dropAutosaveOf(previousName);
   }
 
   // --- Auf diesem Gerät merken --------------------------------------------
@@ -394,9 +536,8 @@ export class VaultService {
   }
 
   /**
-   * Öffnet beim Start den gemerkten Bestand, einmal je Seitenaufruf. Liegt im
-   * Browser ein Zwischenstand mit ungesicherten Änderungen, entscheidet die
-   * Lehrkraft selbst - sonst gingen diese Änderungen unter.
+   * Öffnet beim Start den gemerkten Bestand, einmal je Seitenaufruf.
+   * Ungesicherte Änderungen aus dem Browser übernimmt das Öffnen von selbst.
    */
   async tryAutoOpen(): Promise<boolean> {
     if (this.autoOpenDone || this.store.isOpen()) {
@@ -404,7 +545,7 @@ export class VaultService {
     }
     this.autoOpenDone = true;
 
-    if (!(await readRemembered()) || (await readAutosave())?.dirty) {
+    if (!(await readRemembered())) {
       return false;
     }
 
@@ -428,7 +569,8 @@ export class VaultService {
     }
 
     const file = await handle.getFile();
-    await this.loadContent(await file.text(), password, handle.name, handle);
+    // Der Stand des anderen Geräts gilt - der eigene Zwischenstand bleibt außen vor.
+    await this.loadContent(await file.text(), password, handle.name, handle, false);
 
     // Der Bestand bleibt offen - alle Seiten sollen den neuen Stand zeigen.
     this.store.revision.update((value) => value + 1);
@@ -436,28 +578,85 @@ export class VaultService {
     this.lastSavedAt.set(new Date());
   }
 
-  /** Setzt auf dem Zwischenstand aus dem Browser auf. */
-  async restoreAutosave(entry: AutosaveEntry, password: string): Promise<void> {
-    await this.loadContent(entry.content, password, entry.fileName, null);
-
-    // Der Zwischenstand steht noch in keiner Datei. Das zählt als ungesicherte
-    // Änderung, damit die App zum Speichern auffordert.
-    this.store.revision.update((value) => value + 1);
-  }
-
+  /**
+   * Entschlüsselt eine Datei und öffnet sie. Liegen im Browser ungesicherte
+   * Änderungen zu genau dieser Datei, werden sie gleich mit übernommen.
+   */
   private async loadContent(
     content: string,
     password: string,
     name: string | null,
     handle: FileHandle | null,
+    useAutosave = true,
   ): Promise<void> {
-    const database = await decryptDatabase(content, password);
+    let database = await decryptDatabase(content, password);
+    const baseHash = await fingerprint(content);
+    const pending = useAutosave ? await this.pendingChanges(name, baseHash, password) : null;
+    if (pending) {
+      database = pending;
+    }
 
     this.password = password;
+    this.baseHash = baseHash;
     this.setHandle(handle);
     this.fileName.set(name);
     this.store.load(database);
+    this.lockedByIdle.set(false);
+    this.lastActivity = Date.now();
     this.lastSavedAt.set(null);
+
+    if (pending) {
+      // Die Änderungen stehen noch in keiner Datei - die App fordert zum Speichern auf.
+      this.store.revision.update((value) => value + 1);
+      this.toasts.success('Ungesicherte Änderungen wiederhergestellt.');
+    }
+  }
+
+  /**
+   * Der Zwischenstand aus dem Browser, sofern er Änderungen zu dieser Datei
+   * enthält, die noch nicht gespeichert sind. Wurde die Datei inzwischen
+   * anderswo gespeichert, entscheidet die Lehrkraft, welcher Stand gilt.
+   */
+  private async pendingChanges(
+    name: string | null,
+    baseHash: string,
+    password: string,
+  ): Promise<Database | null> {
+    const entry = await readAutosave(name);
+    if (!entry?.dirty) {
+      return null;
+    }
+
+    let database: Database;
+    try {
+      database = await decryptDatabase(entry.content, password);
+    } catch {
+      // Mit einem anderen Passwort gesichert - dann gehört er nicht hierher.
+      return null;
+    }
+
+    if (entry.baseHash === baseHash) {
+      return database;
+    }
+
+    const keepFile = await this.confirm.ask({
+      title: 'Die Datei ist neuer als deine Änderungen',
+      message:
+        `Im Browser liegen ungesicherte Änderungen vom ${new Date(entry.savedAt).toLocaleString('de-DE')}. ` +
+        `„${name ?? 'Die Datei'}“ wurde danach an anderer Stelle gespeichert, vermutlich auf einem anderen Gerät. ` +
+        'Welcher Stand soll gelten? Der andere geht dabei verloren.',
+      confirmLabel: 'Stand der Datei laden',
+      cancelLabel: 'Meine Änderungen behalten',
+      danger: true,
+    });
+    return keepFile ? null : database;
+  }
+
+  /** Nach einem Umzug in eine andere Datei gehört der alte Zwischenstand niemandem mehr. */
+  private async dropAutosaveOf(previousName: string | null): Promise<void> {
+    if (previousName !== this.fileName()) {
+      await clearAutosave(previousName);
+    }
   }
 
   // --- Speichern ----------------------------------------------------------
@@ -472,11 +671,16 @@ export class VaultService {
     }
 
     this.isSaving.set(true);
+    // Der Stand, der jetzt geschrieben wird - spätere Änderungen gelten nicht als gesichert.
+    // Stand und Inhalt gehören zusammen, deshalb beides vor dem ersten Warten.
+    const revision = this.store.revision();
+    const snapshot = this.store.snapshot();
     try {
       // Vor dem Verschlüsseln, damit ein Anmeldefenster noch als Folge des Klicks gilt.
       await this.handle?.prepare?.(options.interactive ?? true);
 
-      const blob = await encryptDatabase(this.store.snapshot(), this.password);
+      const previousName = this.fileName();
+      const blob = await encryptDatabase(snapshot, this.password);
 
       if (this.handle) {
         try {
@@ -493,16 +697,45 @@ export class VaultService {
         await download(blob, this.fileName() ?? DEFAULT_FILE_NAME);
       }
 
-      this.store.markSaved();
+      this.baseHash = await fingerprint(await blob.text());
+      this.store.markSaved(revision);
       this.lastSavedAt.set(new Date());
       await this.writeAutosaveEntry();
+      await this.dropAutosaveOf(previousName);
     } finally {
       this.isSaving.set(false);
+      // Kam während des Schreibens etwas dazu, gleich hinterher speichern.
+      // (Nicht nach einem Fehler ohne neue Änderung - sonst liefe es endlos.)
+      const changedMeanwhile = this.store.revision() > revision;
+      if (this.pendingAutoSave || changedMeanwhile) {
+        this.pendingAutoSave = false;
+        if (this.autoSaveToFile() && this.store.isOpen()) {
+          this.scheduleAutoSave();
+        }
+      }
     }
+  }
+
+  /**
+   * Speichert eine Sicherungskopie - verschlüsselt mit demselben Passwort.
+   * Es wird jedes Mal nach dem Speicherort gefragt. Anders als
+   * „Speichern unter“ bleibt die Arbeitsdatei dieselbe.
+   */
+  async saveBackupCopy(): Promise<void> {
+    if (!this.store.isOpen() || this.password === null) {
+      throw new AppError('Es ist kein Datenbestand geöffnet.');
+    }
+    const blob = await encryptDatabase(this.store.snapshot(), this.password);
+    const base = (this.fileName() ?? DEFAULT_FILE_NAME).replace(/\.sitzordnung$/i, '');
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    await saveCopyWithPicker(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
+    this.store.markBackup();
   }
 
   /** Fragt nach einer neuen Datei und speichert dorthin. */
   async saveAs(): Promise<void> {
+    const previousName = this.fileName();
     if (this.canWriteInPlace) {
       const handle = await chooseSaveFile(this.fileName() ?? DEFAULT_FILE_NAME);
       if (handle) {
@@ -512,6 +745,7 @@ export class VaultService {
     }
 
     await this.save();
+    await this.dropAutosaveOf(previousName);
     await this.rememberLocalFile(this.handle);
   }
 
@@ -536,12 +770,14 @@ export class VaultService {
 
   /** Schließt den Bestand und räumt den Zwischenspeicher ab. */
   async closeVault(): Promise<void> {
+    const name = this.fileName();
     this.password = null;
+    this.baseHash = null;
     this.setHandle(null);
     this.fileName.set(null);
     this.lastSavedAt.set(null);
     this.store.close();
-    await clearAutosave();
+    await clearAutosave(name);
   }
 
   /** Ein neues Passwort muss die Regeln aus password-policy erfüllen. */

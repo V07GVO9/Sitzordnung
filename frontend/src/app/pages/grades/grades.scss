@@ -63,6 +63,84 @@
   }
 }
 
+/* „Mehr“: seltene Reiter in einem kleinen Menü. */
+.more {
+  position: relative;
+
+  > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+}
+
+.more-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+
+  button {
+    min-height: 2.4rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  button.active {
+    background: var(--accent-soft);
+    border-color: var(--accent-soft);
+    color: var(--accent-dark);
+    font-weight: 600;
+  }
+}
+
+/* Hinweise über der Notenübersicht. */
+.warn-box {
+  margin: 0.5rem 0 0.75rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm, 0.5rem);
+  background: var(--warning-soft);
+  color: var(--warning-text);
+
+  ul {
+    margin: 0;
+    padding: 0 0.9rem 0.6rem 2.1rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .bad {
+    font-weight: 700;
+  }
+}
+
+.warn-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.warn-row td:first-child {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+.warn-icon {
+  margin-left: 0.3rem;
+  color: var(--warning-text);
+  vertical-align: -0.1em;
+}
+
 h3 {
   font-size: 1rem;
   margin: 1.25rem 0 0.4rem;

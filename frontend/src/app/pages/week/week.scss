@@ -25,6 +25,20 @@
   cursor: pointer;
 }
 
+/* Nach dem Blättern deutlich sichtbar: ein Tipp führt zurück in die aktuelle Woche. */
+.today-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.25rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .grid-wrap {
   overflow-x: auto;
   border-radius: var(--radius);
@@ -138,21 +152,6 @@
   }
 }
 
-.count {
-  position: absolute;
-  top: 0.2rem;
-  right: 0.2rem;
-  min-width: 1.1rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: var(--positive-solid);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-align: center;
-  line-height: 1.1rem;
-}
-
 .hint {
   margin: 0;
   text-align: center;
@@ -223,5 +222,17 @@
   .slide-next,
   .slide-prev {
     animation: none;
+  }
+}
+
+/* Erinnerung an die Sicherungskopie - Knöpfe auf dem Handy in eigener Zeile. */
+.backup-banner {
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+
+  .actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
   }
 }

@@ -32,8 +32,6 @@ services:
       # Caddy terminiert TLS; die App muss wissen, dass die Anfrage von außen
       # über HTTPS kam.
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      Auth__Username: ${PROD_AUTH_USERNAME:?PROD_AUTH_USERNAME fehlt}
-      Auth__InitialPassword: ${PROD_AUTH_INITIAL_PASSWORD:?PROD_AUTH_INITIAL_PASSWORD fehlt}
     volumes:
       - prod-data:/data
 
@@ -44,8 +42,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      Auth__Username: ${TEST_AUTH_USERNAME:?TEST_AUTH_USERNAME fehlt}
-      Auth__InitialPassword: ${TEST_AUTH_INITIAL_PASSWORD:?TEST_AUTH_INITIAL_PASSWORD fehlt}
     volumes:
       - test-data:/data
 
@@ -57,8 +53,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
-      Auth__Username: ${DEV_AUTH_USERNAME:-lehrkraft}
-      Auth__InitialPassword: ${DEV_AUTH_INITIAL_PASSWORD:-}
     volumes:
       - dev-data:/data
 

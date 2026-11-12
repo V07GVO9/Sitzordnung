@@ -10,9 +10,10 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { ActiveCourseService } from './core/active-course.service';
 import { ApiService } from './core/api.service';
 import { ModeService } from './core/mode.service';
-import { Course, CurrentLesson, SchoolClass, TimetableEntry, WEEKDAY_NAMES } from './core/models';
+import { Course, CurrentLesson } from './core/models';
 import { FilePickerCancelled, SaveConflictError } from './core/store/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/store/vault.service';
@@ -22,21 +23,11 @@ import { ConfirmHost } from './core/ui/confirm-host';
 import { ConfirmService } from './core/ui/confirm.service';
 import { Icon } from './core/ui/icon';
 import { IconName } from './core/ui/icons';
-import { PwaService } from './core/ui/pwa.service';
 import { subjectHue } from './core/ui/subject-hue';
+import { PwaService } from './core/ui/pwa.service';
 import { ThemeChoice, ThemeService } from './core/ui/theme.service';
 import { ChangePasswordDialog } from './vault/change-password-dialog';
 import { VaultGate } from './vault/vault-gate';
-
-/** Ein Reiter der Leiste unten - wie die Bereiche der Klassenmappe. */
-interface ClassTab {
-  key: 'uebersicht' | 'schueler' | 'mitarbeit' | 'noten';
-  label: string;
-  icon: IconName;
-}
-
-/** Was die Seitenleiste zeigt: die Klassen oder den Unterricht eines Tages. */
-type SidebarView = 'klassen' | 'tag';
 
 const THEME_LABELS: Record<ThemeChoice, string> = {
   system: 'Wie im System',
@@ -44,21 +35,35 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
   dark: 'Dunkel',
 };
 
+/** Titel der Seiten in der Kopfleiste. */
+/** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
+const SHORT_TITLES: Record<string, string> = {
+  verwaltung: 'Verwaltung',
+  auswertung: 'Auswertung',
+};
+
+const PAGE_TITLES: Record<string, string> = {
+  '': 'Wochenplan',
+  noten: 'Noten',
+  stundenplan: 'Stundenplan',
+  verwaltung: 'Klassen, Fächer & Schüler',
+  auswertung: 'Auswertung & Einstellungen',
+  einrichtung: 'Einrichtung',
+  schuljahr: 'Schuljahreswechsel',
+};
+
+/** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */
+const COURSE_PAGES = new Set(['kurs', 'noten', 'auswertung']);
+
+function courseTitle(course: Course): string {
+  return `${course.subjectName} · ${course.schoolClassName}`;
+}
+
 const THEME_ICONS: Record<ThemeChoice, IconName> = {
   system: 'monitor',
   light: 'sun',
   dark: 'moon',
 };
-
-/** Seiten außerhalb einer Klasse und ihre Titel in der Kopfleiste. */
-const PAGE_TITLES: Record<string, string> = {
-  stundenplan: 'Stundenplan',
-  verwaltung: 'Klassen, Fächer & Schüler',
-  auswertung: 'Auswertung & Einstellungen',
-};
-
-/** Ab dieser Breite steht die Seitenleiste neben dem Inhalt statt darüber. */
-const WIDE_QUERY = '(min-width: 56rem)';
 
 @Component({
   selector: 'app-root',
@@ -76,7 +81,7 @@ const WIDE_QUERY = '(min-width: 56rem)';
   templateUrl: './app.html',
   styleUrl: './app.scss',
   host: {
-    '(document:keydown.escape)': 'menuOpen.set(false)',
+    '(document:keydown.escape)': 'closeMenu()',
     '(document:keydown)': 'onKeydown($event)',
   },
 })
@@ -90,6 +95,7 @@ export class App implements OnDestroy {
   private readonly pwa = inject(PwaService);
   private readonly confirm = inject(ConfirmService);
   private readonly mode = inject(ModeService);
+  private readonly active = inject(ActiveCourseService);
 
   readonly canInstall = this.pwa.canInstall;
   readonly isOpen = this.store.isOpen;
@@ -100,87 +106,53 @@ export class App implements OnDestroy {
   readonly isEdit = this.mode.isEdit;
 
   readonly lesson = signal<CurrentLesson | null>(null);
-  readonly classes = signal<SchoolClass[]>([]);
-  readonly courses = signal<Course[]>([]);
-  readonly timetable = signal<TimetableEntry[]>([]);
 
-  /** Die Klasse, in der man sich gerade bewegt - aus der Adresse abgeleitet. */
-  readonly activeClassId = signal<number | null>(null);
-  /** Der zuletzt geöffnete Kurs je Klasse, damit „Mitarbeit“ dorthin zurückführt. */
-  private readonly lastCourseByClass = new Map<number, number>();
-  /** Die aktuelle Adresse ohne Abfrageteil - für die aktiven Reiter. */
-  private readonly currentPath = signal('/');
-  /** Der Titel für Seiten außerhalb einer Klasse. */
-  readonly pageTitle = signal('');
+  /** Das im Wochenplan gewählte Fach - ohne es bleibt das Menü im Unterricht zu. */
+  readonly activeCourse = this.active.course;
+  readonly activeCourseHue = computed(() => {
+    const course = this.activeCourse();
+    return course ? subjectHue(course.subjectName) : 0;
+  });
+  /** Im Bearbeitungsmodus ist das Menü immer offen, im Unterricht erst mit Fach. */
+  readonly menuLocked = computed(() => !this.isEdit() && !this.activeCourse());
 
-  readonly sidebarView = signal<SidebarView>('klassen');
-  /** Auf breiten Bildschirmen: steht die Seitenleiste? Auf schmalen: ist sie aufgeklappt? */
-  readonly sidebarOpen = signal(this.isWide());
+  /** Der Pfad der aktuellen Seite, in Teile zerlegt. */
+  private readonly path = signal<string[]>([]);
+
+  /** Der Titel der aktuellen Seite in der Kopfleiste. */
+  readonly title = computed(() => {
+    const [page = '', , sub] = this.path();
+    const course = this.activeCourse();
+    if (page === 'kurs') {
+      return course ? courseTitle(course) + (sub === 'noten' ? ' – Noten' : '') : '';
+    }
+    const title = PAGE_TITLES[page] ?? '';
+    // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
+    return course && COURSE_PAGES.has(page) ? `${title} – ${courseTitle(course)}` : title;
+  });
+  /**
+   * Kurzfassung fürs Handy: Das Kürzel steht davor, statt des Fachnamens nur
+   * die Klasse - z. B. „INF BFI10A · Noten“.
+   */
+  readonly shortTitle = computed(() => {
+    const [page = '', , sub] = this.path();
+    const course = this.activeCourse();
+    if (page === 'kurs') {
+      return course ? course.schoolClassName + (sub === 'noten' ? ' · Noten' : '') : '';
+    }
+    const title = SHORT_TITLES[page] ?? PAGE_TITLES[page] ?? '';
+    return course && COURSE_PAGES.has(page) ? `${course.schoolClassName} · ${title}` : title;
+  });
+  /** Kürzel und Farbe des Fachs für den Kurskopf - nur auf den Seiten des Fachs. */
+  readonly courseBadge = computed(() => {
+    const course = this.activeCourse();
+    const [page = ''] = this.path();
+    return course && COURSE_PAGES.has(page)
+      ? { short: course.subjectShortName, hue: subjectHue(course.subjectName) }
+      : null;
+  });
   readonly menuOpen = signal(false);
   readonly passwordDialogOpen = signal(false);
-
-  /** Der Tag, den die Tagesansicht zeigt. */
-  readonly dayOffset = signal(0);
-
-  readonly tabs: ClassTab[] = [
-    { key: 'uebersicht', label: 'Übersicht', icon: 'house' },
-    { key: 'schueler', label: 'Schüler', icon: 'users' },
-    { key: 'mitarbeit', label: 'Mitarbeit', icon: 'notebook-pen' },
-    { key: 'noten', label: 'Noten', icon: 'graduation-cap' },
-  ];
-
-  readonly activeClass = computed(
-    () => this.classes().find((c) => c.id === this.activeClassId()) ?? null,
-  );
-
-  readonly title = computed(() => this.activeClass()?.name ?? this.pageTitle());
-
-  /** Fächer je Klasse für die zweite Zeile in der Klassenliste. */
-  readonly subjectsByClass = computed(() => {
-    const map = new Map<number, string>();
-    for (const course of this.courses()) {
-      const short = course.subjectShortName || course.subjectName;
-      map.set(
-        course.schoolClassId,
-        [map.get(course.schoolClassId), short].filter(Boolean).join(', '),
-      );
-    }
-    return map;
-  });
-
-  readonly day = computed(() => {
-    const date = new Date();
-    date.setHours(12, 0, 0, 0);
-    date.setDate(date.getDate() + this.dayOffset());
-    return date;
-  });
-
-  readonly dayLabel = computed(() => {
-    const offset = this.dayOffset();
-    if (offset === 0) {
-      return 'Heute';
-    }
-    if (offset === 1) {
-      return 'Morgen';
-    }
-    if (offset === -1) {
-      return 'Gestern';
-    }
-    return this.day().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-  });
-
-  readonly dayLong = computed(() => {
-    const date = this.day();
-    return `${WEEKDAY_NAMES[date.getDay()]}, ${date.toLocaleDateString('de-DE')}`;
-  });
-
-  /** Der Unterricht des gewählten Tages laut Stundenplan. */
-  readonly dayLessons = computed(() => {
-    const weekday = this.day().getDay();
-    return this.timetable()
-      .filter((e) => e.dayOfWeek === weekday)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  });
 
   readonly saveState = computed<'saving' | 'dirty' | 'saved'>(() =>
     this.isSaving() ? 'saving' : this.hasUnsavedChanges() ? 'dirty' : 'saved',
@@ -201,18 +173,22 @@ export class App implements OnDestroy {
   readonly themeLabel = computed(() => THEME_LABELS[this.theme.choice()]);
   readonly themeIcon = computed(() => THEME_ICONS[this.theme.choice()]);
 
-  readonly hue = subjectHue;
-
   /** Die Anzeige der laufenden Stunde aktualisiert sich selbst. */
   private readonly timer = setInterval(() => this.refreshLesson(), 60_000);
 
   constructor() {
-    // Jede Änderung am Bestand kann Klassenliste, Stundenplan und die
-    // laufende Stunde betreffen.
+    // Jede Änderung am Bestand kann die laufende Stunde betreffen.
     effect(() => {
       this.store.revision();
       this.store.isOpen();
-      untracked(() => this.refresh());
+      untracked(() => this.refreshLesson());
+    });
+
+    // Fällt das Fach weg (andere Datei, Kurs gelöscht), schließt das Menü im Unterricht.
+    effect(() => {
+      if (this.menuLocked()) {
+        untracked(() => this.menuOpen.set(false));
+      }
     });
 
     // Schlägt das automatische Speichern fehl, soll das niemand übersehen.
@@ -236,12 +212,7 @@ export class App implements OnDestroy {
     });
 
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((e) => {
-      this.menuOpen.set(false);
-      // Auf schmalen Geräten verschwindet die Seitenleiste nach der Auswahl.
-      if (!this.isWide()) {
-        this.sidebarOpen.set(false);
-      }
-      this.currentPath.set(e.urlAfterRedirects.split('?')[0]);
+      this.closeMenu();
       this.readUrl(e.urlAfterRedirects);
       this.refreshLesson();
     });
@@ -251,48 +222,36 @@ export class App implements OnDestroy {
     clearInterval(this.timer);
   }
 
-  /** Wohin ein Reiter der Leiste unten führt. */
-  tabLink(tab: ClassTab['key']): unknown[] {
-    const classId = this.activeClassId();
-    if (tab === 'mitarbeit') {
-      const courseId = classId === null ? undefined : this.courseForClass(classId);
-      if (courseId !== undefined) {
-        return ['/kurs', courseId];
-      }
+  /** Öffnet das Menü - im Unterricht nur, wenn ein Fach gewählt ist. */
+  openMenu(): void {
+    if (this.menuLocked()) {
+      this.toasts.show('Bitte zuerst im Wochenplan eine Stunde wählen.', 'info');
+      return;
     }
-    return ['/klasse', classId, tab];
+    this.menuOpen.set(true);
   }
 
-  /** Ist der Reiter gerade offen? Die Kursseite gehört zu „Mitarbeit“. */
-  isTabActive(tab: ClassTab['key']): boolean {
-    const url = this.currentPath();
-    if (tab === 'mitarbeit') {
-      return url.startsWith('/kurs/') || url.endsWith('/mitarbeit');
-    }
-    return url.endsWith(`/${tab}`);
-  }
-
-  toggleSidebar(): void {
-    this.sidebarOpen.update((open) => !open);
-  }
-
-  shiftDay(step: number): void {
-    this.dayOffset.update((offset) => offset + step);
-  }
-
-  isRunning(entry: TimetableEntry): boolean {
-    const lesson = this.lesson();
-    return (
-      this.dayOffset() === 0 &&
-      !!lesson?.hasLesson &&
-      lesson.courseId === entry.courseId &&
-      lesson.startTime === entry.startTime
-    );
+  /** Schließt Menü und Titelleiste gemeinsam. */
+  closeMenu(): void {
+    this.menuOpen.set(false);
   }
 
   install(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     void this.pwa.install();
+  }
+
+  /** Speichert eine verschlüsselte Sicherungskopie an einem gewählten Ort, die Arbeitsdatei bleibt. */
+  async backup(): Promise<void> {
+    this.closeMenu();
+    try {
+      await this.vault.saveBackupCopy();
+      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
+    } catch (error) {
+      if (!(error instanceof FilePickerCancelled)) {
+        this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
+      }
+    }
   }
 
   cycleTheme(): void {
@@ -311,7 +270,7 @@ export class App implements OnDestroy {
 
   /** Schreibt den Datenbestand in die Datei. */
   async save(): Promise<void> {
-    this.menuOpen.set(false);
+    this.closeMenu();
     try {
       await this.vault.save();
       this.toasts.success('Gespeichert.');
@@ -323,7 +282,7 @@ export class App implements OnDestroy {
   }
 
   openPasswordDialog(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     this.passwordDialogOpen.set(true);
   }
 
@@ -356,82 +315,28 @@ export class App implements OnDestroy {
   }
 
   startEdit(): void {
-    this.menuOpen.set(false);
-    void this.mode.requestEdit().then((ok) => ok && this.reloadStart());
+    this.closeMenu();
+    void this.mode.requestEdit();
   }
 
   finishEdit(): void {
-    this.menuOpen.set(false);
+    this.closeMenu();
     this.mode.finishEdit();
-    this.reloadStart();
   }
 
-  /** Die Startseite hängt vom Modus ab: im Unterricht ist es der Wochenplan. */
-  private reloadStart(): void {
-    if (this.router.url.split('?')[0] === '/') {
-      void this.router.navigateByUrl('/', { onSameUrlNavigation: 'reload' });
-    }
-  }
-
-  /** Erster Kurs einer Klasse - oder der, der dort zuletzt offen war. */
-  private courseForClass(classId: number): number | undefined {
-    const last = this.lastCourseByClass.get(classId);
-    if (last !== undefined && this.courses().some((c) => c.id === last)) {
-      return last;
-    }
-    return this.courses().find((c) => c.schoolClassId === classId)?.id;
-  }
-
-  /** Leitet aus der Adresse ab, welche Klasse und welcher Titel gelten. */
+  /**
+   * Merkt sich die Seite; auf einer Kursseite wird deren Fach das aktive.
+   * Im Wochenplan ist kein Fach aktiv - dort wird erst eine Stunde gewählt.
+   */
   private readUrl(url: string): void {
     const path = url.split('?')[0].split('/').filter(Boolean);
+    this.path.set(path);
 
-    if (path[0] === 'klasse' && path[1]) {
-      this.activeClassId.set(Number(path[1]));
-      this.pageTitle.set('');
-      return;
+    if (path.length === 0) {
+      this.active.clear();
+    } else if (path[0] === 'kurs' && path[1]) {
+      this.active.select(Number(path[1]));
     }
-
-    if (path[0] === 'kurs' && path[1]) {
-      const courseId = Number(path[1]);
-      const known = this.courses().find((c) => c.id === courseId);
-      this.pageTitle.set('');
-      if (known) {
-        this.activeClassId.set(known.schoolClassId);
-        this.lastCourseByClass.set(known.schoolClassId, courseId);
-      } else {
-        this.api.getCourse(courseId).subscribe({
-          next: (course) => {
-            this.activeClassId.set(course.schoolClassId);
-            this.lastCourseByClass.set(course.schoolClassId, courseId);
-          },
-          error: () => this.activeClassId.set(null),
-        });
-      }
-      return;
-    }
-
-    this.activeClassId.set(null);
-    if (path.length === 0 && !this.isEdit()) {
-      this.pageTitle.set('Wochenplan');
-      return;
-    }
-    this.pageTitle.set(PAGE_TITLES[path[0] ?? ''] ?? '');
-  }
-
-  private refresh(): void {
-    if (!this.store.isOpen()) {
-      this.lesson.set(null);
-      this.classes.set([]);
-      this.courses.set([]);
-      this.timetable.set([]);
-      return;
-    }
-
-    this.api.getClasses().subscribe({ next: (classes) => this.classes.set(classes) });
-    this.api.getCourses().subscribe({ next: (courses) => this.courses.set(courses) });
-    this.api.getTimetable().subscribe({ next: (entries) => this.timetable.set(entries) });
-    this.refreshLesson();
   }
 
   private refreshLesson(): void {
@@ -444,9 +349,5 @@ export class App implements OnDestroy {
       next: (lesson) => this.lesson.set(lesson),
       error: () => this.lesson.set(null),
     });
-  }
-
-  private isWide(): boolean {
-    return typeof matchMedia === 'function' ? matchMedia(WIDE_QUERY).matches : true;
   }
 }

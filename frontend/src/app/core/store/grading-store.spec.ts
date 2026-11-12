@@ -35,7 +35,7 @@ describe('LocalStore - Bewertungsschema', () => {
 
     expect(scheme.isDefault).toBeTrue();
     expect(scheme.writtenPercent).toBe(50);
-    expect(scheme.participationGrades.unrated).toBe(3);
+    expect(scheme.participationGrades.neutral).toBe(3);
   });
 
   it('speichert ein eigenes Schema je Lernfeld', () => {
@@ -175,6 +175,16 @@ describe('LocalStore - Mitarbeit und Gesamtnote', () => {
     expect(benRow.participation).toBe(3);
   });
 
+  it('ersetzt in der Listenansicht die Bewertung desselben Tages', () => {
+    const { store, course, anna } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-10-05', true);
+    store.rate(course.id, anna.id, -1, undefined, '2026-10-05', true);
+
+    const ratings = store.getRatings(course.id, { from: '2026-10-05', to: '2026-10-05' });
+    expect(ratings.length).toBe(1);
+    expect(ratings[0].value).toBe(-1);
+  });
+
   it('nimmt eine als "fehlte" markierte Stunde aus dem Durchschnitt', () => {
     const { store, course, anna, ben } = setup();
     store.rate(course.id, anna.id, 2);
@@ -280,5 +290,266 @@ describe('LocalStore - Notenbogen', () => {
 
     expect(store.snapshot().assessments).toEqual([]);
     expect(store.snapshot().nextIds.assessment).toBe(1);
+  });
+});
+
+describe('Quartalsnoten', () => {
+  it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
+    const { store, course, anna } = setup();
+
+    const saved = store.setQuarterGrade(course.id, anna.id, 1, 'written', 85);
+    expect(saved.percent).toBe(85);
+    expect(saved.grade).toBe(2);
+  });
+
+  it('nimmt mündlich eine Note und schlägt sonst den Ø der Mitarbeit vor', () => {
+    const { store, course, anna, ben } = setup();
+    // Montag, 05.10.2026 liegt im 1. Quartal.
+    store.rate(course.id, anna.id, 2);
+
+    const oralQ1 = (id: number) =>
+      store
+        .getQuarterGrades(course.id)
+        .find((g) => g.studentId === id && g.quarter === 1 && g.area === 'oral');
+
+    expect(oralQ1(anna.id)).toEqual(
+      jasmine.objectContaining({ grade: 1, suggested: true, percent: null }),
+    );
+    // Ben wurde in der Stunde nicht bewertet - zählt wie 0 (Note 3).
+    expect(oralQ1(ben.id)?.grade).toBe(3);
+
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', 2.5);
+    expect(oralQ1(anna.id)).toEqual(jasmine.objectContaining({ grade: 2.5, suggested: false }));
+
+    // Löschen führt zurück auf den Vorschlag.
+    store.setQuarterGrade(course.id, anna.id, 1, 'oral', null);
+    expect(oralQ1(anna.id)?.suggested).toBeTrue();
+  });
+
+  it('löscht den schriftlichen Eintrag, wenn das Feld geleert wird', () => {
+    const { store, course, anna } = setup();
+
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', 50);
+    store.setQuarterGrade(course.id, anna.id, 2, 'written', null);
+
+    expect(store.getQuarterGrades(course.id).filter((g) => g.area === 'written')).toEqual([]);
+  });
+
+  it('weist ungültige Werte ab', () => {
+    const { store, course, anna } = setup();
+
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'written', 120)).toThrowError(
+      AppError,
+    );
+    expect(() => store.setQuarterGrade(course.id, anna.id, 1, 'oral', 7)).toThrowError(AppError);
+  });
+});
+
+describe('LocalStore - Übernahme aus anderem Werkzeug', () => {
+  function oralKey(store: LocalStore, courseId: number): string {
+    return store.getScheme(courseId).types.find((t) => t.area === 'oral')!.key;
+  }
+
+  it('legt einen freigegebenen Nachweis mit den Noten an', () => {
+    const { store, course, anna, ben } = setup();
+
+    const assessment = store.importAssessment(course.id, {
+      typeKey: oralKey(store, course.id),
+      title: 'Mitarbeit (übernommen) LF3',
+      date: '2026-11-05',
+      comment: 'Übernommen aus KDM261.pdf',
+      results: [
+        { studentId: anna.id, grade: 2.6, comment: '1× ++, 2× +, 3× o, 1× -' },
+        { studentId: ben.id, grade: 2, comment: '6× +' },
+      ],
+    });
+
+    expect(assessment.released).toBeTrue();
+    expect(assessment.area).toBe('oral');
+    const detail = store.getAssessmentDetail(assessment.id);
+    const annaResult = detail.results.find((r) => r.studentId === anna.id)!;
+    expect(annaResult.grade).toBe(2.6);
+    expect(annaResult.comment).toBe('1× ++, 2× +, 3× o, 1× -');
+    expect(store.getGradeChanges(course.id)).toEqual([]);
+  });
+
+  it('legt bei Fehlern nichts an', () => {
+    const { store, course, anna } = setup();
+    const other = store.createClass('BFI10A');
+    const stranger = store.createStudent(other.id, 'Fremd', 'Person');
+
+    const attempt = (results: { studentId: number; grade: number; comment: null }[]) => () =>
+      store.importAssessment(course.id, {
+        typeKey: oralKey(store, course.id),
+        title: 'Mitarbeit',
+        date: '2026-11-05',
+        comment: null,
+        results,
+      });
+
+    expect(attempt([{ studentId: anna.id, grade: 7, comment: null }])).toThrowError(AppError);
+    expect(attempt([{ studentId: stranger.id, grade: 2, comment: null }])).toThrowError(AppError);
+    expect(
+      attempt([
+        { studentId: anna.id, grade: 2, comment: null },
+        { studentId: anna.id, grade: 3, comment: null },
+      ]),
+    ).toThrowError(AppError);
+    expect(attempt([])).toThrowError(AppError);
+    expect(store.getAssessments(course.id)).toEqual([]);
+  });
+});
+
+describe('LocalStore - Noten je Stunde', () => {
+  it('zeigt jeden Unterrichtstag - Tage ganz ohne Bewertung zählen nicht', () => {
+    const { store, course, anna, ben } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
+    store.setParticipationOverride(course.id, ben.id, '2026-09-28', null, 'krank');
+
+    // 21.09. bis 05.10.: drei Montage, keine Ferien.
+    const [sheet] = store.getLessonSheets(course.id, { from: '2026-09-21', to: '2026-10-05' });
+
+    expect(sheet.dates).toEqual([
+      { date: '2026-09-21', rated: false },
+      { date: '2026-09-28', rated: true },
+      { date: '2026-10-05', rated: false },
+    ]);
+
+    const annaRow = sheet.students.find((s) => s.studentId === anna.id)!;
+    expect(annaRow.cells.map((c) => c.rated)).toEqual([false, true, false]);
+    expect(annaRow.cells.map((c) => c.grade)).toEqual([null, 1, null]);
+    expect(annaRow.average).toBe(1);
+
+    const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
+    expect(benRow.cells[1].grade).toBeNull();
+    expect(benRow.average).toBeNull();
+  });
+
+  it('zählt einen nicht bewerteten Schüler an einem bewerteten Tag automatisch', () => {
+    const { store, course, anna, ben } = setup();
+    store.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
+
+    const [sheet] = store.getLessonSheets(course.id, { from: '2026-09-28', to: '2026-09-28' });
+    const benRow = sheet.students.find((s) => s.studentId === ben.id)!;
+    expect(benRow.cells[0].rated).toBeFalse();
+    expect(benRow.cells[0].grade).toBe(3);
+  });
+
+  it('lässt Ferien aus und liefert je Kurs eine Seite', () => {
+    const { store, course } = setup();
+    // Herbstferien 12.10.-24.10.2026: der Montag 19.10. fällt weg.
+    store.clock.setFixed(new Date('2026-10-26T12:00:00'));
+    const [sheet] = store.getLessonSheets(null, { from: '2026-10-05', to: '2026-10-26' });
+
+    expect(sheet.courseId).toBe(course.id);
+    expect(sheet.dates.map((d) => d.date)).toEqual(['2026-10-05', '2026-10-26']);
+
+    expect(store.exportLessonSheets(null).fileName).toContain('noten-je-stunde');
+  });
+
+  it('exportiert auf Wunsch nur einen Schüler', async () => {
+    const { store, course, anna, ben } = setup();
+    const result = store.exportLessonSheets(course.id, undefined, anna.id);
+
+    const html = await result.blob.text();
+    expect(html).toContain(anna.lastName);
+    expect(html).not.toContain(ben.lastName);
+    expect(result.fileName).toContain(anna.lastName);
+  });
+});
+
+describe('LocalStore - Abwesende im Unterricht', () => {
+  it('markiert schon vor der ersten Bewertung - die Stunde zählt für ihn nicht', () => {
+    const { store, course, anna, ben } = setup();
+    store.setAbsent(course.id, ben.id, '2026-10-05', true);
+
+    expect(store.getAbsentStudentIds(course.id, '2026-10-05')).toEqual([ben.id]);
+
+    store.clock.setFixed(new Date('2026-10-05T11:30:00'));
+    store.rate(course.id, anna.id, 2);
+    const book = store.getGradeBook(course.id);
+
+    expect(book.students.find((s) => s.studentId === ben.id)!.lessons[0].grade).toBeNull();
+    expect(book.students.find((s) => s.studentId === ben.id)!.participation).toBeNull();
+    expect(store.getGradeChanges(course.id)[0].newValue).toBe('fehlte');
+  });
+
+  it('nimmt nur das „fehlt“ zurück, eine von Hand gesetzte Note bleibt', () => {
+    const { store, course, anna, ben } = setup();
+    store.clock.setFixed(new Date('2026-10-05T11:30:00'));
+    store.rate(course.id, anna.id, 2);
+    store.setParticipationOverride(course.id, ben.id, '2026-10-05', 2);
+
+    store.setAbsent(course.id, ben.id, '2026-10-05', false);
+    expect(
+      store.getGradeBook(course.id).students.find((s) => s.studentId === ben.id)!.lessons[0].grade,
+    ).toBe(2);
+
+    store.setAbsent(course.id, ben.id, '2026-10-05', true);
+    store.setAbsent(course.id, ben.id, '2026-10-05', false);
+    expect(store.getAbsentStudentIds(course.id, '2026-10-05')).toEqual([]);
+  });
+});
+
+describe('LocalStore - Sicherungskopie und Schuljahreswechsel', () => {
+  it('merkt sich die letzte Sicherungskopie in der Datei - Einstellungen bleiben unberührt', () => {
+    const { store } = setup();
+    expect(store.getLastBackupAt()).toBeNull();
+
+    store.markBackup();
+    expect(store.getLastBackupAt()).toBe(MONDAY.toISOString());
+
+    store.saveSettings({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
+    expect(store.getLastBackupAt()).toBe(MONDAY.toISOString());
+    expect(store.getSettings()).toEqual({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
+  });
+
+  it('setzt Klassen hoch, löscht Leistungsdaten und Stundenplan - Schüler und Kurse bleiben', () => {
+    const { store, schoolClass, course, anna } = setup();
+    store.rate(course.id, anna.id, 2);
+    const abgang = store.createClass('KDM13');
+
+    const result = store.startNewSchoolYear({
+      renames: [{ classId: schoolClass.id, name: 'KDM271' }],
+      deleteClassIds: [abgang.id],
+      deleteRecords: true,
+      clearTimetable: true,
+    });
+
+    expect(result.ratings).toBe(1);
+    expect(result.timetableEntries).toBe(1);
+    expect(store.getClasses().map((c) => c.name)).toEqual(['KDM271']);
+    expect(store.getStudents(schoolClass.id).length).toBe(2);
+    expect(store.getCourses().length).toBe(1);
+    expect(store.getSchoolYearCounts().ratings).toBe(0);
+    expect(store.getSchoolYearCounts().timetableEntries).toBe(0);
+  });
+
+  it('erlaubt Tauschen von Namen, lehnt doppelte Namen ab und ändert dann nichts', () => {
+    const { store, schoolClass, course, anna } = setup();
+    const other = store.createClass('KDM271');
+    store.rate(course.id, anna.id, 2);
+
+    expect(() =>
+      store.startNewSchoolYear({
+        renames: [{ classId: schoolClass.id, name: 'KDM271' }],
+        deleteClassIds: [],
+        deleteRecords: true,
+        clearTimetable: false,
+      }),
+    ).toThrowError(/zweimal/);
+    expect(store.getSchoolYearCounts().ratings).toBe(1);
+
+    store.startNewSchoolYear({
+      renames: [
+        { classId: schoolClass.id, name: 'KDM271' },
+        { classId: other.id, name: 'KDM261' },
+      ],
+      deleteClassIds: [],
+      deleteRecords: false,
+      clearTimetable: false,
+    });
+    expect(store.getClasses().find((c) => c.id === schoolClass.id)!.name).toBe('KDM271');
+    expect(store.getSchoolYearCounts().ratings).toBe(1);
   });
 });

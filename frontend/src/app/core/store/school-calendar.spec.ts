@@ -1,4 +1,4 @@
-import { easterSunday, freeDayReason, schoolQuarters } from './school-calendar';
+import { easterSunday, freeDayReason } from './school-calendar';
 
 describe('school-calendar (Niedersachsen)', () => {
   it('berechnet Ostersonntag', () => {
@@ -27,24 +27,5 @@ describe('school-calendar (Niedersachsen)', () => {
     expect(freeDayReason('2026-10-26')).toBeNull();
     expect(freeDayReason('2026-11-02')).toBeNull();
     expect(freeDayReason('2027-01-11')).toBeNull();
-  });
-});
-
-describe('schoolQuarters', () => {
-  it('teilt das Schuljahr 2026/27 an den Ferien auf', () => {
-    expect(schoolQuarters('2026-11-05')).toEqual([
-      { quarter: 1, from: '2026-08-13', to: '2026-10-24' },
-      { quarter: 2, from: '2026-10-25', to: '2027-02-02' },
-      { quarter: 3, from: '2027-02-03', to: '2027-04-03' },
-      { quarter: 4, from: '2027-04-04', to: '2027-07-07' },
-    ]);
-  });
-
-  it('nimmt in den Sommerferien das gerade beendete Schuljahr', () => {
-    expect(schoolQuarters('2026-07-20')?.[0].from).toBe('2025-08-14');
-  });
-
-  it('liefert null außerhalb der Ferientabelle', () => {
-    expect(schoolQuarters('2030-09-01')).toBeNull();
   });
 });

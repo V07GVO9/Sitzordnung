@@ -22,25 +22,28 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 
 | Bereich | Beschreibung |
 | --- | --- |
-| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hinterlegen |
+| Einrichtung | Assistent als Checkliste: Klassen & Fächer, Schüler, Stundenplan, Sitzordnungen, Fotos – mit Stand und Direkt-Knopf je Schritt |
+| Klassen & Schüler | Klassen anlegen, Schüler einzeln erfassen oder eine Namensliste einfügen, Foto je Schüler hinterlegen oder direkt mit der Kamera aufnehmen |
 | Fächer & Kurse | Fächer anlegen und einer Klasse zuordnen – daraus entsteht ein Kurs |
-| Sitzordnung | Ein bis zwei Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
+| Sitzordnung | Beliebig viele Sitzordnungen je Kurs, Raster frei wählbar, Schüler per Drag and Drop platzieren und tauschen |
 | Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
+| Sicherheit im Alltag | Sicherungskopie mit Erinnerung nach 7 Tagen, automatische Sperre |
+| Schuljahreswechsel | Klassen hochsetzen oder entfernen, Leistungsdaten des alten Jahres löschen, Stundenplan leeren – nach Pflicht-Sicherungskopie |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
 | Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
 
 ## Noten
 
-Jeder Kurs hat unter **Kurs → Noten** eine eigene Notenverwaltung. In KDM wird
+Jeder Kurs hat unter **Menü ☰ → Notenverwaltung** eine eigene Notenverwaltung. In KDM wird
 jedes Lernfeld als eigenes Fach angelegt (z. B. „LF3 …", Kürzel LF3) – so bekommt
 jedes Lernfeld eine eigene Note und ein eigenes Bewertungsschema.
 
 | Reiter | Inhalt |
 | --- | --- |
-| Übersicht | Alle Schüler mit Einzelnoten, Mitarbeit, schriftlich, mündlich und Gesamtnote (Noten mit Komma) |
+| Übersicht | Alle Schüler mit Einzelnoten, Mitarbeit, schriftlich, mündlich und Gesamtnote (Noten mit Komma); Hinweise bei Note schlechter als 4,0 oder fehlenden Noten |
 | Leistungsnachweise | Klassenarbeit, Test, Referat … mit Datum anlegen, Punkte oder Noten eintragen, Notenspiegel. Zählt erst nach **Freigabe** |
 | Mitarbeit | Je Doppelstunde eine Note aus `++ + − −−` (1,0 · 2,0 · 4,0 · 5,0; ohne Bewertung 3,0). Einzeln überschreibbar oder „fehlte" |
 | Bewertungsschema | Gewichtung schriftlich/mündlich, Arten mit Gewicht, Punkteschlüssel (Vorlage IHK), Mitarbeitsnoten; auf andere Lernfelder übertragbar |
@@ -59,24 +62,22 @@ Verordnungen und Konferenzbeschlüsse.
 
 ## Bedienung
 
-Aufbau und Bedienung sind an die iPad-App „Meine Klassenmappe“ angelehnt:
-
-- **Klassen links:** Die Seitenleiste zeigt alle Klassen (Ordner, Schülerzahl,
-  Fächer). Der Umschalter *Tagesansicht* zeigt stattdessen den Unterricht eines
-  Tages aus dem Stundenplan – ein Tipp auf eine Stunde öffnet sie. Mit dem
-  Symbol oben rechts lässt sich die Leiste ausblenden; auf schmalen Geräten
-  liegt sie als Schublade über dem Inhalt.
-- **Bereiche einer Klasse unten:** *Übersicht* (laufende und heutige Stunden,
-  Fächer, gute und schwache Mitarbeit der letzten 14 Tage), *Schüler*
-  (Klassenliste mit Buchstaben-Register, Stammdaten als Blatt mit ‹ ›),
-  *Mitarbeit* und *Noten* (Punkte, Note und Farbbalken je Fach).
-- **Mitarbeit eintragen:** Oben die Fächer der Klasse, darunter Datum und
-  laufende Stunde. Bewertet wird wahlweise in der **Liste** oder auf dem
-  **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in den Farben Grün bis
-  Rot. Wer heute bewertet wurde, bekommt die Farbe seiner Bewertung. Ein Tipp
-  auf Foto oder Namen öffnet den Verlauf mit Verteilung (7 Tage, 30 Tage,
-  gesamt); dort lassen sich einzelne Bewertungen löschen. Nach jeder Bewertung
-  erscheint unten eine Meldung mit **Rückgängig** – für Vertipper.
+- **Wochenplan als Startseite:** Die App zeigt immer den Stundenplan der ganzen
+  Woche (‹ › blättert). Ein Tipp auf eine Stunde öffnet sie zum Bewerten – auch
+  rückwirkend. Oben links führen die drei Balken ins Menü und das
+  Kalender-Symbol zurück zum Wochenplan.
+- **Titelleiste:** Steht fest oben auf der Seite und scrollt mit dem Inhalt
+  weg. Auf Kursseiten zeigt sie das Fach mit Kürzel in der Fachfarbe.
+- **Mitarbeit eintragen:** Oben Datum und Stunde. Bewertet wird wahlweise in der
+  **Liste** oder auf dem **Sitzplan** – jeweils mit der Skala ++ / + / − / −− in
+  den Farben Grün bis Rot. Wer heute bewertet wurde, bekommt die Farbe seiner
+  Bewertung. Ein Tipp auf Foto oder Namen öffnet den Verlauf mit Verteilung
+  (7 Tage, 30 Tage, gesamt); dort lassen sich einzelne Bewertungen löschen. Nach
+  jeder Bewertung erscheint unten eine Meldung mit **Rückgängig** – für
+  Vertipper.
+- **Schneller im Unterricht:** Wischen über Kachel oder Zeile bewertet direkt
+  (rechts +/++, links −/−−). **Fehlt** markiert Abwesende, die dann nicht zählen.
+  **Auslosen** wählt einen anwesenden, noch nicht bewerteten Schüler.
 - **Sitzplan bearbeiten:** Stift-Symbol neben *Liste | Sitzplan*. Neben Drag and
   Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
   Schlag.
@@ -148,8 +149,9 @@ erneut abgefragt.
 
 Damit ein Absturz oder ein versehentlich geschlossenes Fenster keine Noten
 kostet, schreibt die Anwendung den Bestand zusätzlich – ebenfalls verschlüsselt –
-in den Speicher des Browsers (IndexedDB). Beim nächsten Start bietet sie diesen
-Zwischenstand zum Laden an.
+in den Speicher des Browsers (IndexedDB) – je Datei ein eigener Zwischenstand.
+Beim nächsten Öffnen derselben Datei übernimmt sie ungesicherte Änderungen
+automatisch; wurde die Datei inzwischen anderswo gespeichert, fragt sie nach.
 
 Der Zwischenspeicher ersetzt die Datei nicht: Er liegt im Browserprofil, ist beim
 Leeren der Browserdaten weg und in einem privaten Fenster gar nicht erst
@@ -188,7 +190,7 @@ Auftragsverarbeitung. Er beantwortet aber nicht alles:
 - Die Verschlüsselung schützt die Datei, nicht das laufende Gerät. Ein
   gesperrter Bildschirm und eine verschlüsselte Festplatte gehören dazu.
 - **Löschfristen** liegen weiterhin in der Hand der Lehrkraft: Bewertungen nach
-  Schuljahresende löschen.
+  Schuljahresende löschen – am einfachsten mit dem **Schuljahreswechsel**.
 
 ## Starten
 
@@ -208,19 +210,18 @@ wird dafür nicht gebraucht.
 
 ### Als fertige Anwendung
 
-Der Angular-Build legt seine Dateien in `wwwroot` des Hosts ab, der sie dann
-ausliefert:
+Der Angular-Build legt seine Dateien in `frontend/dist` ab; `./start.sh`
+(bzw. `.\start.ps1`) baut sie bei Bedarf und liefert sie über den Host aus:
 
 ```bash
-cd frontend && npm install && npm run build
-cd ../backend/Sitzordnung.Host && dotnet run
+./start.sh
 ```
 
 Danach ist die Anwendung unter <http://localhost:5099> erreichbar.
 
 Der Host ist austauschbar: Er liefert nur die gebauten Dateien aus und bekommt
 die Daten nie zu sehen. Statt `dotnet run` genügt auch jeder andere Webserver,
-der auf `backend/Sitzordnung.Host/wwwroot` zeigt – etwa `npx serve`. Ein
+der auf `frontend/dist` zeigt – etwa `npx serve -s frontend/dist`. Ein
 Doppelklick auf `index.html` reicht dagegen nicht: Über `file://` sperrt der
 Browser das Nachladen der Programmteile.
 

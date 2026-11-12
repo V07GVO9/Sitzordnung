@@ -3,7 +3,5 @@
 **/node_modules
 **/.angular
 **/wwwroot
-backend/Sitzordnung.Api/App_Data
-backend/Sitzordnung.Api.Tests
 .git
 .github

@@ -49,6 +49,21 @@ nach dieser Datei und dem Passwort. Ohne beides zeigt sie nichts an.
 > ⚠️ **Das Passwort lässt sich nicht zurücksetzen.** Ist es verloren, ist der
 > Datenbestand verloren.
 
+### Einrichtungs-Assistent
+
+Ist noch kein Unterricht eingetragen, zeigt der Wochenplan **Einrichtung
+starten**. Später: Bearbeitungsmodus → Menü ☰ → **Einrichtung (Assistent)**.
+
+Der Assistent ist eine Checkliste mit Fortschrittsbalken. Jeder Schritt zeigt
+seinen Stand (✓ erledigt), der nächste offene ist blau umrandet; der Knopf führt
+direkt auf die passende Seite (mit Rückfrage in den Bearbeitungsmodus):
+
+1. **Klassen und Fächer** – am schnellsten per WebUntis-Import, sonst von Hand.
+2. **Schüler** – je Klasse ohne Schüler ein Knopf, der sie direkt öffnet.
+3. **Stundenplan**
+4. **Sitzordnungen** – je Kurs ohne Sitzordnung ein Knopf.
+5. **Fotos** (optional) – zeigt, wie viele Schüler schon ein Foto haben.
+
 ### OneDrive
 
 1. Reiter **OneDrive** → **Bei Microsoft anmelden**.
@@ -61,12 +76,16 @@ Bestand ohne Passwort. Nur auf eigenen, gesperrten Geräten nutzen, nie an
 Schul-PCs. Eine gemerkte Datei erscheint oben mit **Öffnen** und **Vergessen**.
 Dateien in OneDrive lassen sich über das Papierkorb-Symbol löschen.
 
-### Zwischenstand wiederherstellen
+### Ungesicherte Änderungen wiederherstellen
 
-Die App sichert den Bestand zusätzlich verschlüsselt im Browser. Findet sie
-beim Start einen solchen **Zwischenstand**, bietet sie ihn an:
-Passwort eingeben → **Zwischenstand laden** oder **Verwerfen**.
-Der Zwischenstand ersetzt die Datei nicht.
+Die App sichert den Bestand zusätzlich verschlüsselt im Browser. Öffnest du
+deine Datei und liegen dazu noch **ungesicherte Änderungen** im Browser, übernimmt
+die App sie automatisch – es erscheint „Ungesicherte Änderungen
+wiederhergestellt“. Danach einmal speichern.
+
+Wurde die Datei inzwischen anderswo gespeichert (z. B. auf einem anderen Gerät),
+fragt die App nach: **Stand der Datei laden** oder **Meine Änderungen behalten**.
+Der Zwischenspeicher ersetzt die Datei nicht.
 
 ---
 
@@ -78,9 +97,9 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
 | **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Notenverwaltung, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -140,7 +159,7 @@ LF3).
 | Namensliste einfügen | **Namensliste einfügen**, ein Name je Zeile: „Nachname, Vorname“ oder „Vorname Nachname“ → **Schüler übernehmen** |
 | Vor-/Nachname tauschen | Tauscht bei **allen** Schülern der Klasse Vor- und Nachnamen – praktisch nach einem falsch herum eingefügten Import |
 | Umbenennen | Direkt im Namensfeld der Schülerkarte ändern |
-| Foto | Auf das Bild tippen → Foto wählen. Fotos werden auf 400 Bildpunkte verkleinert. Entfernen über das Bild-Symbol |
+| Foto | Auf das Bild tippen → Foto aus Galerie/Datei wählen, oder auf das **Kamera-Symbol** → Foto direkt aufnehmen (Handy/Tablet: Rückkamera). Fotos werden auf 400 Bildpunkte verkleinert. Entfernen über das Bild-Symbol |
 | Löschen | Papierkorb-Symbol an der Schülerkarte |
 
 Alternativ lassen sich Schüler auch im Klassenbereich **Schüler** über das
@@ -193,7 +212,7 @@ Kurs öffnen → Ansicht **Sitzplan** → in den **Bearbeitungsmodus** wechseln.
 | Funktion | Bedienung |
 | --- | --- |
 | Sitzordnung anlegen | **Sitzordnung anlegen** (wenn noch keine existiert) |
-| Zweite Sitzordnung | **Zweite Sitzordnung** – z. B. für einen anderen Raum. Max. zwei je Kurs; Umschalten über die Reiter mit den Plan-Namen |
+| Sitzordnung wählen / neu anlegen | Dropdown **Sitzordnung**: vorhandene Sitzordnung auswählen oder **＋ Neue Sitzordnung** (z. B. für einen anderen Raum). Beliebig viele je Kurs; die neue übernimmt das aktuelle Raster, ihr Name ist gleich zum Ändern markiert. Darunter stehen die Sitzordnungen der **anderen Fächer/Lernfelder derselben Klasse** – eine Auswahl übernimmt sie als **Kopie** (mit Plätzen) in dieses Fach; das Original bleibt unverändert |
 | Name ändern | Feld **Name** |
 | Raster | **Reihen** und **Spalten** (je 1–20). Plätze außerhalb eines verkleinerten Rasters werden frei |
 | Platzieren | Schüler aus *Ohne Platz* per Drag and Drop auf einen Platz ziehen |
@@ -241,6 +260,38 @@ einer Bewertung schließen sie von selbst.
   Vertipper.
 - Schüler **ohne Sitzplatz** stehen neben dem Sitzplan und können dort ebenso
   bewertet werden.
+
+### Schnellbewertung per Wischen
+
+Ohne die Knöpfe zu öffnen: über eine Kachel (Sitzplan) oder eine Zeile (Liste)
+**waagerecht wischen**. Die Kachel folgt dem Finger und zeigt schon unterwegs,
+was beim Loslassen vergeben wird.
+
+| Geste | Bewertung |
+| --- | --- |
+| kurz nach rechts | **+** |
+| weit nach rechts | **++** |
+| kurz nach links | **−** |
+| weit nach links | **−−** |
+
+Zu kurz gewischt zählt nicht. Senkrechtes Wischen scrollt wie gewohnt. Auch hier
+gibt es danach **Rückgängig**. Die **0** gibt es nur über die Knöpfe.
+
+### Abwesende markieren
+
+Wer fehlt, wird schon zu Stundenbeginn markiert: im Sitzplan Kachel antippen →
+**Fehlt**, in der Liste der Knopf **fehlt** neben dem Namen. Die Kachel wird
+grau und gestrichelt, oben steht „· 1 fehlt“. Abwesende lassen sich nicht
+bewerten und werden nicht ausgelost. **Anwesend** nimmt die Markierung zurück.
+
+Für die Note zählt die Doppelstunde dann für diesen Schüler nicht (wie
+„fehlte“ in der Notenverwaltung). Die Änderung steht im Protokoll.
+
+### Schüler auslosen
+
+**Auslosen** wählt zufällig einen anwesenden Schüler – bevorzugt jemanden, der
+an diesem Tag noch nicht bewertet wurde. Die Kachel bzw. Zeile leuchtet auf, im
+Sitzplan öffnen sich gleich ihre Bewertungsknöpfe.
 
 ### Verlauf eines Schülers
 
@@ -306,7 +357,7 @@ Klasse in der Seitenleiste wählen; unten erscheinen vier Reiter.
 
 ## 9. Notenverwaltung je Kurs
 
-Aufruf: Kurs → **Noten** oder Klasse → Noten → **Notenverwaltung**.
+Aufruf: Menü ☰ → **Notenverwaltung** (nachdem im Wochenplan eine Stunde gewählt ist). Die Quartalsnoten stehen getrennt davon unter Menü ☰ → **Noten**.
 
 ### Zeitraum
 
@@ -319,12 +370,27 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
 
 | Reiter | Inhalt |
 | --- | --- |
-| **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). |
+| **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). Darüber ein gelber Kasten **Hinweise** (siehe unten). |
 | **Leistungsnachweise** | Klassenarbeit, Test, Referat … anlegen und Noten eintragen (siehe unten). |
 | **Mitarbeit** | Je Doppelstunde eine Mitarbeitsnote pro Schüler. |
-| **Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
-| **Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
-| **Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
+| **Mehr ▾ → Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
+| **Mehr ▾ → Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
+| **Mehr ▾ → Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
+
+Die selteneren Reiter liegen unter **Mehr ▾**; ist einer davon offen, trägt
+der Knopf seinen Namen.
+
+### Hinweise in der Übersicht
+
+Der gelbe Kasten über der Tabelle nennt je Schüler, was Aufmerksamkeit braucht
+(ein Tipp auf die Kopfzeile klappt ihn zu). In der Tabelle markiert ein ⚠ neben
+dem Namen dieselben Schüler.
+
+| Hinweis | Wann |
+| --- | --- |
+| Gesamtnote schlechter als 4,0 | so, wie die Note angezeigt wird (ab 4,1) |
+| Noch keine schriftliche Note | ein schriftlicher Nachweis ist freigegeben, der Schüler hat dort keine Note |
+| Ohne Note in „…“ | in einem freigegebenen Nachweis fehlt die Note (auch entschuldigt) |
 
 ### Leistungsnachweis anlegen und bewerten
 
@@ -340,6 +406,28 @@ dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
    Übersicht. Vorher ist er ein *Entwurf*.
 6. Änderungen nach der Freigabe brauchen eine **Begründung** (landet im
    Protokoll). **Freigabe zurücknehmen** und **Löschen** sind möglich.
+
+### Mitarbeit aus anderem Werkzeug übernehmen (PDF)
+
+Für Mitarbeitsübersichten aus der Schul-App (PDF mit einer Seite je Schüler und
+den Anzahlen `--`, `-`, `o`, `+`, `++` je Fach):
+
+1. Im Kurs unter **Noten → Leistungsnachweise** bei *Mitarbeit aus anderem
+   Werkzeug übernehmen* **PDF auswählen**.
+2. **Fach in der Übersicht** prüfen (z. B. „LF3 B104" für den Kurs LF3) sowie
+   **Art** (nur mündliche Arten), **Titel** und **Datum** (Ende des Zeitraums).
+3. Die Vorschau zeigt je Name die Bewertungen, die errechnete Note und den
+   zugeordneten Schüler. Rollenkürzel wie *KS1* oder *KV2* werden entfernt.
+   Nicht erkannte Namen von Hand zuordnen oder *nicht übernehmen* lassen;
+   Zeilen ohne Bewertungen werden übersprungen.
+4. **Noten übernehmen** – es entsteht ein freigegebener, mündlicher
+   Leistungsnachweis. Die Anzahlen stehen als Bemerkung bei jeder Note.
+
+Note = Durchschnitt der Bewertungen mit den Mitarbeitsnoten des Schemas
+(Standard ++ 1,0 · + 2,0 · o 3,0 · − 4,0 · −− 5,0), eine Nachkommastelle.
+Die Übersicht enthält nur Summen, keine einzelnen Stunden – deshalb wird kein
+Eintrag je Doppelstunde erzeugt. Das **Gewicht** der gewählten Art im
+Bewertungsschema prüfen.
 
 ### Mitarbeit je Doppelstunde
 
@@ -394,10 +482,11 @@ Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
 
 ### Reiter „Punkte & Export“
 
-1. **Kurs** wählen, optional Zeitraum **Von/Bis** (leer = gesamter Zeitraum).
+1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
+   **Von/Bis** (leer = gesamter Zeitraum).
 2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
 3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – der gewählte Kurs,
+   - **Punktestand (CSV)** – das gewählte Fach,
    - **Einzelbewertungen** – jede Bewertung einzeln,
    - **Alle Kurse** – Punktestände aller Kurse.
 
@@ -439,6 +528,54 @@ Siehe [Abschnitt 11](#11-speichern-datei-und-passwort).
 | OneDrive | Speichert automatisch in OneDrive. Hat ein anderes Gerät inzwischen gespeichert, fragt die App, welcher Stand gilt |
 | Android-App | Speichert in *Dokumente/Sitzordnung* |
 
+### Automatisch speichern einschalten – Schritt für Schritt
+
+Das automatische Speichern ist **normalerweise schon an**. Damit es wirklich in
+die Datei schreibt, müssen drei Dinge stimmen.
+
+**Vorher prüfen: Läuft es schon?**
+
+1. Oben links auf die **drei Striche (☰)** tippen.
+2. Unter **„Datei“** steht der Dateiname.
+3. Steht darunter **„· speichert automatisch“**? → Fertig, alles läuft.
+4. Steht das **nicht** da → mit Schritt 1 weitermachen.
+
+**Schritt 1: Den richtigen Browser nehmen**
+
+- **Google Chrome** oder **Microsoft Edge** verwenden.
+- In Firefox oder Safari geht es nicht – dort landet jedes Speichern als neue
+  Datei im Download-Ordner.
+- Liegt die Datei in **OneDrive**, geht es in jedem Browser.
+
+**Schritt 2: Die Datei richtig öffnen**
+
+- Beim Start den Reiter **„Datei öffnen“** wählen, die eigene Datei aussuchen,
+  dann das Passwort eingeben.
+- Ungesicherte Änderungen aus dem Browser übernimmt die App dabei von selbst.
+
+**Schritt 3: Einmal von Hand speichern**
+
+1. **☰ → Jetzt speichern** (oder <kbd>Strg</kbd>+<kbd>S</kbd>).
+2. Der Browser fragt, ob die Seite Änderungen an der Datei speichern darf.
+3. **„Änderungen speichern“** bzw. **„Zulassen“** klicken.
+
+Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Datei.
+
+**Schritt 4 (nur falls nötig): Den Schalter prüfen**
+
+1. **☰ → Bearbeitungsmodus starten** → mit **Bearbeiten** bestätigen.
+2. **☰ → Datei & Passwort**.
+3. Haken bei **„Nach jeder Änderung automatisch in die Datei speichern“** setzen.
+4. **☰ → Zurück zum Unterricht**.
+
+**Gut zu wissen**
+
+- Die Einstellung gilt **nur für dieses Gerät**.
+- Nach einem Browser-Neustart fragt Chrome/Edge eventuell erneut nach der
+  Erlaubnis – dann Schritt 3 wiederholen.
+- Hat ein **anderes Gerät** zwischendurch gespeichert, pausiert das automatische
+  Speichern, bis entschieden ist, welcher Stand gilt.
+
 ### Reiter „Datei“ (Auswertung → Datei)
 
 - **Automatisch speichern** ein-/ausschalten (gilt je Gerät).
@@ -468,6 +605,41 @@ Klassen, Schüler samt Fotos, Kurse, Sitzordnungen, Stundenplan, Bewertungen,
 Noten, Notenschlüssel und Einstellungen – verschlüsselt (AES-GCM).
 
 ---
+
+### Sicherungskopie
+
+Menü ☰ → **Sicherungskopie speichern …** speichert eine Kopie des ganzen
+Bestands – verschlüsselt mit demselben Passwort – als
+`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung`. Dabei fragt die App **jedes Mal**,
+wo die Kopie hin soll (Chrome/Edge: Speichern-Dialog, Android: Teilen-Menü;
+andere Browser legen sie in den Download-Ordner). Anders als *Speichern unter …*
+arbeitet die App danach mit derselben Datei weiter.
+
+Ist die letzte Kopie **7 Tage oder älter** (oder gibt es noch keine), zeigt der
+Wochenplan einen gelben Hinweis mit **Jetzt sichern**; **Später** blendet ihn
+bis morgen aus. Der Zeitpunkt der letzten Kopie steht in der Datei und gilt
+damit für alle Geräte. Die Kopie gehört an einen zweiten Ort (USB-Stick,
+Dienstrechner).
+
+### Schuljahreswechsel
+
+Bearbeitungsmodus → Menü ☰ → **Schuljahreswechsel**:
+
+1. **Sicherungskopie** speichern – Pflicht, sonst bleibt der Wechsel
+   gesperrt.
+2. **Klassen:** neue Namen eintragen (**Alle Klassennummern +1** macht aus
+   KDM11 → KDM12) oder **verlässt die Schule** ankreuzen – die Klasse wird samt
+   Schülern gelöscht.
+3. **Daten des alten Schuljahres:** Leistungsdaten löschen (Bewertungen, von
+   Hand gesetzte Stundennoten, Leistungsnachweise, Quartalsnoten, Protokoll,
+   Notenbögen-Vermerke, abgelaufene Zeiträume) und/oder den Stundenplan leeren.
+   Die Anzahl je Art steht dabei.
+4. Zusammenfassung prüfen → **Schuljahreswechsel durchführen** → bestätigen.
+
+Erhalten bleiben Schüler, Fächer, Kurse, Sitzordnungen, Notenschlüssel und
+Bewertungsschemata. Danach öffnet sich der Einrichtungs-Assistent – meist fehlt
+nur noch der neue Stundenplan. Rückgängig machen lässt sich der Wechsel nur über
+die Sicherungskopie.
 
 ## 12. Android-App und Installation als App
 
@@ -499,13 +671,14 @@ Bewertung antippen und löschen.
 Verwaltung → Schüler → **Vor-/Nachname tauschen**.
 
 **Passwort vergessen?**
-Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (**Speichern unter …**)
-anlegen und das Passwort sicher verwahren.
+Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (Menü ☰ →
+**Sicherungskopie speichern …**) anlegen und das Passwort sicher verwahren.
 
 **Wie lösche ich Daten nach Schuljahresende?**
-Im Bearbeitungsmodus Schüler, Kurse oder ganze Klassen in der Verwaltung
-löschen – damit verschwinden auch deren Bewertungen. Löschfristen liegen bei
-der Lehrkraft.
+Mit dem **Schuljahreswechsel** (Bearbeitungsmodus → Menü ☰): Er löscht die
+Leistungsdaten des alten Jahres und Klassen, die die Schule verlassen – nach
+einer Pflicht-Sicherungskopie. Einzelne Schüler, Kurse oder Klassen lassen
+sich weiterhin in der Verwaltung löschen. Löschfristen liegen bei der Lehrkraft.
 
 ---
 

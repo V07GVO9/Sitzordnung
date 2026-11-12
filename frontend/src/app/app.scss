@@ -1,249 +1,9 @@
-/* Der Rahmen der App nach dem Vorbild der iPad-App „Meine Klassenmappe“:
-   links die Klassen, rechts der Inhalt mit Titelleiste oben und den
-   Bereichen einer Klasse als Reiterleiste unten.
-   Ab 56rem steht die Seitenleiste neben dem Inhalt, darunter liegt sie
-   als Schublade darüber. */
-
-$wide: 56rem;
-$sidebar-width: 19.5rem;
+/* Der Rahmen der App: Titelleiste oben, darunter der Inhalt.
+   Navigiert wird über den Wochenplan und das Menü hinter den drei Balken. */
 
 .shell {
   min-height: 100vh;
   min-height: 100dvh;
-}
-
-/* --- Seitenleiste --- */
-
-.sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  width: min($sidebar-width, 88vw);
-  padding-top: env(safe-area-inset-top);
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
-  transform: translateX(-102%);
-  transition: transform 0.22s ease;
-}
-
-.sidebar-open .sidebar {
-  transform: none;
-  box-shadow: var(--shadow-lg);
-}
-
-.side-scrim {
-  display: none;
-}
-
-.sidebar-open .side-scrim {
-  display: block;
-  position: fixed;
-  inset: 0;
-  z-index: 45;
-  background: var(--backdrop);
-}
-
-@media (min-width: $wide) {
-  .sidebar-open .sidebar {
-    box-shadow: none;
-  }
-
-  .sidebar-open .side-scrim {
-    display: none;
-  }
-
-  .sidebar-open .main-col {
-    margin-left: $sidebar-width;
-  }
-
-  .sidebar {
-    width: $sidebar-width;
-  }
-}
-
-.side-top {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.5rem 0.4rem;
-
-  .btn.icon {
-    flex: none;
-    color: var(--accent-text);
-    font-size: 1.15rem;
-  }
-}
-
-.side-switch {
-  flex: 1 1 auto;
-  display: flex;
-  min-width: 0;
-
-  button {
-    flex: 1 1 0;
-    min-height: 1.9rem;
-    padding: 0.2rem 0.4rem;
-    font-size: 0.82rem;
-  }
-}
-
-.side-scroll {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 0.6rem 0.6rem 1rem;
-}
-
-.class-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.class-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.65rem;
-  border-radius: var(--radius);
-  color: var(--text);
-  text-decoration: none;
-
-  &:hover {
-    background: var(--surface-hover);
-  }
-
-  &.active {
-    background: var(--segment-bg);
-  }
-
-  .folder {
-    flex: none;
-    font-size: 1.6rem;
-    color: hsl(var(--hue) 62% 55%);
-
-    // Gefüllter Ordner wie in der Klassenmappe.
-    ::ng-deep svg {
-      fill: hsl(var(--hue) 70% 62%);
-      stroke: hsl(var(--hue) 55% 45%);
-      stroke-width: 1.5;
-    }
-  }
-
-  .row-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.3;
-
-    strong {
-      font-size: 0.98rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .sub {
-      font-size: 0.76rem;
-      color: var(--accent-text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-  }
-}
-
-.side-empty {
-  padding: 0.5rem 0.65rem;
-}
-
-.side-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding: 0.55rem 0.65rem;
-  border-top: 1px solid var(--separator);
-  color: var(--accent-text);
-  font-size: 0.9rem;
-  font-weight: 550;
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.day-long {
-  margin: 0.5rem 0 0.75rem;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.day-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-/* Ein Stundenblock in der Fachfarbe - mit Streifen links wie im Wochenplan. */
-.lesson-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-  padding: 0.45rem 0.65rem;
-  border-left: 4px solid hsl(var(--hue) 55% 45%);
-  border-radius: 0.3rem;
-  background: hsl(var(--hue) 60% 50% / 14%);
-  color: hsl(var(--hue) 55% var(--subject-l));
-  text-decoration: none;
-  font-size: 0.82rem;
-  line-height: 1.3;
-
-  strong {
-    font-size: 0.86rem;
-  }
-
-  &:hover {
-    background: hsl(var(--hue) 60% 50% / 22%);
-  }
-
-  &.running {
-    box-shadow: inset 0 0 0 2px hsl(var(--hue) 55% 45%);
-  }
-}
-
-.lesson-time,
-.lesson-room {
-  opacity: 0.85;
-}
-
-.lesson-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-weight: 600;
-  color: var(--positive);
-}
-
-.side-bottom {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--separator);
-
-  .btn.icon {
-    color: var(--text-muted);
-    font-size: 1.1rem;
-
-    &.on {
-      color: var(--accent-text);
-      background: var(--accent-soft);
-    }
-  }
 }
 
 .save-btn {
@@ -269,6 +29,28 @@ $sidebar-width: 19.5rem;
   }
 }
 
+/* Ohne gewähltes Fach bleibt das Menü im Unterricht zu - sichtbar, aber gedämpft. */
+.menu-btn {
+  transition:
+    opacity 0.2s ease,
+    transform 0.15s ease;
+
+  &:active:not(.locked) {
+    transform: scale(0.94);
+  }
+
+  &.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.title-left .round-btn.on {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
 /* --- Inhalt --- */
 
 .main-col {
@@ -276,15 +58,16 @@ $sidebar-width: 19.5rem;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  transition: margin-left 0.22s ease;
 }
 
 .titlebar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  /* Fest oben auf der Seite: Beim Runterscrollen scrollt sie mit dem Inhalt weg. */
+  position: relative;
+  z-index: 69;
+
   display: grid;
-  grid-template-columns: minmax(2.6rem, 1fr) auto minmax(2.6rem, 1fr);
+  /* Der Titel bekommt, was die Knöpfe links und rechts übrig lassen. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem var(--pad-seite);
@@ -294,14 +77,65 @@ $sidebar-width: 19.5rem;
   border-bottom: 1px solid var(--separator);
 
   .title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 0;
     margin: 0;
     font-size: 1.02rem;
     font-weight: 650;
-    text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
+}
+
+.title-long,
+.title-short {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-short {
+  display: none;
+}
+
+/* Handy: kurzer Titel (Kürzel + Klasse), damit alles in eine Zeile passt. */
+@media (max-width: 40rem) {
+  .titlebar {
+    gap: 0.35rem;
+    padding-inline: 0.5rem;
+
+    .title {
+      font-size: 0.95rem;
+    }
+  }
+
+  .title-long {
+    display: none;
+  }
+
+  /* Modusschalter: nur der Knopf zum Wechseln; der aktuelle Modus zeigt sich an
+     der Leiste selbst (gelber Rand und Hinweis im Bearbeitungsmodus). */
+  .mode-switch button.on {
+    display: none;
+  }
+
+  .title-short {
+    display: block;
+  }
+}
+
+/* Kürzel des Fachs in seiner Farbe - wie im Wochenplan und im Menü. */
+.course-badge {
+  flex: none;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.4rem;
+  background: hsl(var(--hue) 55% 45%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .title-left,
@@ -349,73 +183,10 @@ main {
   width: 100%;
   max-width: 1300px;
   margin: 0 auto;
-  padding: var(--pad-seite);
-  padding-bottom: calc(var(--pad-seite) + env(safe-area-inset-bottom));
-
-  &.with-tabs {
-    padding-bottom: calc(var(--bottom-nav) + var(--pad-seite) + env(safe-area-inset-bottom));
-  }
-}
-
-/* Die Bereiche einer Klasse - Reiterleiste unten wie auf dem iPad. */
-.class-tabs {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 30;
-  display: flex;
-  justify-content: center;
-  gap: 0.25rem;
-  height: calc(var(--bottom-nav) + env(safe-area-inset-bottom));
-  padding: 0.3rem 0.5rem env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  backdrop-filter: saturate(1.6) blur(14px);
-  border-top: 1px solid var(--separator);
-  transition: left 0.22s ease;
-
-  a {
-    flex: 1 1 0;
-    max-width: 8rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.15rem;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    font-size: 0.7rem;
-    font-weight: 550;
-    text-decoration: none;
-
-    app-icon {
-      font-size: 1.35rem;
-    }
-
-    &.active {
-      color: var(--accent-text);
-    }
-
-    &:hover:not(.active) {
-      color: var(--text);
-    }
-  }
-}
-
-@media (min-width: $wide) {
-  .sidebar-open .class-tabs {
-    left: $sidebar-width;
-  }
-
-  .class-tabs a {
-    flex-direction: row;
-    gap: 0.45rem;
-    font-size: 0.85rem;
-
-    app-icon {
-      font-size: 1.15rem;
-    }
-  }
+  /* Halber Seitenabstand - mehr Platz für den Inhalt. */
+  --pad-main: calc(var(--pad-seite) / 2);
+  padding: var(--pad-main);
+  padding-bottom: calc(var(--pad-main) + env(safe-area-inset-bottom));
 }
 
 /* --- Menü hinter den drei Balken --- */
@@ -430,7 +201,7 @@ main {
 .app-menu {
   position: fixed;
   inset: 0 auto 0 0;
-  z-index: 71;
+  z-index: 72;
   display: flex;
   flex-direction: column;
   width: min(19.5rem, 88vw);
@@ -504,6 +275,64 @@ main {
   background: linear-gradient(160deg, #5b8fd0, #2f5f9f);
   color: #fff;
   font-size: 1.05rem;
+}
+
+/* Das aktive Fach oben im Menü - in der Farbe des Fachs wie im Wochenplan. */
+.app-menu a.menu-course {
+  gap: 0.75rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.6rem;
+  border-radius: var(--radius, 0.75rem);
+  background: hsl(var(--hue) 45% 50% / 18%);
+  border: 1px solid hsl(var(--hue) 45% 60% / 30%);
+
+  &:hover {
+    background: hsl(var(--hue) 45% 50% / 26%);
+  }
+
+  > app-icon {
+    margin-left: auto;
+  }
+}
+
+.menu-course-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  background: hsl(var(--hue) 55% 45%);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.menu-course-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  span {
+    font-size: 0.72rem;
+    color: #a1a1a8;
+  }
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.menu-hint {
+  margin: 0.2rem 0 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #8e8e93;
 }
 
 .menu-label {

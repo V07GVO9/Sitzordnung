@@ -2,6 +2,7 @@
 
 import { createEmptyDatabase } from './database';
 import {
+  ITERATIONS,
   VaultFormatError,
   VaultPasswordError,
   decryptDatabase,
@@ -64,5 +65,62 @@ describe('vault-crypto', () => {
 
   it('weist unlesbaren Inhalt ab', async () => {
     await expectAsync(decryptDatabase('kein json', 'egal')).toBeRejectedWithError(VaultFormatError);
+  });
+
+  it('schreibt neue Dateien mit mindestens 600 000 PBKDF2-Runden', async () => {
+    const blob = await encryptDatabase(createEmptyDatabase(), 'geheimes-passwort');
+    const file = JSON.parse(await blob.text());
+
+    expect(ITERATIONS).toBeGreaterThanOrEqual(600_000);
+    expect(file.kdf.iterations).toBe(ITERATIONS);
+  });
+
+  it('öffnet ältere Dateien mit 310 000 Runden weiterhin', async () => {
+    const password = 'geheimes-passwort';
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const material = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(password),
+      'PBKDF2',
+      false,
+      ['deriveKey'],
+    );
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 310_000, hash: 'SHA-256' },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt'],
+    );
+    const database = createEmptyDatabase();
+    database.schoolClasses.push({ id: 7, name: 'KDM11' });
+    const data = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(JSON.stringify(database)),
+    );
+    const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+    const content = JSON.stringify({
+      format: 'sitzordnung-vault',
+      version: 1,
+      kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: 310_000, salt: b64(salt) },
+      cipher: { name: 'AES-GCM', iv: b64(iv) },
+      compression: 'none',
+      data: b64(new Uint8Array(data)),
+    });
+
+    const restored = await decryptDatabase(content, password);
+    expect(restored.schoolClasses).toEqual([{ id: 7, name: 'KDM11' }]);
+  });
+
+  it('weist eine Datei mit verdächtig wenigen Runden ab', async () => {
+    const blob = await encryptDatabase(createEmptyDatabase(), 'geheimes-passwort');
+    const file = JSON.parse(await blob.text());
+    file.kdf.iterations = 1;
+
+    await expectAsync(
+      decryptDatabase(JSON.stringify(file), 'geheimes-passwort'),
+    ).toBeRejectedWithError(VaultFormatError);
   });
 });

@@ -21,7 +21,7 @@ Minderjährigen. Vor dem Produktivbetrieb an einer Schule gehört das geklärt:
 - Bei Hetzner den **Auftragsverarbeitungsvertrag** abschließen (im Kundenkonto
   unter *Rechtliches* elektronisch abschließbar). Ohne ihn fehlt die Grundlage
   nach Art. 28 DSGVO.
-- Ein starkes Passwort setzen und das Startpasswort sofort ersetzen.
+- Für die Datei ein starkes Passwort wählen (wird in der App erzwungen).
 - Auf der Testumgebung nur erfundene Namen verwenden.
 
 ## 1. Server anlegen
@@ -96,10 +96,9 @@ cp deploy/.env.example deploy/.env
 nano deploy/.env
 ```
 
-In `deploy/.env` eintragen: die beiden Adressen, eine E-Mail für Let's Encrypt
-und je ein Startpasswort. **Die Startpasswörter gelten nur beim allerersten
-Start**, solange noch kein Konto existiert – danach zählt ausschließlich das
-Passwort, das Sie in der App setzen.
+In `deploy/.env` eintragen: die Adressen und eine E-Mail für Let's Encrypt.
+Ein Konto auf dem Server gibt es nicht – geschützt sind die Daten allein durch
+das Passwort der verschlüsselten Datei, das jede Lehrkraft in der App setzt.
 
 ## 5. Zum ersten Mal starten
 
@@ -109,15 +108,8 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 ```
 
-Danach `https://sitzordnung.celik-soft.de` aufrufen, anmelden und **sofort unter
-*Konto* ein eigenes Passwort setzen**.
-
-Falls das Startpasswort in `.env` zu kurz war, hat die App ein zufälliges
-erzeugt. Es steht einmalig im Log:
-
-```bash
-docker compose -f deploy/docker-compose.yml logs app-prod | grep Startpasswort
-```
+Danach `https://sitzordnung.celik-soft.de` aufrufen und einen neuen
+Datenbestand mit einem starken Passwort anlegen.
 
 ## 6. Automatisch ausrollen einrichten
 
@@ -206,10 +198,6 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 **Kein Zertifikat / Browser meldet unsicher.** Caddy braucht auflösende
 DNS-Namen und die offenen Ports 80 und 443. Prüfen mit
 `docker compose -f deploy/docker-compose.yml logs caddy`.
-
-**Anmeldung schlägt fehl, obwohl das Passwort stimmt.** Das Cookie wird nur über
-HTTPS übertragen. Rufen Sie die Adresse mit `https://` auf, nicht mit der reinen
-IP.
 
 **Nach dem Ausrollen sind Daten weg.** Sollte nicht passieren – die Daten liegen
 in den Volumes `deploy_prod-data` und `deploy_test-data` und überstehen den

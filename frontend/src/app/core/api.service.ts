@@ -5,6 +5,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentInput,
+  ImportedAssessmentInput,
   AssessmentResultInput,
   Course,
   CourseScoreboard,
@@ -32,13 +33,16 @@ import {
   TimetableImportPreview,
   TimetableImportResult,
   TimetableImportRow,
+  GradeArea,
+  Quarter,
+  QuarterGrade,
 } from './models';
-import { DateRange, LocalStore } from './store/local-store';
+import { DateRange, LocalStore, SchoolYearCounts, SchoolYearInput } from './store/local-store';
 import { readPhoto } from './store/photo';
 import { download } from './store/file-system';
 import { AppError } from './store/app-error';
 
-export type { DateRange } from './store/local-store';
+export type { DateRange, SchoolYearCounts, SchoolYearInput } from './store/local-store';
 
 /**
  * Die Schnittstelle, über die die Oberfläche an die Daten kommt.
@@ -242,8 +246,11 @@ export class ApiService {
     value: RatingValue,
     comment?: string,
     lessonDate?: string,
+    replaceSameDay = false,
   ): Observable<Rating> {
-    return this.run(() => this.store.rate(courseId, studentId, value, comment, lessonDate));
+    return this.run(() =>
+      this.store.rate(courseId, studentId, value, comment, lessonDate, replaceSameDay),
+    );
   }
 
   /** Nimmt genau diese Bewertung zurück - etwa nach einem Vertipper. */
@@ -311,6 +318,20 @@ export class ApiService {
     return this.run(() => this.store.copyScheme(fromCourseId, toCourseIds));
   }
 
+  getQuarterGrades(courseId: number): Observable<QuarterGrade[]> {
+    return this.run(() => this.store.getQuarterGrades(courseId));
+  }
+
+  setQuarterGrade(
+    courseId: number,
+    studentId: number,
+    quarter: Quarter,
+    area: GradeArea,
+    value: number | null,
+  ): Observable<QuarterGrade> {
+    return this.run(() => this.store.setQuarterGrade(courseId, studentId, quarter, area, value));
+  }
+
   getGradeBook(courseId: number, range?: DateRange): Observable<GradeBook> {
     return this.run(() => this.store.getGradeBook(courseId, range));
   }
@@ -339,6 +360,10 @@ export class ApiService {
     return this.run(() => this.store.saveResults(id, results, reason));
   }
 
+  importAssessment(courseId: number, input: ImportedAssessmentInput): Observable<Assessment> {
+    return this.run(() => this.store.importAssessment(courseId, input));
+  }
+
   setAssessmentReleased(id: number, released: boolean): Observable<Assessment> {
     return this.run(() => this.store.setAssessmentReleased(id, released));
   }
@@ -353,6 +378,31 @@ export class ApiService {
     return this.run(() =>
       this.store.setParticipationOverride(courseId, studentId, lessonDate, grade, reason),
     );
+  }
+
+  getAbsentStudentIds(courseId: number, lessonDate: string): Observable<number[]> {
+    return this.run(() => this.store.getAbsentStudentIds(courseId, lessonDate));
+  }
+
+  setAbsent(
+    courseId: number,
+    studentId: number,
+    lessonDate: string,
+    absent: boolean,
+  ): Observable<void> {
+    return this.run(() => this.store.setAbsent(courseId, studentId, lessonDate, absent));
+  }
+
+  getLastBackupAt(): Observable<string | null> {
+    return this.run(() => this.store.getLastBackupAt());
+  }
+
+  getSchoolYearCounts(): Observable<SchoolYearCounts> {
+    return this.run(() => this.store.getSchoolYearCounts());
+  }
+
+  startNewSchoolYear(input: SchoolYearInput): Observable<SchoolYearCounts> {
+    return this.run(() => this.store.startNewSchoolYear(input));
   }
 
   getGradeChanges(courseId: number): Observable<GradeChange[]> {
@@ -403,17 +453,28 @@ export class ApiService {
    * Baut die CSV-Datei und bietet sie zum Herunterladen an. Früher zeigte ein
    * Link auf das Backend; jetzt entsteht die Datei im Browser.
    */
-  exportCsv(
-    kind: 'ratings' | 'summary',
-    courseId?: number | null,
+  exportCsv(courseId?: number | null, range?: DateRange): Observable<void> {
+    return this.fromPromise(() => {
+      const result = this.store.exportSummary(courseId ?? null, range);
+      return download(result.blob, result.fileName, { share: true });
+    });
+  }
+
+  /** Die Einzelbewertungen als druckfertiges HTML im Querformat. */
+  exportRatings(courseId: number | null, range?: DateRange): Observable<void> {
+    return this.fromPromise(() => {
+      const result = this.store.exportRatings(courseId, range);
+      return download(result.blob, result.fileName, { share: true });
+    });
+  }
+
+  exportLessonSheets(
+    courseId: number | null,
     range?: DateRange,
+    studentId?: number,
   ): Observable<void> {
     return this.fromPromise(() => {
-      const result =
-        kind === 'ratings'
-          ? this.store.exportRatings(courseId ?? null, range)
-          : this.store.exportSummary(courseId ?? null, range);
-
+      const result = this.store.exportLessonSheets(courseId, range, studentId);
       return download(result.blob, result.fileName, { share: true });
     });
   }

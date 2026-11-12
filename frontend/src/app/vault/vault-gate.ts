@@ -1,11 +1,10 @@
+import { PasswordField } from '../core/ui/password-field';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AutosaveEntry } from '../core/store/browser-storage';
 import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
-import { LocalStore } from '../core/store/local-store';
 import { OneDriveFile, OneDriveService } from '../core/store/onedrive.service';
 import { isStrongPassword } from '../core/store/password-policy';
-import { VaultService } from '../core/store/vault.service';
+import { IDLE_LOCK_MS, VaultService } from '../core/store/vault.service';
 import { ToastService } from '../core/toast.service';
 import { Icon } from '../core/ui/icon';
 import { ConfirmService } from '../core/ui/confirm.service';
@@ -18,13 +17,12 @@ import { PasswordRules } from './password-rules';
 @Component({
   selector: 'app-vault-gate',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon, PasswordRules],
+  imports: [FormsModule, Icon, PasswordRules, PasswordField],
   templateUrl: './vault-gate.html',
   styleUrl: './vault-gate.scss',
 })
 export class VaultGate {
   private readonly vault = inject(VaultService);
-  private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly oneDrive = inject(OneDriveService);
@@ -47,6 +45,8 @@ export class VaultGate {
 
   /** Der gemerkte Bestand - und ob er gerade von selbst geöffnet wird. */
   readonly rememberedFile = this.vault.rememberedFile;
+  readonly lockedByIdle = this.vault.lockedByIdle;
+  readonly idleMinutes = IDLE_LOCK_MS / 60_000;
   readonly autoOpening = signal(false);
   /** Warum das Öffnen des gemerkten Bestands zuletzt nicht geklappt hat. */
   readonly rememberedError = signal<string | null>(null);
@@ -57,9 +57,6 @@ export class VaultGate {
   readonly password = signal('');
   readonly passwordRepeat = signal('');
   readonly busy = signal(false);
-
-  /** Ein Zwischenstand aus dem Browser, falls einer vorliegt. */
-  readonly autosave = signal<AutosaveEntry | null>(null);
 
   readonly canWriteInPlace = this.vault.canWriteInPlace;
   readonly isNativeApp = isNativeApp();
@@ -88,7 +85,6 @@ export class VaultGate {
   });
 
   constructor() {
-    void this.vault.findAutosave().then((entry) => this.autosave.set(entry));
     void this.autoOpen();
   }
 
@@ -220,11 +216,6 @@ export class VaultGate {
     return file.modifiedAt ? new Date(file.modifiedAt).toLocaleString('de-DE') : '';
   }
 
-  /** Wann wurde der Zwischenstand angelegt? */
-  savedAtText(entry: AutosaveEntry): string {
-    return new Date(entry.savedAt).toLocaleString('de-DE');
-  }
-
   async submit(): Promise<void> {
     if (!this.canSubmit()) {
       return;
@@ -266,43 +257,5 @@ export class VaultGate {
   /** Lässt die vorgemerkte Datei fallen, damit wieder der Dateidialog kommt. */
   async chooseOtherFile(): Promise<void> {
     await this.vault.forgetLastLocalFile();
-  }
-
-  /** Setzt auf dem Zwischenstand im Browser auf. */
-  async restore(): Promise<void> {
-    const entry = this.autosave();
-    if (!entry || this.password().length === 0) {
-      return;
-    }
-
-    this.busy.set(true);
-    try {
-      await this.vault.restoreAutosave(entry, this.password());
-      this.toasts.success('Zwischenstand geladen. Bitte in einer Datei sichern.');
-      this.password.set('');
-    } catch (error) {
-      this.toasts.error(error, 'Der Zwischenstand konnte nicht geladen werden.');
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** Verwirft den Zwischenstand im Browser. */
-  async discardAutosave(): Promise<void> {
-    const confirmed = await this.confirm.ask({
-      title: 'Zwischenstand verwerfen?',
-      message:
-        'Der Zwischenstand im Browser wird endgültig gelöscht. Was nicht in einer Datei steht, ist danach weg.',
-      confirmLabel: 'Verwerfen',
-      danger: true,
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    await this.vault.closeVault();
-    this.autosave.set(null);
-    this.store.close();
-    this.toasts.success('Der Zwischenstand wurde gelöscht.');
   }
 }

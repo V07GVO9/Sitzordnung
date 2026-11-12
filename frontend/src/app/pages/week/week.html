@@ -8,13 +8,32 @@
         <strong [class]="slideClass()">{{ weekLabel() }}</strong>
       }
       @if (weekOffset() !== 0) {
-        <span class="small muted">zurück zu heute</span>
+        <span class="today-chip"><app-icon name="calendar-days" /> Heute</span>
       }
     </button>
     <button class="round-btn" type="button" aria-label="Nächste Woche" (click)="shiftWeek(1)">
       <app-icon name="chevron-right" />
     </button>
   </div>
+
+  @if (backupReminder(); as due) {
+    <div class="banner warn backup-banner" role="status">
+      <app-icon name="download" />
+      <span>
+        <strong>Sicherungskopie fällig:</strong>
+        @if (due.days === null) {
+          noch keine angelegt.
+        } @else {
+          die letzte ist {{ due.days }} Tage alt.
+        }
+        Am besten auf einem zweiten Gerät oder Stick ablegen.
+      </span>
+      <span class="actions">
+        <button class="btn small primary" type="button" (click)="backupNow()">Jetzt sichern</button>
+        <button class="btn small" type="button" (click)="snoozeBackup()">Später</button>
+      </span>
+    </div>
+  }
 
   @for (offset of [weekOffset()]; track offset) {
     <div class="week-pane" [class]="slideClass()">
@@ -24,8 +43,12 @@
       <div class="empty">
         <p>Im Stundenplan steht noch kein Unterricht.</p>
         <p class="muted small">
-          Stundenplan, Klassen und Schüler legst du im Menü unter „Einrichten“ an.
+          Der Assistent führt Schritt für Schritt durch Klassen, Schüler, Stundenplan und
+            Sitzordnung.
         </p>
+        <a class="btn primary" routerLink="/einrichtung">
+          <app-icon name="list-plus" /> Einrichtung starten
+        </a>
       </div>
     } @else if (days().length === 0) {
       <div class="empty">
@@ -84,19 +107,13 @@
                           ': ' +
                           cell.entry.subjectName +
                           ', ' +
-                          cell.entry.schoolClassName +
-                          (cell.ratingCount ? ', ' + cell.ratingCount + ' Bewertungen' : '')
+                          cell.entry.schoolClassName
                         "
                       >
                         <strong>{{ cell.short }}</strong>
                         <span class="cls">{{ cell.entry.schoolClassName }}</span>
                         @if (cell.entry.room) {
                           <span class="room">{{ cell.entry.room }}</span>
-                        }
-                        @if (cell.ratingCount) {
-                          <span class="count" title="Bewertungen in dieser Stunde">{{
-                            cell.ratingCount
-                          }}</span>
                         }
                       </a>
                     }
