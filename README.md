@@ -113,10 +113,11 @@ Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 Beim nächsten Start ist die zuletzt benutzte Datei schon vorgewählt (Chrome und
-Edge): Passwort eingeben, Enter – fertig, ohne Dateidialog. Über „Andere Datei
-wählen“ geht es zum Dateidialog. Der Browser fragt dabei unter Umständen einmal
-nach, ob die App die Datei bearbeiten darf; mit „Bei jedem Besuch zulassen“
-entfällt auch diese Rückfrage. Gemerkt wird nur der Verweis auf die Datei, kein
+Edge): Passwort eingeben – fertig, ohne Dateidialog. Über „Andere Datei
+wählen“ geht es zum Dateidialog. Der Browser fragt beim Antippen des
+Passwortfelds unter Umständen einmal nach, ob die App die Datei bearbeiten
+darf; mit „Bei jedem Besuch zulassen“ entfällt auch diese Rückfrage. Ist die
+Datei freigegeben, öffnet sie sich von selbst, sobald das Passwort stimmt. Gemerkt wird nur der Verweis auf die Datei, kein
 Passwort.
 
 ### Auf mehreren Geräten: OneDrive

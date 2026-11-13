@@ -343,6 +343,53 @@ describe('VaultService', () => {
     });
   });
 
+  describe('VaultService - zuletzt benutzte Datei', () => {
+    let vault: VaultService;
+    let store: LocalStore;
+    let handle: FakeHandle;
+
+    beforeEach(async () => {
+      handle = new FakeHandle();
+      TestBed.configureTestingModule({});
+      vault = TestBed.inject(VaultService);
+      store = TestBed.inject(LocalStore);
+
+      await oeffne(vault, handle);
+      store.masterData.createClass('10a');
+      await vault.save();
+      await vault.closeVault();
+      vault.lastLocalFile.set(handle);
+    });
+
+    afterEach(async () => {
+      await vault.forgetLastLocalFile();
+      await vault.closeVault();
+    });
+
+    it('öffnet sich von selbst, sobald das Passwort stimmt', async () => {
+      expect(await vault.refreshLastLocalFileAccess()).toBeTrue();
+      expect(vault.lastLocalFileReady()).toBeTrue();
+
+      expect(await vault.tryOpenLastLocalFile(PASSWORT)).toBeTrue();
+
+      expect(store.isOpen()).toBeTrue();
+      expect(store.snapshot().schoolClasses.map((c) => c.name)).toEqual(['10a']);
+    });
+
+    it('bleibt bei falschem Passwort still geschlossen', async () => {
+      expect(await vault.tryOpenLastLocalFile('FalschesPasswort#1')).toBeFalse();
+      expect(store.isOpen()).toBeFalse();
+    });
+
+    it('versucht es nicht, solange der Browser die Datei nicht freigibt', async () => {
+      handle.erlaubt = false;
+
+      expect(await vault.refreshLastLocalFileAccess()).toBeFalse();
+      expect(await vault.tryOpenLastLocalFile(PASSWORT)).toBeFalse();
+      expect(store.isOpen()).toBeFalse();
+    });
+  });
+
   describe('VaultService - ohne Dateizugriff', () => {
     let vault: VaultService;
     let store: LocalStore;

@@ -147,17 +147,26 @@ function openViaInput(): Promise<{ content: string; handle: null; name: string }
  * direkt auf einen Klick folgen, deshalb steht die Abfrage hier ganz vorn.
  */
 export async function readHandle(handle: FileHandle): Promise<string> {
-  const options = { mode: 'readwrite' as const };
-  let state = (await handle.queryPermission?.(options)) ?? 'granted';
-  if (state !== 'granted' && handle.requestPermission) {
-    state = await handle.requestPermission(options);
-  }
-  if (state !== 'granted') {
+  if (!(await requestAccess(handle))) {
     throw new FilePickerCancelled();
   }
 
   const file = await handle.getFile();
   return file.text();
+}
+
+/**
+ * Holt die Erlaubnis, eine gemerkte Datei zu lesen und zu beschreiben. Liegt
+ * sie noch nicht vor, fragt der Browser nach - das geht nur direkt nach einem
+ * Klick oder Tippen.
+ */
+export async function requestAccess(handle: FileHandle): Promise<boolean> {
+  const options = { mode: 'readwrite' as const };
+  let state = (await handle.queryPermission?.(options)) ?? 'granted';
+  if (state !== 'granted' && handle.requestPermission) {
+    state = await handle.requestPermission(options);
+  }
+  return state === 'granted';
 }
 
 /** Fragt nach einem Speicherort für eine neue Datei. */
