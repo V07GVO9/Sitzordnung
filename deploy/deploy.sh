@@ -50,6 +50,10 @@ echo "==> Rolle $UMGEBUNG aus ($IMAGE)"
 # Für den Fall, dass die neue Version nicht startet.
 VORHER="$(docker inspect --format '{{.Image}}' "$(docker compose ps -q "$DIENST" 2>/dev/null)" 2>/dev/null || true)"
 
+# Gemeinsames Netz für den Caddy und weitere Apps - einmalig anlegen.
+docker network create celik-web >/dev/null 2>&1 || true
+mkdir -p "${CADDY_SITES_DIR:-$HOME/caddy-sites}"
+
 docker compose pull "$DIENST"
 docker compose up -d "$DIENST" caddy
 

@@ -47,3 +47,7 @@
 	# Suchmaschinen sollen die Entwicklungsumgebung nicht aufnehmen.
 	header X-Robots-Tag "noindex, nofollow"
 }
+
+# Weitere Apps auf demselben Server (z. B. Jahresplan) legen ihre eigene
+# Konfiguration in ~/caddy-sites/ ab. Ist der Ordner leer, passiert nichts.
+import /etc/caddy/sites/*.caddy
