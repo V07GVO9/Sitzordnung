@@ -33,6 +33,7 @@ import {
   isNativeApp,
   openFile,
   readHandle,
+  requestAccess,
   saveCopyWithPicker,
   supportsFileHandles,
   writeFile,
@@ -129,6 +130,12 @@ export class VaultService {
    */
   readonly lastLocalFile = signal<FileHandle | null>(null);
 
+  /**
+   * Darf die vorgemerkte Datei schon ohne Rückfrage gelesen werden? Dann
+   * öffnet die Startseite sie von selbst, sobald das Passwort stimmt.
+   */
+  readonly lastLocalFileReady = signal(false);
+
   /** Von selbst geöffnet wird nur einmal je Seitenaufruf - nicht nach dem Schließen. */
   private autoOpenDone = false;
   private lastActivity = Date.now();
@@ -142,7 +149,10 @@ export class VaultService {
 
     void readRemembered().then((entry) => this.rememberedFile.set(entry?.fileName ?? null));
     if (canRememberLocalFiles()) {
-      void readLastFileHandle<FileHandle>().then((handle) => this.lastLocalFile.set(handle));
+      void readLastFileHandle<FileHandle>().then((handle) => {
+        this.lastLocalFile.set(handle);
+        return this.refreshLastLocalFileAccess();
+      });
     }
 
     // Wird die Seite verlassen oder die App weggeschaltet, sofort schreiben.
@@ -397,9 +407,61 @@ export class VaultService {
     await this.loadContent(content, password, handle.name, handle);
   }
 
+  /** Prüft ohne Rückfrage, ob der Browser die vorgemerkte Datei schon freigibt. */
+  async refreshLastLocalFileAccess(): Promise<boolean> {
+    const handle = this.lastLocalFile();
+    const ready = handle !== null && (await canWriteSilently(handle));
+    // Inzwischen kann eine andere Datei vorgemerkt sein - dann gilt deren Prüfung.
+    if (handle === this.lastLocalFile()) {
+      this.lastLocalFileReady.set(ready);
+    }
+    return ready;
+  }
+
+  /**
+   * Holt den Zugriff auf die vorgemerkte Datei, bevor das Passwort eingegeben
+   * ist. Der Browser fragt dabei gegebenenfalls nach - deshalb nur als Folge
+   * eines Klicks oder Tippens aufrufen.
+   */
+  async requestLastLocalFileAccess(): Promise<boolean> {
+    const handle = this.lastLocalFile();
+    if (!handle) {
+      return false;
+    }
+    try {
+      await requestAccess(handle);
+    } catch {
+      // Ohne Freigabe bleibt der Weg über „Öffnen“.
+    }
+    return this.refreshLastLocalFileAccess();
+  }
+
+  /**
+   * Öffnet die vorgemerkte Datei, falls das Passwort passt - still, ohne
+   * Rückfrage und ohne Fehlermeldung. So genügt es, das Passwort einzutippen.
+   */
+  async tryOpenLastLocalFile(password: string): Promise<boolean> {
+    const handle = this.lastLocalFile();
+    if (!handle || this.store.isOpen() || !(await canWriteSilently(handle))) {
+      return false;
+    }
+
+    try {
+      // Frisch lesen: Die Datei kann sich seit dem Start geändert haben.
+      const content = await (await handle.getFile()).text();
+      await this.loadContent(content, password, handle.name, handle);
+      return true;
+    } catch {
+      // Falsches oder noch unvollständiges Passwort, oder die Datei fehlt -
+      // das meldet erst der Klick auf „Öffnen“.
+      return false;
+    }
+  }
+
   /** Vergisst die vorgemerkte Datei - die Datei selbst bleibt unberührt. */
   async forgetLastLocalFile(): Promise<void> {
     this.lastLocalFile.set(null);
+    this.lastLocalFileReady.set(false);
     await clearLastFileHandle();
   }
 
@@ -411,6 +473,7 @@ export class VaultService {
     }
     this.lastLocalFile.set(handle);
     await writeLastFileHandle(handle);
+    await this.refreshLastLocalFileAccess();
   }
 
   /** Öffnet einen Bestand aus OneDrive. */

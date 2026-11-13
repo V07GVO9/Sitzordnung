@@ -8,6 +8,14 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 13.11.2026
+
+**Geändert**
+- **Start mit der zuletzt benutzten Datei (Chrome, Edge):** Gibt der Browser
+  die Datei schon frei, öffnet sie sich von selbst, sobald das Passwort stimmt –
+  ohne Klick auf „Öffnen“. Fehlt die Freigabe noch, fragt der Browser beim
+  Antippen des Passwortfelds, also vor der Eingabe statt danach.
+
 ## 12.11.2026
 
 **Behoben**
