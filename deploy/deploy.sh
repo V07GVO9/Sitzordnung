@@ -57,6 +57,19 @@ mkdir -p "${CADDY_SITES_DIR:-$HOME/caddy-sites}"
 docker compose pull "$DIENST"
 docker compose up -d "$DIENST" caddy
 
+# Caddy liest die Caddyfile nur beim Start. Hat sie sich geändert (z. B. die
+# Login-Pflicht), Caddy neu starten - ein Neustart bindet die Datei frisch ein,
+# auch wenn sie beim Aktualisieren ersetzt wurde. Sieht der Container die neue
+# Datei schon, genügt ein Neuladen.
+if [ "$(sha256sum Caddyfile | cut -d' ' -f1)" != \
+     "$(docker compose exec -T caddy sha256sum /etc/caddy/Caddyfile 2>/dev/null | cut -d' ' -f1)" ]; then
+  echo "==> Caddyfile geändert, starte Caddy neu"
+  docker compose restart caddy
+else
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+    || echo "WARNUNG: Caddy konnte die Konfiguration nicht neu laden." >&2
+fi
+
 echo "==> Warte auf https://$DOMAIN/health"
 GESUND=0
 for _ in $(seq 1 30); do
