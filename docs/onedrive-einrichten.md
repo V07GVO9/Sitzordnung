@@ -32,7 +32,7 @@ Damit sich die App bei Microsoft anmelden darf, braucht sie eine
 4. Unter **API-Berechtigungen → Berechtigung hinzufügen → Microsoft Graph →
    Delegierte Berechtigungen** den Eintrag `Files.ReadWrite` hinzufügen.
 5. Auf der Übersichtsseite die **Anwendungs-ID (Client)** kopieren und in
-   `frontend/src/app/core/store/onedrive.config.ts` bei `clientId` eintragen.
+   `frontend/src/app/core/persistence/onedrive.config.ts` bei `clientId` eintragen.
    Die ID ist kein Geheimnis. Sie darf ins Repository.
 
 Danach die App wie gewohnt bauen und ausliefern. Der Reiter **OneDrive**

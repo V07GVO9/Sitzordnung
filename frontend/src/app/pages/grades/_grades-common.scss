@@ -1,0 +1,22 @@
+// Was der Kopf der Notenseite und ihre Reiter gemeinsam brauchen.
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+
+  h1,
+  h2 {
+    margin: 0;
+  }
+}
+
+.filter {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}

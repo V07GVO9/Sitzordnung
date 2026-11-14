@@ -193,6 +193,18 @@ docker compose -f deploy/docker-compose.yml logs -f app-prod
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 ```
 
+## Login
+
+Alle Adressen liegen hinter dem gemeinsamen Login (Authelia aus dem
+Dashboard-Projekt, login.celik-soft.de): `forward_auth` in `deploy/Caddyfile`.
+Einmal anmelden gilt für alle Seiten unter celik-soft.de. `/health` bleibt
+offen, damit das Ausrollen die Anwendung prüfen kann.
+
+Ausgesperrt? In `~/sitzordnung/deploy/Caddyfile` den Block `forward_auth`
+(samt der Zeile `@login-pflicht`) löschen und
+`docker compose restart caddy` ausführen. Login-Dienst prüfen:
+`docker logs authelia`.
+
 ## Wenn etwas nicht geht
 
 **Kein Zertifikat / Browser meldet unsicher.** Caddy braucht auflösende
@@ -218,3 +230,16 @@ docker compose -f deploy/docker-compose.yml start app-prod
 
 Ein CX22 bei Hetzner liegt bei etwa 4–6 € im Monat, dazu die Domain (rund 1 €
 im Monat). Beide Umgebungen laufen auf demselben Server.
+
+## Weitere Apps auf demselben Server
+
+Der Caddy liefert auch andere Apps aus (derzeit **Jahresplan**,
+`jahresplan.celik-soft.de`). Dafür:
+
+- liest er zusätzlich alle Dateien `~/caddy-sites/*.caddy` ein – jede App legt
+  dort ihre eigene Konfiguration ab und lädt Caddy neu,
+- hängt er im Docker-Netz `celik-web`, in dem auch die Container der anderen
+  Apps laufen.
+
+`deploy.sh` legt Netz und Ordner bei Bedarf an. Einrichtung und Ablauf der
+anderen App stehen in deren `deploy/ANLEITUNG.md`.

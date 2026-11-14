@@ -1,14 +1,28 @@
 import { PasswordField } from '../core/ui/password-field';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { FilePickerCancelled, isNativeApp } from '../core/store/file-system';
-import { OneDriveFile, OneDriveService } from '../core/store/onedrive.service';
-import { isStrongPassword } from '../core/store/password-policy';
-import { IDLE_LOCK_MS, VaultService } from '../core/store/vault.service';
-import { ToastService } from '../core/toast.service';
+import { FilePickerCancelled, isNativeApp } from '../core/persistence/file-system';
+import { OneDriveFile, OneDriveService } from '../core/persistence/onedrive.service';
+import { isStrongPassword } from '../core/persistence/password-policy';
+import { IDLE_LOCK_MS, VaultService } from '../core/persistence/vault.service';
+import { ToastService } from '../core/ui/toast.service';
 import { Icon } from '../core/ui/icon';
 import { ConfirmService } from '../core/ui/confirm.service';
 import { PasswordRules } from './password-rules';
+
+/**
+ * So lange nach dem letzten Tastendruck wird das Passwort von selbst probiert.
+ * Das Entschlüsseln kostet Rechenzeit, deshalb nicht bei jedem Buchstaben.
+ */
+const AUTO_OPEN_DELAY_MS = 500;
 
 /**
  * Der Startbildschirm. Solange kein Datenbestand geöffnet ist, zeigt die App
@@ -53,6 +67,14 @@ export class VaultGate {
 
   /** Die zuletzt benutzte Datei auf diesem Rechner - dann genügt das Passwort. */
   readonly lastLocalFile = this.vault.lastLocalFile;
+  /** Gibt der Browser die Datei schon frei? Dann öffnet sie sich mit dem passenden Passwort von selbst. */
+  readonly lastLocalFileReady = this.vault.lastLocalFileReady;
+
+  private autoOpenTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Ein laufender Versuch, die vorgemerkte Datei mit dem getippten Passwort zu öffnen. */
+  private autoOpenAttempt: Promise<boolean> | null = null;
+  /** Nach der Freigabe wird nur einmal von selbst gefragt - sonst nervt der Browser. */
+  private accessRequested = false;
 
   readonly password = signal('');
   readonly passwordRepeat = signal('');
@@ -86,6 +108,67 @@ export class VaultGate {
 
   constructor() {
     void this.autoOpen();
+
+    // Nach dem Sperren ist die Freigabe der Datei meist noch da.
+    void this.vault.refreshLastLocalFileAccess();
+
+    // Ist die vorgemerkte Datei freigegeben, genügt das Passwort: Sobald es
+    // passt, öffnet sich der Bestand - ohne Klick auf „Öffnen“.
+    effect(() => {
+      const password = this.password();
+      const ready = this.mode() === 'open' && this.lastLocalFileReady() && !this.busy();
+
+      this.clearAutoOpenTimer();
+      if (ready && password.length >= 8) {
+        this.autoOpenTimer = setTimeout(
+          () => void this.openWhenPasswordFits(password),
+          AUTO_OPEN_DELAY_MS,
+        );
+      }
+    });
+    inject(DestroyRef).onDestroy(() => this.clearAutoOpenTimer());
+  }
+
+  private clearAutoOpenTimer(): void {
+    if (this.autoOpenTimer) {
+      clearTimeout(this.autoOpenTimer);
+      this.autoOpenTimer = null;
+    }
+  }
+
+  private async openWhenPasswordFits(password: string): Promise<void> {
+    // Immer nur ein Versuch zur Zeit; wurde inzwischen weitergetippt, ist dieser überholt.
+    await this.autoOpenAttempt;
+    if (this.password() !== password || this.busy() || this.mode() !== 'open') {
+      return;
+    }
+
+    this.autoOpenAttempt = this.vault.tryOpenLastLocalFile(password);
+    try {
+      if (await this.autoOpenAttempt) {
+        this.toasts.success('Datenbestand geöffnet.');
+        this.password.set('');
+      }
+    } finally {
+      this.autoOpenAttempt = null;
+    }
+  }
+
+  /**
+   * Holt die Freigabe der vorgemerkten Datei schon beim Antippen des
+   * Passwortfelds - so fragt der Browser vor der Eingabe, nicht danach.
+   */
+  prepareLastLocalFile(): void {
+    if (
+      this.accessRequested ||
+      this.mode() !== 'open' ||
+      !this.lastLocalFile() ||
+      this.lastLocalFileReady()
+    ) {
+      return;
+    }
+    this.accessRequested = true;
+    void this.vault.requestLastLocalFileAccess();
   }
 
   /** Öffnet beim Start den gemerkten OneDrive-Bestand - ohne jede Eingabe. */
@@ -221,8 +304,14 @@ export class VaultGate {
       return;
     }
 
+    this.clearAutoOpenTimer();
     this.busy.set(true);
     try {
+      // Hat das Tippen den Bestand gerade schon geöffnet, ist nichts mehr zu tun.
+      if (await this.autoOpenAttempt) {
+        return;
+      }
+
       const selected = this.selectedFile();
       if (this.mode() === 'onedrive' && this.driveCreate()) {
         await this.vault.createInOneDrive(this.newFileName().trim(), this.password());
@@ -256,6 +345,7 @@ export class VaultGate {
 
   /** Lässt die vorgemerkte Datei fallen, damit wieder der Dateidialog kommt. */
   async chooseOtherFile(): Promise<void> {
+    this.accessRequested = false;
     await this.vault.forgetLastLocalFile();
   }
 }

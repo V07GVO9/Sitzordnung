@@ -247,8 +247,6 @@ export interface Database {
   nextIds: IdCounters;
 }
 
-/** Höchstens so viele Sitzordnungen sind je Kurs vorgesehen. */
-
 /**
  * Ein frischer, leerer Datenbestand - mit demselben Vorschlag für den
  * Notenschlüssel, den früher das Backend beim ersten Start angelegt hat.
@@ -301,6 +299,21 @@ export function createEmptyDatabase(): Database {
       gradeChange: 1,
       gradeReport: 1,
     },
+  };
+}
+
+/**
+ * Ergänzt fehlende Felder in einem eingelesenen Bestand, damit auch eine
+ * ältere Datei geöffnet werden kann.
+ */
+export function migrateDatabase(database: Database): Database {
+  const empty = createEmptyDatabase();
+
+  return {
+    ...empty,
+    ...database,
+    settings: { ...empty.settings, ...database.settings },
+    nextIds: { ...empty.nextIds, ...database.nextIds },
   };
 }
 

@@ -21,8 +21,6 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Observable, forkJoin, switchMap } from 'rxjs';
-import { ApiService } from '../../core/api.service';
 import { ModeService } from '../../core/mode.service';
 import {
   Course,
@@ -30,21 +28,25 @@ import {
   QuarterGrade,
   Rating,
   RatingValue,
-  SeatingPlan,
   Student,
   StudentScore,
   WEEKDAY_NAMES,
+  byFirstName,
   fullName,
   initials,
   ratingClass,
   ratingSymbol,
 } from '../../core/models';
-import { isValidDateKey, toDateKey } from '../../core/store/time';
-import { ToastService } from '../../core/toast.service';
+import { isValidDateKey, toDateKey } from '../../core/logic/time';
+import { LocalStore } from '../../core/store/local-store';
+import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { readPreference, writePreference } from '../../core/ui/preference';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ParticipationList, RATING_OPTIONS, RateRequest } from './participation-list';
 import { ParticipationSheet } from './participation-sheet';
+import { DropTarget, seatKey } from './seat-layout';
+import { SeatPlanEditor } from './seat-plan-editor';
 import { SwipeRate } from './swipe-rate';
 
 /** Mitarbeit als Liste oder auf dem Sitzplan - wie Liste/Sitzplan in der Klassenmappe. */
@@ -52,13 +54,9 @@ export type ParticipationView = 'liste' | 'sitzplan';
 
 const VIEW_KEY = 'sitzordnung.mitarbeit-ansicht';
 
-/** Die gewählte Ansicht merken - ohne dass ein gesperrter Speicher stört. */
+/** Die zuletzt gewählte Ansicht - ohne Wahl der Sitzplan. */
 function readView(): ParticipationView {
-  try {
-    return localStorage.getItem(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
-  } catch {
-    return 'sitzplan';
-  }
+  return readPreference(VIEW_KEY) === 'liste' ? 'liste' : 'sitzplan';
 }
 
 /** Breite des Bewertungs-Overlays in px - muss zu .rate-pop in course.scss passen. */
@@ -88,23 +86,11 @@ function placePopover(rect: DOMRect): {
   return { left, top: rect.bottom + POPOVER_GAP, bottom: null };
 }
 
-function writeView(view: ParticipationView): void {
-  try {
-    localStorage.setItem(VIEW_KEY, view);
-  } catch {
-    // Dann gilt die Wahl eben nur bis zum Neuladen.
-  }
-}
-
-/** Woher ein gezogener Schüler kommt bzw. wohin er fällt. */
-type DropTarget = { kind: 'pool' } | { kind: 'seat'; row: number; column: number };
-
 /** Ein Platz im Raster, angereichert mit allem, was die Anzeige braucht. */
 export interface SeatCell {
   row: number;
   column: number;
   student: Student | null;
-  score: StudentScore | null;
   target: DropTarget;
 }
 
@@ -126,9 +112,12 @@ export interface SeatCell {
   ],
   templateUrl: './course.html',
   styleUrl: './course.scss',
+  providers: [SeatPlanEditor],
 })
 export class CoursePage implements OnDestroy {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
+  /** Die Sitzordnungen des Kurses und die Belegung der gewählten. */
+  readonly seating = inject(SeatPlanEditor);
   private readonly route = inject(ActivatedRoute);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
@@ -141,17 +130,10 @@ export class CoursePage implements OnDestroy {
   readonly loading = signal(true);
   readonly course = signal<Course | null>(null);
   readonly students = signal<Student[]>([]);
-  readonly plans = signal<SeatingPlan[]>([]);
-  /** Sitzordnungen derselben Klasse aus anderen Fächern - zum Übernehmen. */
-  readonly classPlans = signal<{ course: Course; plans: SeatingPlan[] }[]>([]);
-  readonly activePlanId = signal<number | null>(null);
   readonly scores = signal<StudentScore[]>([]);
   /** Quartalsnoten für die Listenansicht. */
   readonly quarterGrades = signal<QuarterGrade[]>([]);
 
-  readonly saving = signal(false);
-
-  /** Die anderen Fächer derselben Klasse - als Reiter oben. */
   /** Was laut Stundenplan gerade läuft. */
   readonly lesson = signal<CurrentLesson | null>(null);
   /** Die heutigen Bewertungen je Schüler, älteste zuerst. */
@@ -197,12 +179,6 @@ export class CoursePage implements OnDestroy {
   /** Sitzordnung ändern statt bewerten - im Bearbeitungsmodus oder bei offenem Schloss. */
   readonly editMode = computed(() => this.appEdit() || this.seatUnlocked());
 
-  /** Die Belegung des Rasters als "Zeile:Spalte" -> Schüler-Id. */
-  private readonly placement = signal<Map<string, number>>(new Map());
-
-  readonly rows = signal(5);
-  readonly columns = signal(8);
-
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
   readonly fullName = fullName;
   readonly initials = initials;
@@ -217,10 +193,6 @@ export class CoursePage implements OnDestroy {
   /** Die Meldung mit „Rückgängig“ zur letzten Bewertung. */
   private undoToastId: number | null = null;
 
-  readonly activePlan = computed(
-    () => this.plans().find((p) => p.id === this.activePlanId()) ?? null,
-  );
-
   private readonly studentsById = computed(
     () => new Map(this.students().map((s) => [s.id, s] as const)),
   );
@@ -231,20 +203,18 @@ export class CoursePage implements OnDestroy {
 
   /** Das Raster, Zeile für Zeile - die Vorlage rendert direkt daraus. */
   readonly grid = computed<SeatCell[][]>(() => {
-    const placement = this.placement();
+    const placement = this.seating.placement();
     const students = this.studentsById();
-    const scores = this.scoresById();
     const result: SeatCell[][] = [];
 
-    for (let row = 0; row < this.rows(); row++) {
+    for (let row = 0; row < this.seating.rows(); row++) {
       const cells: SeatCell[] = [];
-      for (let column = 0; column < this.columns(); column++) {
-        const studentId = placement.get(`${row}:${column}`);
+      for (let column = 0; column < this.seating.columns(); column++) {
+        const studentId = placement.get(seatKey(row, column));
         cells.push({
           row,
           column,
           student: studentId ? (students.get(studentId) ?? null) : null,
-          score: studentId ? (scores.get(studentId) ?? null) : null,
           target: { kind: 'seat', row, column },
         });
       }
@@ -256,7 +226,7 @@ export class CoursePage implements OnDestroy {
 
   /** Schüler, die noch auf keinem Platz sitzen. */
   readonly unseated = computed(() => {
-    const seated = new Set(this.placement().values());
+    const seated = new Set(this.seating.placement().values());
     return this.students().filter((s) => !seated.has(s.id));
   });
 
@@ -299,12 +269,7 @@ export class CoursePage implements OnDestroy {
   );
 
   /** Reihenfolge zum Blättern im Blatt - wie die Liste, nach Vorname. */
-  private readonly sheetOrder = computed(() =>
-    [...this.students()].sort(
-      (a, b) =>
-        a.firstName.localeCompare(b.firstName, 'de') || a.lastName.localeCompare(b.lastName, 'de'),
-    ),
-  );
+  private readonly sheetOrder = computed(() => [...this.students()].sort(byFirstName));
 
   readonly sheetIndex = computed(() =>
     this.sheetOrder().findIndex((s) => s.id === this.sheetStudentId()),
@@ -373,380 +338,59 @@ export class CoursePage implements OnDestroy {
     this.sheetStudentId.set(null);
     this.selectedId.set(null);
 
-    forkJoin({
-      course: this.api.getCourse(courseId),
-      students: this.api.getCourseStudents(courseId),
-      plans: this.api.getSeatingPlans(courseId),
-      scoreboard: this.api.getScoreboard(courseId),
-      quarterGrades: this.api.getQuarterGrades(courseId),
-    }).subscribe({
-      next: ({ course, students, plans, scoreboard, quarterGrades }) => {
-        this.course.set(course);
-        this.quarterGrades.set(quarterGrades);
-        this.students.set(students);
-        this.plans.set(plans);
-        this.scores.set(scoreboard.students);
-        this.selectPlan(plans[0]?.id ?? null);
-        this.loadClassPlans(course);
-        this.refreshToday();
-        this.refreshLesson();
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.toasts.error(err, 'Der Kurs konnte nicht geladen werden.');
-        this.loading.set(false);
-      },
-    });
-  }
+    try {
+      const course = this.store.masterData.getCourse(courseId);
+      const students = this.store.masterData.getCourseStudents(courseId);
 
-  /** Lädt die Sitzordnungen der anderen Fächer derselben Klasse. */
-  private loadClassPlans(course: Course): void {
-    this.classPlans.set([]);
-    this.api.getCourses().subscribe({
-      next: (courses) => {
-        const others = courses.filter(
-          (c) =>
-            c.schoolClassId === course.schoolClassId &&
-            c.id !== course.id &&
-            c.seatingPlanCount > 0,
-        );
-        if (!others.length) {
-          return;
-        }
-        forkJoin(others.map((c) => this.api.getSeatingPlans(c.id))).subscribe({
-          next: (lists) =>
-            this.classPlans.set(
-              others
-                .map((c, i) => ({ course: c, plans: lists[i] }))
-                .filter((g) => g.plans.length > 0)
-                .sort((a, b) => a.course.subjectName.localeCompare(b.course.subjectName, 'de')),
-            ),
-          error: () => this.classPlans.set([]),
-        });
-      },
-      error: () => this.classPlans.set([]),
-    });
-  }
-
-  selectPlan(planId: number | null): void {
-    this.activePlanId.set(planId);
-    const plan = this.plans().find((p) => p.id === planId);
-
-    if (!plan) {
-      this.placement.set(new Map());
-      return;
+      this.course.set(course);
+      this.quarterGrades.set(this.store.quarterGrades.getQuarterGrades(courseId));
+      this.students.set(students);
+      this.seating.load(course, students);
+      this.scores.set(this.store.ratings.getScoreboard(courseId).students);
+      this.refreshToday();
+      this.refreshLesson();
+    } catch (err) {
+      this.toasts.error(err, 'Der Kurs konnte nicht geladen werden.');
     }
-
-    this.rows.set(plan.rows);
-    this.columns.set(plan.columns);
-    this.placement.set(new Map(plan.seats.map((s) => [`${s.row}:${s.column}`, s.studentId])));
+    this.loading.set(false);
   }
 
-  // --- Sitzordnung bearbeiten ---
+  // --- Sitzordnung ---
 
+  /** Ein Schüler wurde per Drag and Drop auf einen Platz oder in die Liste gezogen. */
   drop(event: CdkDragDrop<DropTarget>): void {
-    const from = event.previousContainer.data;
-    const to = event.container.data;
-    const studentId = event.item.data as number;
-
-    if (
-      from.kind === 'seat' &&
-      to.kind === 'seat' &&
-      from.row === to.row &&
-      from.column === to.column
-    ) {
-      return;
-    }
-
-    const next = new Map(this.placement());
-    const fromKey = from.kind === 'seat' ? `${from.row}:${from.column}` : null;
-
-    if (to.kind === 'pool') {
-      if (fromKey) {
-        next.delete(fromKey);
-      }
-    } else {
-      const toKey = `${to.row}:${to.column}`;
-      const occupant = next.get(toKey);
-
-      next.set(toKey, studentId);
-
-      if (fromKey) {
-        // Sitzt schon jemand auf dem Zielplatz, tauschen die beiden die Plätze.
-        if (occupant !== undefined && occupant !== studentId) {
-          next.set(fromKey, occupant);
-        } else {
-          next.delete(fromKey);
-        }
-      }
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
+    this.seating.move(
+      event.item.data as number,
+      event.previousContainer.data,
+      event.container.data,
+    );
   }
 
-  /** Verteilt alle noch nicht gesetzten Schüler der Reihe nach auf freie Plätze. */
-  autoFill(): void {
-    const next = new Map(this.placement());
-    const taken = new Set(next.values());
-    const queue = this.students().filter((s) => !taken.has(s.id));
-
-    for (let row = 0; row < this.rows() && queue.length; row++) {
-      for (let column = 0; column < this.columns() && queue.length; column++) {
-        const key = `${row}:${column}`;
-        if (!next.has(key)) {
-          next.set(key, queue.shift()!.id);
-        }
-      }
-    }
-
-    if (queue.length) {
-      this.toasts.show(
-        `${queue.length} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
-        'error',
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  async clearSeats(): Promise<void> {
-    if (this.placement().size === 0) {
-      return;
-    }
-
-    const confirmed = await this.confirm.ask({
-      title: 'Alle Plätze leeren?',
-      message: 'Alle Schüler wandern zurück in die Liste „Ohne Platz“.',
-      confirmLabel: 'Plätze leeren',
-      danger: true,
-    });
-    if (!confirmed) {
-      return;
-    }
-
-    this.placement.set(new Map());
-    this.persistLayout();
-  }
-
-  /**
-   * Setzt alle Schüler neu - alphabetisch nach Nachnamen oder zufällig - und
-   * füllt das Raster Reihe für Reihe von vorn.
-   */
-  async arrange(order: 'alpha' | 'random'): Promise<void> {
-    if (this.placement().size > 0) {
-      const confirmed = await this.confirm.ask({
-        title: order === 'alpha' ? 'Alphabetisch neu setzen?' : 'Zufällig neu mischen?',
-        message: 'Die bisherige Sitzordnung wird dabei ersetzt.',
-        confirmLabel: order === 'alpha' ? 'Alphabetisch setzen' : 'Mischen',
-      });
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    const students = [...this.students()];
-    if (order === 'alpha') {
-      students.sort(
-        (a, b) =>
-          a.lastName.localeCompare(b.lastName, 'de') ||
-          a.firstName.localeCompare(b.firstName, 'de'),
-      );
-    } else {
-      // Fisher-Yates: jede Reihenfolge ist gleich wahrscheinlich.
-      for (let i = students.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [students[i], students[j]] = [students[j], students[i]];
-      }
-    }
-
-    const next = new Map<string, number>();
-    let index = 0;
-    for (let row = 0; row < this.rows() && index < students.length; row++) {
-      for (let column = 0; column < this.columns() && index < students.length; column++) {
-        next.set(`${row}:${column}`, students[index++].id);
-      }
-    }
-
-    const left = students.length - index;
-    if (left > 0) {
-      this.toasts.show(
-        `${left} Schüler passen nicht ins Raster. Bitte mehr Reihen oder Spalten anlegen.`,
-        'error',
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  changeGrid(rows: number, columns: number): void {
-    const safeRows = Math.min(20, Math.max(1, Math.round(rows) || 1));
-    const safeColumns = Math.min(20, Math.max(1, Math.round(columns) || 1));
-
-    this.rows.set(safeRows);
-    this.columns.set(safeColumns);
-
-    // Plätze außerhalb des neuen Rasters werden frei und wandern zurück in die Liste.
-    const next = new Map(this.placement());
-    let dropped = 0;
-    for (const key of [...next.keys()]) {
-      const [row, column] = key.split(':').map(Number);
-      if (row >= safeRows || column >= safeColumns) {
-        next.delete(key);
-        dropped++;
-      }
-    }
-
-    if (dropped) {
-      this.toasts.show(
-        `${dropped} ${dropped === 1 ? 'Schüler wurde' : 'Schüler wurden'} zurück in die Liste gelegt.`,
-      );
-    }
-
-    this.placement.set(next);
-    this.persistLayout();
-  }
-
-  private persistLayout(): void {
-    const planId = this.activePlanId();
-    if (!planId) {
-      return;
-    }
-
-    const seats = [...this.placement().entries()].map(([key, studentId]) => {
-      const [row, column] = key.split(':').map(Number);
-      return { studentId, row, column };
-    });
-
-    this.saving.set(true);
-    this.api.saveLayout(planId, { rows: this.rows(), columns: this.columns(), seats }).subscribe({
-      next: (plan) => {
-        this.plans.update((list) => list.map((p) => (p.id === plan.id ? plan : p)));
-        this.saving.set(false);
-      },
-      error: (err) => {
-        this.saving.set(false);
-        this.toasts.error(err, 'Die Sitzordnung konnte nicht gespeichert werden.');
-        // Nach einem Fehler gilt wieder der zuletzt gespeicherte Stand.
-        this.selectPlan(planId);
-      },
-    });
-  }
-
-  // --- Sitzordnungen verwalten ---
-
-  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen oder eine neue anlegen. */
+  /** Auswahl im Dropdown: vorhandene Sitzordnung öffnen, eine neue anlegen oder eine übernehmen. */
   onPlanSelect(select: HTMLSelectElement): void {
     const value = select.value;
     if (value === 'new' || value.startsWith('copy:')) {
       // Bis die neue da ist, bleibt die bisherige gewählt.
-      select.value = String(this.activePlanId() ?? '');
+      select.value = String(this.seating.activePlanId() ?? '');
       if (value === 'new') {
         this.addPlan();
       } else {
-        this.copyPlan(Number(value.slice('copy:'.length)));
+        this.seating.copyPlan(Number(value.slice('copy:'.length)));
       }
       return;
     }
-    this.selectPlan(Number(select.value));
+    this.seating.selectPlan(Number(select.value));
   }
 
   addPlan(): void {
-    const courseId = this.courseId();
-    // Der erste freie Name „Sitzordnung n“.
-    const names = new Set(this.plans().map((p) => p.name));
-    let n = 1;
-    while (names.has(`Sitzordnung ${n}`)) {
-      n++;
-    }
-    const name = `Sitzordnung ${n}`;
-
-    this.api.createSeatingPlan(courseId, name, this.rows(), this.columns()).subscribe({
-      next: (plan) => {
-        this.plans.update((list) => [...list, plan]);
-        this.selectPlan(plan.id);
-        this.toasts.success(`„${plan.name}" wurde angelegt.`);
-        // Gleich benennen: Namensfeld markieren.
-        setTimeout(() => {
-          const input = this.nameInput()?.nativeElement;
-          input?.focus();
-          input?.select();
-        });
-      },
-      error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht angelegt werden.'),
-    });
-  }
-
-  /** Übernimmt eine Sitzordnung aus einem anderen Fach derselben Klasse als Kopie. */
-  copyPlan(sourceId: number): void {
-    const group = this.classPlans().find((g) => g.plans.some((p) => p.id === sourceId));
-    const source = group?.plans.find((p) => p.id === sourceId);
-    if (!group || !source) {
-      return;
-    }
-
-    const courseId = this.courseId();
-    const name = `${source.name} (${group.course.subjectShortName || group.course.subjectName})`;
-    // Nur Schüler übernehmen, die es in diesem Kurs gibt.
-    const known = new Set(this.students().map((s) => s.id));
-    const seats = source.seats.filter((s) => known.has(s.studentId));
-
-    this.api
-      .createSeatingPlan(courseId, name, source.rows, source.columns)
-      .pipe(
-        switchMap((plan) =>
-          this.api.saveLayout(plan.id, { rows: source.rows, columns: source.columns, seats }),
-        ),
-      )
-      .subscribe({
-        next: (plan) => {
-          this.plans.update((list) => [...list, plan]);
-          this.selectPlan(plan.id);
-          this.toasts.success(`„${source.name}" aus ${group.course.subjectName} übernommen.`);
-        },
-        error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht übernommen werden.'),
+    if (this.seating.addPlan()) {
+      // Gleich benennen: Namensfeld markieren.
+      setTimeout(() => {
+        const input = this.nameInput()?.nativeElement;
+        input?.focus();
+        input?.select();
       });
-  }
-
-  renamePlan(name: string): void {
-    const plan = this.activePlan();
-    if (!plan || !name.trim() || name.trim() === plan.name) {
-      return;
     }
-
-    this.api.updateSeatingPlan(plan.id, name.trim(), plan.rows, plan.columns).subscribe({
-      next: (updated) => {
-        this.plans.update((list) => list.map((p) => (p.id === updated.id ? updated : p)));
-      },
-      error: (err) => this.toasts.error(err, 'Der Name konnte nicht geändert werden.'),
-    });
-  }
-
-  async deletePlan(): Promise<void> {
-    const plan = this.activePlan();
-    if (
-      !plan ||
-      !(await this.confirm.ask({
-        title: `Sitzordnung „${plan.name}" löschen?`,
-        message: 'Die Plätze dieser Sitzordnung gehen verloren. Bewertungen bleiben erhalten.',
-        confirmLabel: 'Löschen',
-        danger: true,
-      }))
-    ) {
-      return;
-    }
-
-    this.api.deleteSeatingPlan(plan.id).subscribe({
-      next: () => {
-        const remaining = this.plans().filter((p) => p.id !== plan.id);
-        this.plans.set(remaining);
-        this.selectPlan(remaining[0]?.id ?? null);
-        this.toasts.success('Die Sitzordnung wurde gelöscht.');
-      },
-      error: (err) => this.toasts.error(err, 'Die Sitzordnung konnte nicht gelöscht werden.'),
-    });
   }
 
   // --- Ansicht ---
@@ -758,7 +402,7 @@ export class CoursePage implements OnDestroy {
 
   setView(view: ParticipationView): void {
     this.view.set(view);
-    writeView(view);
+    writePreference(VIEW_KEY, view);
   }
 
   // --- Bewerten ---
@@ -779,25 +423,37 @@ export class CoursePage implements OnDestroy {
     const previous = (this.todayRatings().get(student.id)?.at(-1)?.value ??
       null) as RatingValue | null;
 
-    this.api.rate(courseId, student.id, value, undefined, this.lessonDate(), true).subscribe({
-      next: (rating) => {
-        this.refreshScores();
-        this.flashTile(student.id, value);
+    try {
+      const rating = this.rateOn(courseId, student.id, value, this.lessonDate());
+      this.refreshScores();
+      this.flashTile(student.id, value);
+      this.showUndoToast(`${fullName(student)}: ${ratingSymbol(value)}`, () =>
+        this.undoRating(rating, previous),
+      );
+    } catch (err) {
+      this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.');
+    }
+  }
 
-        // Je Bewertung eine Meldung - die vorige verschwindet, damit sich
-        // im Unterricht nichts stapelt.
-        if (this.undoToastId !== null) {
-          this.toasts.dismiss(this.undoToastId);
-        }
-        this.undoToastId = this.toasts.show(
-          `${fullName(student)}: ${ratingSymbol(value)}`,
-          'success',
-          6000,
-          { label: 'Rückgängig', run: () => this.undoRating(rating, previous) },
-        );
-      },
-      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gespeichert werden.'),
-    });
+  /** Je Schüler und Tag gilt eine Bewertung - eine neue ersetzt die vorige. */
+  private rateOn(courseId: number, studentId: number, value: RatingValue, day: string): Rating {
+    return this.store.ratings.rate(courseId, studentId, value, undefined, day, true);
+  }
+
+  /**
+   * Je Bewertung eine Meldung - die vorige verschwindet, damit sich im
+   * Unterricht nichts stapelt.
+   */
+  private showUndoToast(text: string, undo?: () => void): void {
+    if (this.undoToastId !== null) {
+      this.toasts.dismiss(this.undoToastId);
+    }
+    this.undoToastId = this.toasts.show(
+      text,
+      'success',
+      6000,
+      undo ? { label: 'Rückgängig', run: undo } : undefined,
+    );
   }
 
   /** Schnellbewertung per Wischen über Kachel oder Zeile. */
@@ -817,21 +473,16 @@ export class CoursePage implements OnDestroy {
     }
     this.selectedId.set(null);
     const absent = !this.absentIds().has(student.id);
-    this.api.setAbsent(this.courseId(), student.id, this.lessonDate(), absent).subscribe({
-      next: () => {
-        this.refreshScores();
-        if (this.undoToastId !== null) {
-          this.toasts.dismiss(this.undoToastId);
-        }
-        this.undoToastId = this.toasts.show(
-          `${fullName(student)}: ${absent ? 'fehlt' : 'wieder anwesend'}`,
-          'success',
-          6000,
-          undo ? { label: 'Rückgängig', run: () => this.toggleAbsent(student, false) } : undefined,
-        );
-      },
-      error: (err) => this.toasts.error(err, 'Die Anwesenheit konnte nicht gespeichert werden.'),
-    });
+    try {
+      this.store.participation.setAbsent(this.courseId(), student.id, this.lessonDate(), absent);
+      this.refreshScores();
+      this.showUndoToast(
+        `${fullName(student)}: ${absent ? 'fehlt' : 'wieder anwesend'}`,
+        undo ? () => this.toggleAbsent(student, false) : undefined,
+      );
+    } catch (err) {
+      this.toasts.error(err, 'Die Anwesenheit konnte nicht gespeichert werden.');
+    }
   }
 
   // --- Auslosen ---
@@ -880,24 +531,17 @@ export class CoursePage implements OnDestroy {
    */
   private undoRating(rating: Rating, previous: RatingValue | null): void {
     this.undoToastId = null;
-    const undo$: Observable<unknown> =
-      previous === null
-        ? this.api.deleteRating(rating.id)
-        : this.api.rate(
-            rating.courseId,
-            rating.studentId,
-            previous,
-            undefined,
-            rating.lessonDate,
-            true,
-          );
-    undo$.subscribe({
-      next: () => {
-        this.toasts.show('Die Bewertung wurde zurückgenommen.');
-        this.refreshScores();
-      },
-      error: (err) => this.toasts.error(err, 'Es gab nichts zurückzunehmen.'),
-    });
+    try {
+      if (previous === null) {
+        this.store.ratings.deleteRating(rating.id);
+      } else {
+        this.rateOn(rating.courseId, rating.studentId, previous, rating.lessonDate);
+      }
+      this.toasts.show('Die Bewertung wurde zurückgenommen.');
+      this.refreshScores();
+    } catch (err) {
+      this.toasts.error(err, 'Es gab nichts zurückzunehmen.');
+    }
   }
 
   /** Löscht eine Bewertung aus dem Verlauf im Blatt - nach Rückfrage. */
@@ -913,10 +557,12 @@ export class CoursePage implements OnDestroy {
       return;
     }
 
-    this.api.deleteRating(rating.id).subscribe({
-      next: () => this.refreshScores(),
-      error: (err) => this.toasts.error(err, 'Die Bewertung konnte nicht gelöscht werden.'),
-    });
+    try {
+      this.store.ratings.deleteRating(rating.id);
+      this.refreshScores();
+    } catch (err) {
+      this.toasts.error(err, 'Die Bewertung konnte nicht gelöscht werden.');
+    }
   }
 
   private flashTile(studentId: number, value: number): void {
@@ -992,51 +638,48 @@ export class CoursePage implements OnDestroy {
   }
 
   private loadCourseRatings(): void {
-    this.api.getRatings(this.courseId()).subscribe({
-      next: (ratings) => this.courseRatings.set(ratings),
-      error: (err) => this.toasts.error(err, 'Der Verlauf konnte nicht geladen werden.'),
-    });
+    try {
+      this.courseRatings.set(this.store.ratings.getRatings(this.courseId()));
+    } catch (err) {
+      this.toasts.error(err, 'Der Verlauf konnte nicht geladen werden.');
+    }
   }
 
   // --- Nachladen ---
 
   /** Punktestand, heutige Bewertungen und - falls offen - der Verlauf. */
   private refreshScores(): void {
-    this.api.getScoreboard(this.courseId()).subscribe({
-      next: (board) => this.scores.set(board.students),
-      error: (err) => this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.'),
-    });
-    // Der mündliche Vorschlag (Ø Mitarbeit) ändert sich mit jeder Bewertung.
-    this.api.getQuarterGrades(this.courseId()).subscribe({
-      next: (grades) => this.quarterGrades.set(grades),
-    });
-    this.refreshToday();
+    const courseId = this.courseId();
+    try {
+      this.scores.set(this.store.ratings.getScoreboard(courseId).students);
+      // Der mündliche Vorschlag (Ø Mitarbeit) ändert sich mit jeder Bewertung.
+      this.quarterGrades.set(this.store.quarterGrades.getQuarterGrades(courseId));
+      this.refreshToday();
+    } catch (err) {
+      this.toasts.error(err, 'Der Punktestand konnte nicht geladen werden.');
+      return;
+    }
     if (this.sheetStudentId() !== null) {
       this.loadCourseRatings();
     }
   }
 
+  /** Die Bewertungen und Fehlenden des gewählten Tages. */
   private refreshToday(): void {
+    const courseId = this.courseId();
     const day = this.lessonDate();
-    this.api.getRatings(this.courseId(), { from: day, to: day }).subscribe({
-      next: (ratings) => {
-        const map = new Map<number, Rating[]>();
-        for (const rating of [...ratings].sort((a, b) => a.id - b.id)) {
-          map.set(rating.studentId, [...(map.get(rating.studentId) ?? []), rating]);
-        }
-        this.todayRatings.set(map);
-      },
-    });
-    this.api.getAbsentStudentIds(this.courseId(), day).subscribe({
-      next: (ids) => this.absentIds.set(new Set(ids)),
-    });
+
+    const map = new Map<number, Rating[]>();
+    const ratings = this.store.ratings.getRatings(courseId, { from: day, to: day });
+    for (const rating of ratings.sort((a, b) => a.id - b.id)) {
+      map.set(rating.studentId, [...(map.get(rating.studentId) ?? []), rating]);
+    }
+    this.todayRatings.set(map);
+    this.absentIds.set(new Set(this.store.participation.getAbsentStudentIds(courseId, day)));
   }
 
   private refreshLesson(): void {
-    this.api.getCurrentLesson().subscribe({
-      next: (lesson) => this.lesson.set(lesson),
-      error: () => this.lesson.set(null),
-    });
+    this.lesson.set(this.store.timetable.getCurrentLesson());
   }
 
   /** Die Farbe der heutigen Bewertung als CSS-Variable für die Kachel. */

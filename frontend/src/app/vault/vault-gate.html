@@ -167,6 +167,11 @@
             <button class="link small" type="button" (click)="chooseOtherFile()">
               Andere Datei wählen
             </button>
+            @if (lastLocalFileReady()) {
+              <span class="muted small last-file-note">
+                Öffnet sich von selbst, sobald das Passwort stimmt.
+              </span>
+            }
           </div>
         }
 
@@ -180,6 +185,7 @@
               (ngModelChange)="password.set($event)"
               name="password"
               autofocus
+              (click)="prepareLastLocalFile()"
             />
           </app-password-field>
         </label>

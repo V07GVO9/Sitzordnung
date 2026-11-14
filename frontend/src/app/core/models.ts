@@ -85,26 +85,6 @@ export interface CurrentLesson {
   message: string;
 }
 
-/** Die Unterrichtsstunde, auf die eine Bewertung gerade zählt. */
-export interface LessonSlot {
-  date: string;
-  startTime: string;
-  label: string;
-  fromTimetable: boolean;
-  /** Gibt es eine frühere Stunde dieses Kurses? */
-  hasPrevious: boolean;
-  /** Gibt es eine spätere? Über die aktuelle Stunde hinaus geht es nicht. */
-  hasNext: boolean;
-  /** Ist das die Stunde, der eine Bewertung ohne Blättern zugerechnet wird? */
-  isCurrent: boolean;
-}
-
-/** Eine bestimmte Unterrichtsstunde, wie sie an die API übergeben wird. */
-export interface LessonRef {
-  date: string;
-  startTime: string;
-}
-
 /** Die fünf möglichen Bewertungen; 0 ist die Mitte. */
 export type RatingValue = -2 | -1 | 0 | 1 | 2;
 
@@ -129,8 +109,6 @@ export interface StudentScore {
   average: number | null;
   pointsToday: number;
   grade: string | null;
-  /** Die Bewertung der angezeigten Unterrichtsstunde, falls schon eine vergeben wurde. */
-  currentLessonValue: number | null;
 }
 
 export interface CourseScoreboard {
@@ -138,7 +116,6 @@ export interface CourseScoreboard {
   schoolClassName: string;
   subjectName: string;
   date: string;
-  currentLesson?: LessonSlot;
   students: StudentScore[];
 }
 
@@ -178,6 +155,18 @@ export interface AppSettings {
   allowRatingOutsideLesson: boolean;
 }
 
+/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
+export interface DateRange {
+  from?: string | null;
+  to?: string | null;
+}
+
+/** Eine fertig erzeugte Datei - CSV oder druckfertiges HTML - samt Dateinamen. */
+export interface ExportFile {
+  blob: Blob;
+  fileName: string;
+}
+
 export interface RatingWindow {
   canRate: boolean;
   reason: string;
@@ -202,14 +191,35 @@ export function ratingSymbol(value: number): string {
   }
 }
 
-export function fullName(student: { firstName: string; lastName: string }): string {
+/** Vor- und Nachname - mehr braucht es zum Anzeigen und Sortieren nicht. */
+export interface PersonName {
+  firstName: string;
+  lastName: string;
+}
+
+export function fullName(student: PersonName): string {
   return `${student.firstName} ${student.lastName}`.trim();
 }
 
-export function initials(student: { firstName: string; lastName: string }): string {
+export function initials(student: PersonName): string {
   const first = student.firstName?.charAt(0) ?? '';
   const last = student.lastName?.charAt(0) ?? '';
   return (first + last).toUpperCase() || '?';
+}
+
+/** Zum Sortieren nach Nachname, dann Vorname - so stehen Listen und Notenbögen. */
+export function byLastName(a: PersonName, b: PersonName): number {
+  return a.lastName.localeCompare(b.lastName, 'de') || a.firstName.localeCompare(b.firstName, 'de');
+}
+
+/** Zum Sortieren nach Vorname, dann Nachname - so ruft man im Unterricht auf. */
+export function byFirstName(a: PersonName, b: PersonName): number {
+  return a.firstName.localeCompare(b.firstName, 'de') || a.lastName.localeCompare(b.lastName, 'de');
+}
+
+/** Zum Sortieren nach dem Namen, etwa von Klassen und Fächern. */
+export function byName(a: { name: string }, b: { name: string }): number {
+  return a.name.localeCompare(b.name, 'de');
 }
 
 // --- Stundenplan-Import -----------------------------------------------------
@@ -236,25 +246,6 @@ export interface TimetableImportResult {
   createdSubjects: number;
   createdCourses: number;
   createdLessons: number;
-  skipped: string[];
-}
-
-// --- Schülerimport ----------------------------------------------------------
-
-export interface StudentImportRow {
-  firstName: string;
-  lastName: string;
-  className: string;
-}
-
-export interface StudentImportPreview {
-  rows: StudentImportRow[];
-  warnings: string[];
-}
-
-export interface StudentImportResult {
-  createdClasses: number;
-  createdStudents: number;
   skipped: string[];
 }
 
@@ -547,4 +538,29 @@ export function ratingClass(value: number | null | undefined): string {
     default:
       return '';
   }
+}
+
+// --- Schuljahreswechsel -----------------------------------------------------
+
+/** Was beim Schuljahreswechsel passieren soll. */
+export interface SchoolYearInput {
+  /** Neue Namen, z. B. KDM11 → KDM12. */
+  renames: { classId: number; name: string }[];
+  /** Klassen, die die Schule verlassen - samt Schülern und allem, was daran hängt. */
+  deleteClassIds: number[];
+  /** Bewertungen, Leistungsnachweise, Noten, Protokoll und Notenbögen löschen. */
+  deleteRecords: boolean;
+  clearTimetable: boolean;
+}
+
+/** Anzahl der Datensätze je Art - vor dem Wechsel und als Ergebnis. */
+export interface SchoolYearCounts {
+  ratings: number;
+  participationOverrides: number;
+  assessments: number;
+  quarterGrades: number;
+  gradeChanges: number;
+  gradeReports: number;
+  pastPeriods: number;
+  timetableEntries: number;
 }

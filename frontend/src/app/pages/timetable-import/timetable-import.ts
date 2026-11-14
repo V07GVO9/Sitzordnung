@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ApiService } from '../../core/api.service';
 import {
   DayOfWeek,
   SCHOOL_DAYS,
@@ -9,14 +8,15 @@ import {
   TimetableImportRow,
   WEEKDAY_NAMES,
 } from '../../core/models';
-import { ToastService } from '../../core/toast.service';
+import { LocalStore } from '../../core/store/local-store';
+import { ToastService } from '../../core/ui/toast.service';
 
 /** Größer als jeder realistische Jahresexport. */
 const MAX_BYTES = 5 * 1024 * 1024;
 
 /** Eine Vorschauzeile mit dem, was der Benutzer daran noch ändern kann. */
-interface Zeile extends TimetableImportRow {
-  ausgewaehlt: boolean;
+interface PreviewRow extends TimetableImportRow {
+  selected: boolean;
 }
 
 @Component({
@@ -27,141 +27,125 @@ interface Zeile extends TimetableImportRow {
   styleUrl: './timetable-import.scss',
 })
 export class TimetableImportPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
 
   readonly days = SCHOOL_DAYS;
   readonly weekdayNames = WEEKDAY_NAMES;
 
-  readonly dateiName = signal<string | null>(null);
-  readonly laeuft = signal(false);
-  readonly zeilen = signal<Zeile[]>([]);
-  readonly warnungen = signal<string[]>([]);
-  readonly ergebnis = signal<TimetableImportResult | null>(null);
+  readonly fileName = signal<string | null>(null);
+  /** True, solange die gewählte Datei gelesen wird. */
+  readonly busy = signal(false);
+  readonly rows = signal<PreviewRow[]>([]);
+  readonly warnings = signal<string[]>([]);
+  readonly result = signal<TimetableImportResult | null>(null);
 
-  readonly hatVorschau = computed(() => this.zeilen().length > 0);
-  readonly anzahlAusgewaehlt = computed(() => this.zeilen().filter((z) => z.ausgewaehlt).length);
+  readonly hasPreview = computed(() => this.rows().length > 0);
+  readonly selectedCount = computed(() => this.rows().filter((r) => r.selected).length);
 
   /** Ohne Klasse und Fach lässt sich eine Zeile nicht übernehmen. */
-  readonly unvollstaendig = computed(
+  readonly incompleteCount = computed(
     () =>
-      this.zeilen().filter(
-        (z) => z.ausgewaehlt && (z.schoolClassName.trim() === '' || z.subjectName.trim() === ''),
+      this.rows().filter(
+        (r) => r.selected && (r.schoolClassName.trim() === '' || r.subjectName.trim() === ''),
       ).length,
   );
 
-  async dateiGewaehlt(event: Event): Promise<void> {
+  async fileChosen(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const datei = input.files?.[0];
-    if (!datei) {
+    const file = input.files?.[0];
+    if (!file) {
       return;
     }
 
-    if (datei.size > MAX_BYTES) {
+    if (file.size > MAX_BYTES) {
       this.toasts.show('Die Datei ist größer als 5 MB.', 'error');
       input.value = '';
       return;
     }
 
-    this.dateiName.set(datei.name);
-    this.ergebnis.set(null);
-    this.laeuft.set(true);
+    this.fileName.set(file.name);
+    this.result.set(null);
+    this.busy.set(true);
 
     try {
-      const inhalt = await datei.text();
-      this.vorschauLaden(inhalt);
+      this.loadPreview(await file.text());
     } catch {
-      this.laeuft.set(false);
       this.toasts.show('Die Datei konnte nicht gelesen werden.', 'error');
     } finally {
+      this.busy.set(false);
       // Damit dieselbe Datei erneut gewählt werden kann.
       input.value = '';
     }
   }
 
-  private vorschauLaden(ics: string): void {
-    this.api.previewTimetableImport(ics).subscribe({
-      next: (vorschau) => {
-        this.zeilen.set(
-          vorschau.rows.map((r) => ({ ...r, ausgewaehlt: r.looksRegular })),
-        );
-        this.warnungen.set(vorschau.warnings);
-        this.laeuft.set(false);
+  private loadPreview(ics: string): void {
+    try {
+      const preview = this.store.timetable.previewTimetableImport(ics);
+      this.rows.set(preview.rows.map((r) => ({ ...r, selected: r.looksRegular })));
+      this.warnings.set(preview.warnings);
 
-        if (vorschau.rows.length === 0) {
-          this.toasts.show('In der Datei wurde kein Unterricht gefunden.', 'error');
-        }
-      },
-      error: (err) => {
-        this.laeuft.set(false);
-        this.toasts.error(err, 'Die Datei konnte nicht gelesen werden.');
-      },
-    });
+      if (preview.rows.length === 0) {
+        this.toasts.show('In der Datei wurde kein Unterricht gefunden.', 'error');
+      }
+    } catch (err) {
+      this.toasts.error(err, 'Die Datei konnte nicht gelesen werden.');
+    }
   }
 
-  umschalten(index: number, wert: boolean): void {
-    this.zeilen.update((liste) =>
-      liste.map((z, i) => (i === index ? { ...z, ausgewaehlt: wert } : z)),
-    );
+  toggle(index: number, selected: boolean): void {
+    this.patchRow(index, { selected });
   }
 
-  alleUmschalten(wert: boolean): void {
-    this.zeilen.update((liste) => liste.map((z) => ({ ...z, ausgewaehlt: wert })));
+  toggleAll(selected: boolean): void {
+    this.rows.update((list) => list.map((r) => ({ ...r, selected })));
   }
 
-  klasseSetzen(index: number, wert: string): void {
-    this.zeilen.update((liste) =>
-      liste.map((z, i) => (i === index ? { ...z, schoolClassName: wert } : z)),
-    );
+  setClassName(index: number, schoolClassName: string): void {
+    this.patchRow(index, { schoolClassName });
   }
 
-  fachSetzen(index: number, wert: string): void {
-    this.zeilen.update((liste) =>
-      liste.map((z, i) => (i === index ? { ...z, subjectName: wert } : z)),
-    );
+  setSubjectName(index: number, subjectName: string): void {
+    this.patchRow(index, { subjectName });
   }
 
-  tagName(day: DayOfWeek): string {
+  dayName(day: DayOfWeek): string {
     return this.weekdayNames[day] ?? '';
   }
 
-  uebernehmen(): void {
-    const ausgewaehlt = this.zeilen().filter((z) => z.ausgewaehlt);
-    if (ausgewaehlt.length === 0) {
+  apply(): void {
+    const selected = this.rows().filter((r) => r.selected);
+    if (selected.length === 0) {
       this.toasts.show('Es ist keine Zeile ausgewählt.', 'error');
       return;
     }
 
-    this.laeuft.set(true);
+    try {
+      const result = this.store.timetable.applyTimetableImport(
+        selected.map(({ selected: _selected, ...row }) => row),
+      );
+      this.result.set(result);
+      this.rows.set([]);
+      this.warnings.set([]);
 
-    this.api
-      .applyTimetableImport(
-        ausgewaehlt.map(({ ausgewaehlt: _ausgewaehlt, ...rest }) => rest),
-      )
-      .subscribe({
-        next: (ergebnis) => {
-          this.laeuft.set(false);
-          this.ergebnis.set(ergebnis);
-          this.zeilen.set([]);
-          this.warnungen.set([]);
-
-          if (ergebnis.createdLessons > 0) {
-            this.toasts.success(
-              `${ergebnis.createdLessons} Stunden wurden in den Stundenplan übernommen.`,
-            );
-          } else {
-            this.toasts.show('Es wurde keine neue Stunde angelegt.', 'error');
-          }
-        },
-        error: (err) => {
-          this.laeuft.set(false);
-          this.toasts.error(err, 'Der Stundenplan konnte nicht übernommen werden.');
-        },
-      });
+      if (result.createdLessons > 0) {
+        this.toasts.success(
+          `${result.createdLessons} Stunden wurden in den Stundenplan übernommen.`,
+        );
+      } else {
+        this.toasts.show('Es wurde keine neue Stunde angelegt.', 'error');
+      }
+    } catch (err) {
+      this.toasts.error(err, 'Der Stundenplan konnte nicht übernommen werden.');
+    }
   }
 
-  zumStundenplan(): void {
+  toTimetable(): void {
     void this.router.navigate(['/stundenplan']);
+  }
+
+  private patchRow(index: number, patch: Partial<PreviewRow>): void {
+    this.rows.update((list) => list.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 }

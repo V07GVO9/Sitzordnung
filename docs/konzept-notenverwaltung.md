@@ -188,7 +188,7 @@ Gesamtstand     = Σ(Bereichsnote × Bereichsgewicht)            fehlt ein Berei
 Zeugnisvorschlag= Rundung nach roundingMode; Endnote setzt die Lehrkraft
 ```
 
-Die Logik kommt als reine Funktionen nach `core/store/assessment.logic.ts` –
+Die Logik kommt als reine Funktionen nach `core/logic/assessment.logic.ts` –
 testbar wie `grading.logic.ts`.
 
 ## 8. Oberfläche

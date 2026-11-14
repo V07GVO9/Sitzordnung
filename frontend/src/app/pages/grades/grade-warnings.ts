@@ -1,5 +1,5 @@
 import { Assessment, StudentGrades } from '../../core/models';
-import { roundGrade } from '../../core/store/assessment.logic';
+import { roundGrade } from '../../core/logic/assessment.logic';
 
 /** Ein Hinweis zu einem Schüler in der Notenübersicht. */
 export interface GradeWarning {
