@@ -25,6 +25,16 @@
 		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://*.sharepoint.com https://*.1drv.com https://*.livefilestore.com https://*.svc.ms; frame-src 'self' https://login.microsoftonline.com https://login.live.com; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
+
+	# Login-Pflicht: Caddy fragt vor jeder Anfrage den gemeinsamen Login-Dienst
+	# (Authelia aus dem Dashboard-Projekt, erreichbar über das Netz celik-web).
+	# Wer nicht angemeldet ist, landet auf login.celik-soft.de. /health bleibt
+	# offen, damit deploy.sh weiterhin die Anwendung selbst prüft.
+	@login-pflicht not path /health
+	forward_auth @login-pflicht authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+	}
 }
 
 {$PROD_DOMAIN} {

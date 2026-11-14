@@ -193,6 +193,18 @@ docker compose -f deploy/docker-compose.yml logs -f app-prod
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 ```
 
+## Login
+
+Alle Adressen liegen hinter dem gemeinsamen Login (Authelia aus dem
+Dashboard-Projekt, login.celik-soft.de): `forward_auth` in `deploy/Caddyfile`.
+Einmal anmelden gilt für alle Seiten unter celik-soft.de. `/health` bleibt
+offen, damit das Ausrollen die Anwendung prüfen kann.
+
+Ausgesperrt? In `~/sitzordnung/deploy/Caddyfile` den Block `forward_auth`
+(samt der Zeile `@login-pflicht`) löschen und
+`docker compose restart caddy` ausführen. Login-Dienst prüfen:
+`docker logs authelia`.
+
 ## Wenn etwas nicht geht
 
 **Kein Zertifikat / Browser meldet unsicher.** Caddy braucht auflösende
