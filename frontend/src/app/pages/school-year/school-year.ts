@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import { ApiService, SchoolYearCounts } from '../../core/api.service';
 import { SchoolClass } from '../../core/models';
-import { FilePickerCancelled } from '../../core/store/file-system';
-import { VaultService } from '../../core/store/vault.service';
-import { ToastService } from '../../core/toast.service';
+import { FilePickerCancelled } from '../../core/persistence/file-system';
+import { VaultService } from '../../core/persistence/vault.service';
+import { LocalStore } from '../../core/store/local-store';
+import { ToastService } from '../../core/ui/toast.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { Icon } from '../../core/ui/icon';
 
@@ -21,6 +20,10 @@ interface ClassRow {
   studentCount: number;
   newName: string;
   leaves: boolean;
+}
+
+function toRow(c: SchoolClass): ClassRow {
+  return { id: c.id, name: c.name, studentCount: c.studentCount, newName: c.name, leaves: false };
 }
 
 /**
@@ -141,7 +144,7 @@ interface ClassRow {
         <button
           class="btn danger"
           type="button"
-          [disabled]="!backedUp() || summary().length === 0 || busy()"
+          [disabled]="!backedUp() || summary().length === 0"
           (click)="run()"
         >
           <app-icon name="refresh-cw" /> Schuljahreswechsel durchführen
@@ -229,16 +232,15 @@ interface ClassRow {
   `,
 })
 export class SchoolYearPage {
-  private readonly api = inject(ApiService);
+  private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
 
-  readonly rows = signal<ClassRow[]>([]);
-  readonly counts = signal<SchoolYearCounts | null>(null);
+  readonly rows = signal<ClassRow[]>(this.store.masterData.getClasses().map(toRow));
+  readonly counts = signal(this.store.schoolYear.getSchoolYearCounts());
   readonly backedUp = signal(false);
-  readonly busy = signal(false);
   readonly deleteRecords = signal(true);
   readonly clearTimetable = signal(true);
 
@@ -259,20 +261,6 @@ export class SchoolYearPage {
     }
     return lines;
   });
-
-  constructor() {
-    forkJoin({ classes: this.api.getClasses(), counts: this.api.getSchoolYearCounts() }).subscribe({
-      next: ({ classes, counts }) => {
-        this.rows.set(classes.map((c: SchoolClass) => this.toRow(c)));
-        this.counts.set(counts);
-      },
-      error: (err) => this.toasts.error(err, 'Die Daten konnten nicht geladen werden.'),
-    });
-  }
-
-  private toRow(c: SchoolClass): ClassRow {
-    return { id: c.id, name: c.name, studentCount: c.studentCount, newName: c.name, leaves: false };
-  }
 
   update(id: number, patch: Partial<ClassRow>): void {
     this.rows.update((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -307,25 +295,19 @@ export class SchoolYearPage {
     if (!ok) {
       return;
     }
-    this.busy.set(true);
+
     const rows = this.rows();
-    this.api
-      .startNewSchoolYear({
+    try {
+      this.store.schoolYear.startNewSchoolYear({
         renames: rows.filter((r) => !r.leaves).map((r) => ({ classId: r.id, name: r.newName })),
         deleteClassIds: rows.filter((r) => r.leaves).map((r) => r.id),
         deleteRecords: this.deleteRecords(),
         clearTimetable: this.clearTimetable(),
-      })
-      .subscribe({
-        next: () => {
-          this.busy.set(false);
-          this.toasts.success('Das neue Schuljahr ist eingerichtet.');
-          void this.router.navigateByUrl('/einrichtung');
-        },
-        error: (err) => {
-          this.busy.set(false);
-          this.toasts.error(err, 'Der Schuljahreswechsel ist fehlgeschlagen.');
-        },
       });
+      this.toasts.success('Das neue Schuljahr ist eingerichtet.');
+      void this.router.navigateByUrl('/einrichtung');
+    } catch (err) {
+      this.toasts.error(err, 'Der Schuljahreswechsel ist fehlgeschlagen.');
+    }
   }
 }

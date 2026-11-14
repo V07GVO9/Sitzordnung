@@ -11,14 +11,13 @@ import {
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ActiveCourseService } from './core/active-course.service';
-import { ApiService } from './core/api.service';
 import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson } from './core/models';
-import { FilePickerCancelled, SaveConflictError } from './core/store/file-system';
+import { FilePickerCancelled, SaveConflictError } from './core/persistence/file-system';
 import { LocalStore } from './core/store/local-store';
-import { VaultService } from './core/store/vault.service';
-import { ToastHost } from './core/toast-host';
-import { ToastService } from './core/toast.service';
+import { VaultService } from './core/persistence/vault.service';
+import { ToastHost } from './core/ui/toast-host';
+import { ToastService } from './core/ui/toast.service';
 import { ConfirmHost } from './core/ui/confirm-host';
 import { ConfirmService } from './core/ui/confirm.service';
 import { Icon } from './core/ui/icon';
@@ -35,13 +34,13 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
   dark: 'Dunkel',
 };
 
-/** Titel der Seiten in der Kopfleiste. */
 /** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
 const SHORT_TITLES: Record<string, string> = {
   verwaltung: 'Verwaltung',
   auswertung: 'Auswertung',
 };
 
+/** Titel der Seiten in der Kopfleiste. */
 const PAGE_TITLES: Record<string, string> = {
   '': 'Wochenplan',
   noten: 'Noten',
@@ -86,7 +85,6 @@ const THEME_ICONS: Record<ThemeChoice, IconName> = {
   },
 })
 export class App implements OnDestroy {
-  private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
@@ -340,14 +338,6 @@ export class App implements OnDestroy {
   }
 
   private refreshLesson(): void {
-    if (!this.store.isOpen()) {
-      this.lesson.set(null);
-      return;
-    }
-
-    this.api.getCurrentLesson().subscribe({
-      next: (lesson) => this.lesson.set(lesson),
-      error: () => this.lesson.set(null),
-    });
+    this.lesson.set(this.store.isOpen() ? this.store.timetable.getCurrentLesson() : null);
   }
 }

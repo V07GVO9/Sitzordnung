@@ -113,10 +113,11 @@ Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 Beim nächsten Start ist die zuletzt benutzte Datei schon vorgewählt (Chrome und
-Edge): Passwort eingeben, Enter – fertig, ohne Dateidialog. Über „Andere Datei
-wählen“ geht es zum Dateidialog. Der Browser fragt dabei unter Umständen einmal
-nach, ob die App die Datei bearbeiten darf; mit „Bei jedem Besuch zulassen“
-entfällt auch diese Rückfrage. Gemerkt wird nur der Verweis auf die Datei, kein
+Edge): Passwort eingeben – fertig, ohne Dateidialog. Über „Andere Datei
+wählen“ geht es zum Dateidialog. Der Browser fragt beim Antippen des
+Passwortfelds unter Umständen einmal nach, ob die App die Datei bearbeiten
+darf; mit „Bei jedem Besuch zulassen“ entfällt auch diese Rückfrage. Ist die
+Datei freigegeben, öffnet sie sich von selbst, sobald das Passwort stimmt. Gemerkt wird nur der Verweis auf die Datei, kein
 Passwort.
 
 ### Auf mehreren Geräten: OneDrive
@@ -251,29 +252,48 @@ den Browser findet Karma über die Umgebungsvariable `CHROME_BIN`.
 frontend/
   src/app/
     core/
-      api.service.ts     Schnittstelle für die Seiten (früher HTTP, jetzt lokal)
       models.ts          Datenstrukturen der Oberfläche
-      store/
-        database.ts      Der Datenbestand als Ganzes
-        local-store.ts   Die Fachlogik der früheren Controller
-        lesson.logic.ts  Stundenplanprüfung
-        grading.logic.ts Notenschlüssel (Mitarbeitspunkte)
+      store/             Der Datenbestand im Speicher
+        database.ts        Aufbau des Bestands
+        local-store.ts     Bestand, Lebenszyklus und die Teilspeicher
+        *.store.ts         Je Fachbereich ein Teilspeicher mit seinen Regeln:
+                           masterData, seating, timetable, ratings, gradeScales,
+                           participation, periods, schemes, assessments,
+                           quarterGrades, gradeBook, exports, settings, schoolYear
+        lookups.ts         Gemeinsame Abfragen auf dem Bestand
+        grade-log.ts       Änderungsprotokoll der Noten
+      logic/             Reine Fachlogik ohne Zugriff auf den Bestand
+        lesson.logic.ts      Stundenplanprüfung
+        grading.logic.ts     Notenschlüssel (Mitarbeitspunkte)
         assessment.logic.ts  Notenberechnung: Leistungsnachweise, Mitarbeit, Gesamtnote
-        report.ts        Notenbogen als HTML
-        csv.ts           CSV-Erzeugung
-        vault-crypto.ts  Ver- und Entschlüsselung der Datei
-        vault.service.ts Datei, Passwort und Zwischenspeicher
-        file-system.ts   Zugriff auf Dateien im Browser
-        photo.ts         Fotos einlesen und verkleinern
-        browser-storage.ts  Zwischenspeicher in IndexedDB
-      ui/                Gemeinsame Bausteine: Symbole, Dunkelmodus,
+        quarter.logic.ts     Quartale und Schuljahr
+        school-calendar.ts   Feiertage und Ferien
+      export/            CSV und druckfertiges HTML (Notenbogen, Übersichten);
+                         print-document.ts ist deren gemeinsames Gerüst
+      import/            Stundenplan (ICS), Mitarbeitsübersicht (PDF), Fotos
+      persistence/       Ablage des Bestands
+        vault-crypto.ts    Ver- und Entschlüsselung der Datei
+        vault.service.ts   Datei, Passwort und Zwischenspeicher
+        file-system.ts     Zugriff auf Dateien im Browser
+        browser-storage.ts Zwischenspeicher in IndexedDB
+        onedrive.*         Ablage in OneDrive
+      ui/                Gemeinsame Bausteine: Symbole, Meldungen, Dunkelmodus,
                          Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
-    pages/               Übersicht, Kurs (Sitzordnung + Bewerten), Noten, Verwaltung,
-                         Stundenplan, Auswertung
+    pages/               Je Seite ein Ordner: Wochenplan, Kurs, Noten, Verwaltung,
+                         Stundenplan, Auswertung, Einrichtung, Schuljahreswechsel
+      course/              Kursseite (bewerten), dazu seat-plan-editor.ts
+                           (Sitzordnungen verwalten) und seat-layout.ts
+                           (Belegung als reine Funktionen)
+      grades/              Notenseite: grades.ts ist der Kopf, jeder Reiter
+                           eine eigene Komponente (*-tab.ts)
 backend/
   Sitzordnung.Host/      Liefert die gebauten Dateien aus - sonst nichts
 ```
+
+Die Seiten rufen den Datenspeicher direkt und synchron auf, etwa
+`store.ratings.rate(...)`. Eine Zwischenschicht mit Observables gibt es nicht
+mehr - sie stammte aus der Zeit, als hinter der Oberfläche ein Server stand.
 
 ### Datenmodell in Kürze
 

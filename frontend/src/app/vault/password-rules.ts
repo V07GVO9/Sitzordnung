@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Icon } from '../core/ui/icon';
-import { PASSWORD_RULES } from '../core/store/password-policy';
+import { PASSWORD_RULES } from '../core/persistence/password-policy';
 
 /** Hakt beim Tippen ab, welche Regeln das neue Passwort schon erfüllt. */
 @Component({

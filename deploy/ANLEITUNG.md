@@ -218,3 +218,16 @@ docker compose -f deploy/docker-compose.yml start app-prod
 
 Ein CX22 bei Hetzner liegt bei etwa 4–6 € im Monat, dazu die Domain (rund 1 €
 im Monat). Beide Umgebungen laufen auf demselben Server.
+
+## Weitere Apps auf demselben Server
+
+Der Caddy liefert auch andere Apps aus (derzeit **Jahresplan**,
+`jahresplan.celik-soft.de`). Dafür:
+
+- liest er zusätzlich alle Dateien `~/caddy-sites/*.caddy` ein – jede App legt
+  dort ihre eigene Konfiguration ab und lädt Caddy neu,
+- hängt er im Docker-Netz `celik-web`, in dem auch die Container der anderen
+  Apps laufen.
+
+`deploy.sh` legt Netz und Ordner bei Bedarf an. Einrichtung und Ablauf der
+anderen App stehen in deren `deploy/ANLEITUNG.md`.

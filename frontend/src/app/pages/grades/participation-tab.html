@@ -1,0 +1,70 @@
+@if (active()) {
+  @let b = book();
+  <section class="card">
+    <h2>Mitarbeit je Doppelstunde</h2>
+    <p class="muted small">
+      Es zählen nur Doppelstunden, in denen mindestens ein Schüler bewertet wurde; wer dort keine
+      Bewertung hat, bekommt eine 0. ++ =
+      {{ formatGrade(b.scheme.participationGrades.plusPlus, 1) }} · + =
+      {{ formatGrade(b.scheme.participationGrades.plus, 1) }} · 0 =
+      {{ formatGrade(b.scheme.participationGrades.neutral, 1) }} · − =
+      {{ formatGrade(b.scheme.participationGrades.minus, 1) }} · −− =
+      {{ formatGrade(b.scheme.participationGrades.minusMinus, 1) }}. Fehlt ein Schüler, „fehlte"
+      wählen - die Stunde zählt dann nicht.
+    </p>
+    @if (b.lessonDates.length === 0) {
+      <p class="muted">In diesem Zeitraum wurde in diesem Kurs noch nicht bewertet.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="lessons">
+          <thead>
+            <tr>
+              <th>Name</th>
+              @for (date of b.lessonDates; track date) {
+                <th class="num">{{ formatDate(date).slice(0, 6) }}</th>
+              }
+              <th class="num">Ø</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of b.students; track s.studentId) {
+              <tr>
+                <td>{{ s.lastName }}, {{ s.firstName }}</td>
+                @for (lesson of s.lessons; track lesson.date) {
+                  <td
+                    class="num cell"
+                    [class.override]="!!lesson.override"
+                    [class.absent]="lesson.grade === null"
+                    [title]="lesson.override?.reason ?? ''"
+                  >
+                    <select
+                      [value]="lessonChoice(lesson)"
+                      (change)="setLesson(s, lesson, $any($event.target))"
+                      [attr.aria-label]="s.lastName + ', ' + formatDate(lesson.date)"
+                    >
+                      <option value="auto" [selected]="lessonChoice(lesson) === 'auto'">
+                        {{ ratingSymbol(lesson.value) }}
+                        {{ formatGrade(lesson.autoGrade, 1) }}
+                      </option>
+                      @for (g of overrideGrades; track g) {
+                        <option [value]="'' + g" [selected]="lessonChoice(lesson) === '' + g">
+                          {{ formatGrade(g, 1) }} (von Hand)
+                        </option>
+                      }
+                      <option value="absent" [selected]="lessonChoice(lesson) === 'absent'">
+                        fehlte
+                      </option>
+                    </select>
+                  </td>
+                }
+                <td class="num">
+                  <strong>{{ formatGrade(s.participation) }}</strong>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}
