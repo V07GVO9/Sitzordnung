@@ -214,6 +214,9 @@
         <button type="button" (click)="backup()">
           <app-icon name="download" /> Sicherungskopie speichern …
         </button>
+        <button type="button" (click)="backupPdf()">
+          <app-icon name="file-down" /> Sicherung als PDF (alle Noten)
+        </button>
         <button type="button" [disabled]="isSaving()" (click)="openPasswordDialog()">
           <app-icon name="key-round" /> Passwort ändern
         </button>

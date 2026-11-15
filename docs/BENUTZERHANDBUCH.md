@@ -621,6 +621,24 @@ bis morgen aus. Der Zeitpunkt der letzten Kopie steht in der Datei und gilt
 damit für alle Geräte. Die Kopie gehört an einen zweiten Ort (USB-Stick,
 Dienstrechner).
 
+### Sicherung als PDF (lesbar)
+
+Menü ☰ → **Sicherung als PDF (alle Noten)** erzeugt eine lesbare PDF-Datei
+`sicherung-alle-noten-JJJJ-MM-TT.pdf` – ohne Passwort, zum Ausdrucken oder
+Ablegen. Sie enthält **alle Kurse** (je Klasse und Fach/Lernfeld eine Seite,
+Querformat) über den gesamten Zeitraum. Jeder Schüler steht in **einer Zeile**:
+
+- alle Leistungsnachweise (nicht freigegebene grau/kursiv, e = entschuldigt,
+  v = verweigert),
+- die Mitarbeitsnote jeder Doppelstunde (fett/blau = von Hand gesetzt,
+  f = fehlte, – = zählt nicht),
+- Ø Mitarbeit, schriftlich, mündlich und Gesamtnote (* = vorläufig).
+
+Bei vielen Doppelstunden wird die Schrift automatisch kleiner, damit alles in
+eine Zeile passt. Die PDF ist **nicht verschlüsselt** – sie enthält
+personenbezogene Daten und gehört entsprechend sicher abgelegt. Zum
+Wiederherstellen taugt nur die verschlüsselte Sicherungskopie.
+
 ### Schuljahreswechsel
 
 Bearbeitungsmodus → Menü ☰ → **Schuljahreswechsel**:
