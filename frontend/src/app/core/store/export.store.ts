@@ -4,10 +4,17 @@
  */
 
 import { AppError } from '../app-error';
+import { BackupCourse, BackupResult, renderBackupPdf, resultKey } from '../export/backup-pdf';
 import { CsvBuilder } from '../export/csv';
 import { renderLessonSheets } from '../export/lesson-sheet';
 import { RatingsSheet, renderRatingsSheets } from '../export/ratings-sheet';
-import { average, formatGrade, lastRatingPerDay, sumOfDays } from '../logic/assessment.logic';
+import {
+  average,
+  formatGrade,
+  lastRatingPerDay,
+  resultGrade,
+  sumOfDays,
+} from '../logic/assessment.logic';
 import { schoolYearOf } from '../logic/quarter.logic';
 import { freeDayReason } from '../logic/school-calendar';
 import { fileNamePart } from '../logic/text';
@@ -153,6 +160,37 @@ export class ExportStore extends StorePart {
       renderLessonSheets(sheets, this.today()),
       `noten-je-stunde-${suffix}-${this.today()}.html`,
     );
+  }
+
+  // --- Sicherung ---------------------------------------------------------
+
+  /**
+   * Alle Kurse für die lesbare Sicherung - gesamter Zeitraum, mit allen
+   * eingetragenen Ergebnissen, auch aus nicht freigegebenen Nachweisen.
+   */
+  getBackupCourses(): BackupCourse[] {
+    return this.coursesToExport(null).map((course) => {
+      const book = this.gradeBook.getGradeBook(course.id);
+      const ids = new Set(book.assessments.map((a) => a.id));
+      const results = new Map<string, BackupResult>();
+      for (const r of this.db.assessmentResults) {
+        if (!ids.has(r.assessmentId)) {
+          continue;
+        }
+        const assessment = this.db.assessments.find((a) => a.id === r.assessmentId);
+        results.set(resultKey(r.studentId, r.assessmentId), {
+          grade: assessment ? resultGrade(r, assessment, schemeOf(this.db, course.id)) : null,
+          status: r.status,
+        });
+      }
+      return { book, results };
+    });
+  }
+
+  /** Die lesbare Sicherung als PDF: je Kurs (Klasse × Fach/Lernfeld) eine Seite. */
+  async exportBackupPdf(): Promise<ExportFile> {
+    const blob = await renderBackupPdf(this.getBackupCourses(), this.now());
+    return { blob, fileName: `sicherung-alle-noten-${this.today()}.pdf` };
   }
 
   // --- Mitarbeit ----------------------------------------------------------

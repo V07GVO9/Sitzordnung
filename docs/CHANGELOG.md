@@ -8,6 +8,14 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 15.11.2026
+
+**Neu**
+- **Sicherung als PDF:** Menü ☰ → *Sicherung als PDF (alle Noten)* erzeugt eine
+  lesbare PDF mit allen Klassen und Lernfeldern – je Kurs eine Seite, je
+  Schüler eine Zeile mit allen Leistungsnachweisen, den Mitarbeitsnoten jeder
+  Doppelstunde und den Bereichs- und Gesamtnoten.
+
 ## 13.11.2026
 
 **Geändert**

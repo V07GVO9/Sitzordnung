@@ -13,7 +13,11 @@ import { filter } from 'rxjs/operators';
 import { ActiveCourseService } from './core/active-course.service';
 import { ModeService } from './core/mode.service';
 import { Course, CurrentLesson } from './core/models';
-import { FilePickerCancelled, SaveConflictError } from './core/persistence/file-system';
+import {
+  downloadExport,
+  FilePickerCancelled,
+  SaveConflictError,
+} from './core/persistence/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/persistence/vault.service';
 import { ToastHost } from './core/ui/toast-host';
@@ -249,6 +253,17 @@ export class App implements OnDestroy {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
       }
+    }
+  }
+
+  /** Lesbare Sicherung: alle Kurse als PDF, je Klasse und Fach/Lernfeld eine Seite. */
+  async backupPdf(): Promise<void> {
+    this.closeMenu();
+    try {
+      await downloadExport(await this.store.exports.exportBackupPdf());
+      this.toasts.success('Die PDF-Sicherung wurde erzeugt – bitte sicher ablegen.');
+    } catch (error) {
+      this.toasts.error(error, 'Die PDF-Sicherung konnte nicht erstellt werden.');
     }
   }
 
