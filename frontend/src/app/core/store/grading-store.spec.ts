@@ -318,6 +318,32 @@ describe('LocalStore - Notenbogen', () => {
 });
 
 describe('Quartalsnoten', () => {
+  it('meldet fehlende Noten nur für abgelaufene Quartale mit Unterricht', () => {
+    const { store, course, anna, ben } = setup();
+    // Im 1. Quartal bewertet ...
+    store.ratings.rate(course.id, anna.id, 1);
+    // ... solange es läuft, ist noch nichts fällig.
+    expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([]);
+
+    // Im 2. Quartal: Q1 ist vorbei, Noten fehlen - der Vorschlag zählt nicht.
+    store.clock.setFixed(new Date('2026-11-17T10:00:00'));
+    expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([
+      jasmine.objectContaining({ quarter: 1, missingStudents: 2 }),
+    ]);
+
+    for (const id of [anna.id, ben.id]) {
+      store.quarterGrades.setQuarterGrade(course.id, id, 1, 'written', 80);
+    }
+    store.quarterGrades.setQuarterGrade(course.id, anna.id, 1, 'oral', 2);
+    expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([
+      jasmine.objectContaining({ quarter: 1, missingStudents: 1 }),
+    ]);
+
+    store.quarterGrades.setQuarterGrade(course.id, ben.id, 1, 'oral', 3);
+    expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([]);
+  });
+
+
   it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
     const { store, course, anna } = setup();
 

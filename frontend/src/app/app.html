@@ -101,6 +101,34 @@
         </div>
       }
 
+      @if (showMissingGrades()) {
+        <div class="grades-due" role="status">
+          <app-icon name="graduation-cap" />
+          <span class="grades-due-text">
+            <strong>Noten fehlen noch:</strong>
+            @for (m of missingGrades(); track m.course.id + ':' + m.quarter) {
+              <button
+                type="button"
+                class="grades-due-link"
+                [title]="m.missingStudents + ' Schüler ohne vollständige Note – jetzt eintragen'"
+                (click)="openMissingGrades(m)"
+              >
+                {{ m.course.subjectName }} · {{ m.course.schoolClassName }} (Q{{ m.quarter }})
+              </button>
+            }
+          </span>
+          <button
+            type="button"
+            class="grades-due-close"
+            aria-label="Hinweis ausblenden"
+            title="Hinweis ausblenden"
+            (click)="dismissMissingGrades()"
+          >
+            <app-icon name="x" />
+          </button>
+        </div>
+      }
+
       <main>
         <router-outlet />
       </main>

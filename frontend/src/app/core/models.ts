@@ -522,6 +522,14 @@ export interface QuarterGrade {
   suggested: boolean;
 }
 
+/** Ein Kurs, in dem für ein abgelaufenes Quartal noch Noten fehlen. */
+export interface MissingQuarterGrades {
+  course: Course;
+  quarter: Quarter;
+  /** Wie viele Schüler noch ohne schriftliche oder mündliche Note sind. */
+  missingStudents: number;
+}
+
 /** Die Farbklasse einer Bewertung - von Grün (++) bis Rot (−−), wie in der Klassenmappe. */
 export function ratingClass(value: number | null | undefined): string {
   switch (value) {

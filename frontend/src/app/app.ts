@@ -12,7 +12,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs/operators';
 import { ActiveCourseService } from './core/active-course.service';
 import { ModeService } from './core/mode.service';
-import { Course, CurrentLesson } from './core/models';
+import { Course, CurrentLesson, MissingQuarterGrades } from './core/models';
 import {
   downloadExport,
   FilePickerCancelled,
@@ -118,6 +118,31 @@ export class App implements OnDestroy {
   /** Im Bearbeitungsmodus ist das Menü immer offen, im Unterricht erst mit Fach. */
   readonly menuLocked = computed(() => !this.isEdit() && !this.activeCourse());
 
+  /**
+   * Fächer, in denen für ein abgelaufenes Quartal noch Noten fehlen. Hängt an
+   * `revision`, damit der Hinweis verschwindet, sobald alles eingetragen ist.
+   */
+  readonly missingGrades = computed<MissingQuarterGrades[]>(() => {
+    this.store.revision();
+    return this.isOpen() ? this.store.quarterGrades.getMissingQuarterGrades() : [];
+  });
+  /** Weggeklickt - bis zum Neuladen oder bis ein weiteres Fach dazukommt. */
+  private readonly dismissedGrades = signal<string | null>(null);
+  private readonly missingGradesKey = computed(() =>
+    this.missingGrades()
+      .map((m) => `${m.course.id}:${m.quarter}`)
+      .join(','),
+  );
+  readonly showMissingGrades = computed(() => {
+    const key = this.missingGradesKey();
+    const dismissed = this.dismissedGrades();
+    if (!key) return false;
+    if (dismissed === null) return true;
+    // Neu dazugekommene Einträge zeigen den Hinweis wieder.
+    const seen = new Set(dismissed.split(','));
+    return key.split(',').some((k) => !seen.has(k));
+  });
+
   /** Der Pfad der aktuellen Seite, in Teile zerlegt. */
   private readonly path = signal<string[]>([]);
 
@@ -218,6 +243,16 @@ export class App implements OnDestroy {
       this.readUrl(e.urlAfterRedirects);
       this.refreshLesson();
     });
+  }
+
+  /** Öffnet die Quartalsnoten des Fachs - im fehlenden Quartal. */
+  openMissingGrades(item: MissingQuarterGrades): void {
+    this.active.select(item.course.id);
+    void this.router.navigate(['/noten'], { queryParams: { quartal: item.quarter } });
+  }
+
+  dismissMissingGrades(): void {
+    this.dismissedGrades.set(this.missingGradesKey());
   }
 
   ngOnDestroy(): void {
