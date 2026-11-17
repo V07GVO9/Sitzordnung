@@ -67,7 +67,7 @@ export class LocalStore {
   /** Notenübersicht, Änderungsprotokoll und Notenbögen. */
   readonly gradeBook = new GradeBookStore(this.state, this.schemes, this.assessments);
   /** CSV- und HTML-Exporte. */
-  readonly exports = new ExportStore(this.state, this.ratings, this.gradeBook);
+  readonly exports = new ExportStore(this.state, this.ratings, this.gradeBook, this.quarterGrades);
   readonly settings = new SettingsStore(this.state);
   readonly schoolYear = new SchoolYearStore(this.state, this.masterData);
 

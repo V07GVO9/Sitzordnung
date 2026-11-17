@@ -7,6 +7,7 @@ import { AppError } from '../app-error';
 import { BackupCourse, BackupResult, renderBackupPdf, resultKey } from '../export/backup-pdf';
 import { CsvBuilder } from '../export/csv';
 import { renderLessonSheets } from '../export/lesson-sheet';
+import { WorkbookCourse, WorkbookLesson, renderQuarterWorkbook } from '../export/quarter-workbook';
 import { RatingsSheet, renderRatingsSheets } from '../export/ratings-sheet';
 import {
   average,
@@ -15,11 +16,19 @@ import {
   resultGrade,
   sumOfDays,
 } from '../logic/assessment.logic';
-import { schoolYearOf } from '../logic/quarter.logic';
+import { quarterFinalGrade, quarterRange, schoolYearOf } from '../logic/quarter.logic';
 import { freeDayReason } from '../logic/school-calendar';
 import { fileNamePart } from '../logic/text';
 import { formatDateGerman, toDateKey, toTimeKey } from '../logic/time';
-import { AREA_LABELS, Course, DateRange, DayOfWeek, ExportFile, LessonSheet } from '../models';
+import {
+  AREA_LABELS,
+  Course,
+  DateRange,
+  DayOfWeek,
+  ExportFile,
+  LessonSheet,
+  QUARTERS,
+} from '../models';
 import { GradeBookStore } from './grade-book.store';
 import {
   allCourses,
@@ -29,6 +38,7 @@ import {
   schemeOf,
   studentsOfCourse,
 } from './lookups';
+import { QuarterGradeStore } from './quarter-grade.store';
 import { RatingStore } from './rating.store';
 import { StorePart, StoreState } from './store-part';
 
@@ -48,6 +58,7 @@ export class ExportStore extends StorePart {
     state: StoreState,
     private readonly ratings: RatingStore,
     private readonly gradeBook: GradeBookStore,
+    private readonly quarterGrades: QuarterGradeStore,
   ) {
     super(state);
   }
@@ -191,6 +202,84 @@ export class ExportStore extends StorePart {
   async exportBackupPdf(): Promise<ExportFile> {
     const blob = await renderBackupPdf(this.getBackupCourses(), this.now());
     return { blob, fileName: `sicherung-alle-noten-${this.today()}.pdf` };
+  }
+
+  // --- Quartalsnoten als Excel ------------------------------------------
+
+  /** Alle Kurse mit ihren Quartalsnoten und den mündlichen Noten je Unterrichtstag. */
+  getQuarterWorkbook(): WorkbookCourse[] {
+    const now = this.now();
+    return this.coursesToExport(null).map((course) => {
+      const scheme = schemeOf(this.db, course.id);
+      const grades = this.quarterGrades.getQuarterGrades(course.id);
+      const quarters = QUARTERS.map((quarter) => {
+        const range = quarterRange(quarter, now);
+        const rated = new Set(lessonDates(this.db, course.id, range));
+        const dates = [...new Set([...this.scheduledDates(course.id, range), ...rated])].sort();
+        return { quarter, ...range, dates, rated };
+      });
+
+      return {
+        schoolClassName: course.schoolClassName,
+        subjectName: course.subjectName,
+        writtenPercent: scheme.writtenPercent,
+        quarters: quarters.map(({ quarter, from, to, dates }) => ({ quarter, from, to, dates })),
+        students: studentsOfCourse(this.db, course.id).map((student) => {
+          const ratedDays = new Set(
+            this.db.ratings
+              .filter((r) => r.courseId === course.id && r.studentId === student.id)
+              .map((r) => r.lessonDate),
+          );
+          return {
+            firstName: student.firstName,
+            lastName: student.lastName,
+            quarters: quarters.map(({ quarter, dates, rated }) => {
+              const find = (area: 'written' | 'oral') =>
+                grades.find(
+                  (g) => g.studentId === student.id && g.quarter === quarter && g.area === area,
+                ) ?? null;
+              const written = find('written');
+              const oral = find('oral');
+              const lessons = participationOf(this.db, course.id, student.id, dates, scheme).map(
+                (l): WorkbookLesson => {
+                  if (l.override && l.override.grade === null) {
+                    return { grade: null, kind: 'absent' };
+                  }
+                  if (l.override) {
+                    return { grade: l.grade, kind: 'rated' };
+                  }
+                  if (!rated.has(l.date)) {
+                    return { grade: null, kind: 'no-rating-day' };
+                  }
+                  return { grade: l.grade, kind: ratedDays.has(l.date) ? 'rated' : 'unrated' };
+                },
+              );
+              const final = quarterFinalGrade(
+                written?.grade ?? null,
+                oral?.grade ?? null,
+                scheme.writtenPercent,
+              );
+              return {
+                writtenPercent: written?.percent ?? null,
+                writtenGrade: written?.grade ?? null,
+                lessons,
+                oral: oral?.grade ?? null,
+                final: final.grade,
+                partial: final.partial,
+              };
+            }),
+          };
+        }),
+      };
+    });
+  }
+
+  /** Die Quartalsnoten aller Kurse als Excel-Datei - je Kurs ein Tabellenblatt. */
+  exportQuarterWorkbook(): ExportFile {
+    return {
+      blob: renderQuarterWorkbook(this.getQuarterWorkbook(), this.today()),
+      fileName: `quartalsnoten-alle-kurse-${this.today()}.xlsx`,
+    };
   }
 
   // --- Mitarbeit ----------------------------------------------------------

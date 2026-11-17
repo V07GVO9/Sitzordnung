@@ -57,6 +57,9 @@ interface Row {
             Note ist die gewichtete Endnote des Quartals.
           </p>
         </div>
+        <button type="button" class="btn small" (click)="exportExcel()">
+          <app-icon name="file-down" /> Excel-Export (alle Kurse)
+        </button>
       </div>
 
       @if (courseId() === null) {
@@ -407,6 +410,16 @@ export class QuarterGradesPage {
       return;
     }
     this.save(student, 'oral', grade);
+  }
+
+  /** Quartalsnoten aller Kurse als Excel - je Kurs ein Tabellenblatt. */
+  async exportExcel(): Promise<void> {
+    try {
+      await downloadExport(this.store.exports.exportQuarterWorkbook());
+      this.toasts.success('Die Excel-Datei wurde erzeugt.');
+    } catch (err) {
+      this.toasts.error(err, 'Der Export ist fehlgeschlagen.');
+    }
   }
 
   /** Speichert die Gewichtung schriftlich/mündlich im Bewertungsschema des Kurses. */

@@ -257,6 +257,17 @@ export class App implements OnDestroy {
   }
 
   /** Lesbare Sicherung: alle Kurse als PDF, je Klasse und Fach/Lernfeld eine Seite. */
+  /** Die Quartalsnoten aller Kurse als Excel-Datei - je Kurs ein Blatt. */
+  async quarterExcel(): Promise<void> {
+    this.closeMenu();
+    try {
+      await downloadExport(this.store.exports.exportQuarterWorkbook());
+      this.toasts.success('Die Excel-Datei wurde erzeugt.');
+    } catch (error) {
+      this.toasts.error(error, 'Die Excel-Datei konnte nicht erstellt werden.');
+    }
+  }
+
   async backupPdf(): Promise<void> {
     this.closeMenu();
     try {
