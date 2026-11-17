@@ -19,7 +19,7 @@ import {
 } from '../../core/models';
 import { germanNumber } from '../../core/logic/text';
 import { formatGrade, parseGrade } from '../../core/logic/assessment.logic';
-import { quarterOf, quarterRange } from '../../core/logic/quarter.logic';
+import { quarterFinalGrade, quarterOf, quarterRange } from '../../core/logic/quarter.logic';
 import { formatDateGerman } from '../../core/logic/time';
 import { downloadExport } from '../../core/persistence/file-system';
 import { LocalStore } from '../../core/store/local-store';
@@ -30,6 +30,8 @@ interface Row {
   student: Student;
   written: QuarterGrade | null;
   oral: QuarterGrade | null;
+  /** Endnote des Quartals aus schriftlich und mündlich. */
+  final: { grade: number | null; partial: boolean };
 }
 
 /**
@@ -51,7 +53,8 @@ interface Row {
           <h1>Noten</h1>
           <p class="muted small">
             Schriftlich in Prozent eintragen, die Note wird berechnet. Mündlich ist mit dem
-            Durchschnitt der Mitarbeit im Quartal vorausgefüllt und kann überschrieben werden.
+            Durchschnitt der Mitarbeit im Quartal vorausgefüllt und kann überschrieben werden. Die
+            Note ist die gewichtete Endnote des Quartals.
           </p>
         </div>
       </div>
@@ -86,14 +89,33 @@ interface Row {
           }
         </div>
 
+        <div class="card weight">
+          <label>
+            Gewichtung schriftlich
+            <input
+              class="g-input"
+              inputmode="numeric"
+              [value]="writtenPercent()"
+              (change)="onWeight($any($event.target))"
+              aria-label="Anteil schriftlich in Prozent"
+            />
+            %
+          </label>
+          <span>· mündlich {{ 100 - writtenPercent() }} %</span>
+          <span class="muted small">
+            Gilt für {{ course()?.subjectName }} in {{ course()?.schoolClassName }} - auch in der
+            Notenverwaltung.
+          </span>
+        </div>
+
         <div class="card table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Schüler</th>
                 <th class="num">Schriftlich %</th>
-                <th class="num">Note</th>
                 <th class="num">Mündlich (Note)</th>
+                <th class="num">Note</th>
                 <th class="num">Export</th>
               </tr>
             </thead>
@@ -110,8 +132,12 @@ interface Row {
                       (change)="onWritten(row.student, $any($event.target))"
                       [attr.aria-label]="fullName(row.student) + ': schriftlich in Prozent'"
                     />
+                    @if (row.written?.grade != null) {
+                      <span class="muted small sub-grade" title="Note aus dem Prozentschlüssel">{{
+                        gradeText(row.written)
+                      }}</span>
+                    }
                   </td>
-                  <td class="num grade">{{ gradeText(row.written) }}</td>
                   <td class="num">
                     <input
                       class="g-input"
@@ -138,6 +164,14 @@ interface Row {
                       </button>
                     }
                   </td>
+                  <td class="num grade">
+                    {{ formatGrade(row.final.grade, 1) }}
+                    @if (row.final.partial) {
+                      <span class="muted" title="Vorläufig - ein Bereich hat noch keine Note"
+                        >*</span
+                      >
+                    }
+                  </td>
                   <td class="num">
                     <button
                       type="button"
@@ -158,7 +192,7 @@ interface Row {
           </table>
           <p class="muted small legend">
             <span class="suggested-sample">kursiv</span> = Vorschlag aus der Mitarbeit (noch nicht
-            eingetragen).
+            eingetragen) · * vorläufig - ein Bereich hat noch keine Note.
           </p>
         </div>
       }
@@ -247,6 +281,24 @@ interface Row {
       margin-left: 0.2rem;
     }
 
+    .weight {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem 0.8rem;
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 600;
+      }
+    }
+
+    .sub-grade {
+      margin-left: 0.35rem;
+    }
+
     .legend {
       margin: 0.6rem 0 0;
     }
@@ -257,6 +309,7 @@ export class QuarterGradesPage {
   private readonly toasts = inject(ToastService);
 
   readonly fullName = fullName;
+  readonly formatGrade = formatGrade;
   readonly quarters = QUARTERS;
 
   private readonly active = inject(ActiveCourseService);
@@ -272,6 +325,8 @@ export class QuarterGradesPage {
   });
   readonly students = signal<Student[]>([]);
   readonly grades = signal<QuarterGrade[]>([]);
+  /** Anteil schriftlich in Prozent - aus dem Bewertungsschema des Kurses. */
+  readonly writtenPercent = signal(50);
 
   readonly rows = computed<Row[]>(() => {
     const byKey = new Map<string, QuarterGrade>();
@@ -280,11 +335,21 @@ export class QuarterGradesPage {
         byKey.set(`${g.studentId}:${g.area}`, g);
       }
     }
-    return [...this.students()].sort(byLastName).map((student) => ({
-      student,
-      written: byKey.get(`${student.id}:written`) ?? null,
-      oral: byKey.get(`${student.id}:oral`) ?? null,
-    }));
+    return [...this.students()]
+      .sort(byLastName)
+      .map((student) => ({
+        student,
+        written: byKey.get(`${student.id}:written`) ?? null,
+        oral: byKey.get(`${student.id}:oral`) ?? null,
+      }))
+      .map((r) => ({
+        ...r,
+        final: quarterFinalGrade(
+          r.written?.grade ?? null,
+          r.oral?.grade ?? null,
+          this.writtenPercent(),
+        ),
+      }));
   });
 
   constructor() {
@@ -302,6 +367,11 @@ export class QuarterGradesPage {
       this.students.set(this.store.masterData.getCourseStudents(id));
     } catch (err) {
       this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.');
+    }
+    try {
+      this.writtenPercent.set(this.store.schemes.getScheme(id).writtenPercent);
+    } catch (err) {
+      this.toasts.error(err, 'Die Gewichtung konnte nicht geladen werden.');
     }
     this.reload();
   }
@@ -337,6 +407,29 @@ export class QuarterGradesPage {
       return;
     }
     this.save(student, 'oral', grade);
+  }
+
+  /** Speichert die Gewichtung schriftlich/mündlich im Bewertungsschema des Kurses. */
+  onWeight(field: HTMLInputElement): void {
+    const courseId = this.courseId();
+    if (courseId === null) {
+      return;
+    }
+    const percent = Number(field.value.replace('%', '').trim().replace(',', '.'));
+    if (!Number.isInteger(percent) || percent < 0 || percent > 100) {
+      this.toasts.show('Bitte eine ganze Prozentzahl von 0 bis 100 eingeben.', 'error');
+      field.value = String(this.writtenPercent());
+      return;
+    }
+    try {
+      const scheme = this.store.schemes.getScheme(courseId);
+      this.store.schemes.saveScheme(courseId, { ...scheme, writtenPercent: percent });
+      this.writtenPercent.set(percent);
+      this.toasts.success('Die Gewichtung wurde gespeichert.');
+    } catch (err) {
+      this.toasts.error(err, 'Die Gewichtung konnte nicht gespeichert werden.');
+      field.value = String(this.writtenPercent());
+    }
   }
 
   /** Noten je Stunde eines Schülers im gewählten Quartal. */

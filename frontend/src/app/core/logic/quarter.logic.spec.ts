@@ -1,4 +1,4 @@
-import { quarterOf, quarterRange, schoolYearOf } from './quarter.logic';
+import { quarterFinalGrade, quarterOf, quarterRange, schoolYearOf } from './quarter.logic';
 
 describe('Quartale', () => {
   it('ordnet Monate dem Schuljahresquartal zu', () => {
@@ -20,5 +20,12 @@ describe('Quartale', () => {
     expect(quarterRange(1, today)).toEqual({ from: '2026-08-01', to: '2026-10-31' });
     expect(quarterRange(2, today)).toEqual({ from: '2026-11-01', to: '2027-01-31' });
     expect(quarterRange(4, today)).toEqual({ from: '2027-05-01', to: '2027-07-31' });
+  });
+
+  it('gewichtet schriftlich und mündlich zur Quartalsnote', () => {
+    expect(quarterFinalGrade(2, 3, 50)).toEqual({ grade: 2.5, partial: false });
+    expect(quarterFinalGrade(2, 4, 60)).toEqual({ grade: 2.8, partial: false });
+    expect(quarterFinalGrade(null, 3.4, 50)).toEqual({ grade: 3.4, partial: true });
+    expect(quarterFinalGrade(null, null, 50)).toEqual({ grade: null, partial: false });
   });
 });
