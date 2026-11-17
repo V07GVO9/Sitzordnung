@@ -100,8 +100,9 @@ export class QuarterGradeStore extends StorePart {
 
   /**
    * Wo fehlen noch Noten? Geprüft werden die abgelaufenen Quartale des
-   * laufenden Schuljahres - je Kurs, in dem im Quartal Unterricht war
-   * (Bewertungen oder schon eingetragene Noten). Es fehlt eine Note, sobald
+   * laufenden Schuljahres - je Kurs, in dem im Quartal Unterricht war:
+   * laut Stundenplan, mit Bewertungen oder schon eingetragenen Noten. So
+   * fällt auch ein Fach auf, in dem gar nichts erfasst wurde. Es fehlt eine Note, sobald
    * bei einem Schüler schriftlich oder mündlich nichts eingetragen ist; der
    * Vorschlag aus der Mitarbeit zählt nicht als eingetragen.
    */
@@ -117,9 +118,12 @@ export class QuarterGradeStore extends StorePart {
         continue;
       }
       const stored = this.db.quarterGrades.filter((q) => q.courseId === course.id);
+      // Der Stundenplan hat keine Gültigkeitsdaten - ein Eintrag gilt fürs ganze Jahr.
+      const inTimetable = this.db.timetableEntries.some((t) => t.courseId === course.id);
       for (const quarter of past) {
         const inQuarter = stored.filter((q) => q.quarter === quarter);
         const taught =
+          inTimetable ||
           inQuarter.length > 0 ||
           lessonDates(this.db, course.id, quarterRange(quarter, today)).length > 0;
         if (!taught) {

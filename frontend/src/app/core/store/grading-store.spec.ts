@@ -343,6 +343,15 @@ describe('Quartalsnoten', () => {
     expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([]);
   });
 
+  it('meldet auch Fächer laut Stundenplan, in denen nichts erfasst wurde', () => {
+    const { store, course } = setup();
+    store.clock.setFixed(new Date('2026-11-17T10:00:00'));
+
+    expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([
+      jasmine.objectContaining({ course: jasmine.objectContaining({ id: course.id }), quarter: 1 }),
+    ]);
+  });
+
   it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
     const { store, course, anna } = setup();
 
