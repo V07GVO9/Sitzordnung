@@ -343,7 +343,6 @@ describe('Quartalsnoten', () => {
     expect(store.quarterGrades.getMissingQuarterGrades()).toEqual([]);
   });
 
-
   it('rechnet schriftlich Prozent in die Note um (IHK-Schlüssel)', () => {
     const { store, course, anna } = setup();
 
