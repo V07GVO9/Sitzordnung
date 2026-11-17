@@ -1177,6 +1177,48 @@ button.list-row:hover {
   }
 }
 
+// Hinweis oben: In einem abgelaufenen Quartal fehlen noch Noten.
+.grades-due {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem var(--pad-seite);
+  background: var(--negative-soft);
+  color: var(--negative-text);
+  border-bottom: 1px solid var(--negative-border);
+  font-size: 0.9rem;
+
+  .grades-due-text {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .grades-due-link {
+    border: 1px solid var(--negative-border);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .grades-due-close {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: none;
+    color: inherit;
+    padding: 0.3rem;
+    cursor: pointer;
+  }
+}
+
 /* Platz für den Schalter im Passwortfeld, auch bei eingeblendetem Text. */
 app-password-field > input {
   width: 100%;

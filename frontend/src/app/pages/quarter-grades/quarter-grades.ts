@@ -7,6 +7,8 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { ActiveCourseService } from '../../core/active-course.service';
 import {
   GradeArea,
@@ -25,6 +27,11 @@ import { downloadExport } from '../../core/persistence/file-system';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
+
+function initialQuarter(param: string | null): Quarter {
+  const q = Number(param);
+  return (QUARTERS as number[]).includes(q) ? (q as Quarter) : quarterOf(new Date());
+}
 
 interface Row {
   student: Student;
@@ -315,7 +322,16 @@ export class QuarterGradesPage {
   private readonly active = inject(ActiveCourseService);
   readonly course = this.active.course;
   readonly courseId = this.active.courseId;
+  /** Aus dem Hinweis „Noten fehlen“ kommt das Quartal als ?quartal=1 mit. */
   readonly quarter = signal<Quarter>(quarterOf(new Date()));
+  private readonly quarterFromLink = inject(ActivatedRoute)
+    .queryParamMap.pipe(takeUntilDestroyed())
+    .subscribe((params) => {
+      const q = params.get('quartal');
+      if (q !== null) {
+        this.quarter.set(initialQuarter(q));
+      }
+    });
   /** Das Quartal, in dem heute liegt - mit Punkt markiert. */
   readonly currentQuarter = quarterOf(new Date());
   /** „01.11.2026 – 31.01.2027“ für das geöffnete Quartal. */

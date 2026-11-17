@@ -12,12 +12,20 @@ import {
   isValidGrade,
   roundGrade,
 } from '../logic/assessment.logic';
-import { quarterRange } from '../logic/quarter.logic';
+import { quarterOf, quarterRange } from '../logic/quarter.logic';
 import { germanNumber } from '../logic/text';
-import { AREA_LABELS, GradeArea, QUARTERS, Quarter, QuarterGrade } from '../models';
+import {
+  AREA_LABELS,
+  GradeArea,
+  MissingQuarterGrades,
+  QUARTERS,
+  Quarter,
+  QuarterGrade,
+} from '../models';
 import { QuarterGradeRecord } from './database';
 import { logGradeChange } from './grade-log';
 import {
+  allCourses,
   lessonDates,
   participationOf,
   requireCourse,
@@ -88,6 +96,45 @@ export class QuarterGradeStore extends StorePart {
     }
 
     return [...stored, ...suggestions];
+  }
+
+  /**
+   * Wo fehlen noch Noten? Geprüft werden die abgelaufenen Quartale des
+   * laufenden Schuljahres - je Kurs, in dem im Quartal Unterricht war
+   * (Bewertungen oder schon eingetragene Noten). Es fehlt eine Note, sobald
+   * bei einem Schüler schriftlich oder mündlich nichts eingetragen ist; der
+   * Vorschlag aus der Mitarbeit zählt nicht als eingetragen.
+   */
+  getMissingQuarterGrades(): MissingQuarterGrades[] {
+    const today = this.now();
+    const current = quarterOf(today);
+    const past = QUARTERS.filter((q) => q < current);
+    const result: MissingQuarterGrades[] = [];
+
+    for (const course of allCourses(this.db)) {
+      const students = studentsOfCourse(this.db, course.id);
+      if (students.length === 0) {
+        continue;
+      }
+      const stored = this.db.quarterGrades.filter((q) => q.courseId === course.id);
+      for (const quarter of past) {
+        const inQuarter = stored.filter((q) => q.quarter === quarter);
+        const taught =
+          inQuarter.length > 0 ||
+          lessonDates(this.db, course.id, quarterRange(quarter, today)).length > 0;
+        if (!taught) {
+          continue;
+        }
+        const has = new Set(inQuarter.map((q) => `${q.studentId}:${q.area}`));
+        const missing = students.filter(
+          (s) => !has.has(`${s.id}:written`) || !has.has(`${s.id}:oral`),
+        ).length;
+        if (missing > 0) {
+          result.push({ course, quarter, missingStudents: missing });
+        }
+      }
+    }
+    return result;
   }
 
   /**
