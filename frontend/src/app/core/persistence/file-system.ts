@@ -15,11 +15,22 @@ import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { ExportFile } from '../models';
 
+/**
+ * Ein offener Schreibvorgang. Chrome und Edge schreiben dabei zuerst in eine
+ * Schattenkopie (`datei.N.crswap`) und ersetzen die Datei erst mit `close()`.
+ * `abort()` verwirft die Schattenkopie, ohne die Datei anzufassen.
+ */
+export interface Writable {
+  write(data: Blob): Promise<void>;
+  close(): Promise<void>;
+  abort?(reason?: unknown): Promise<void>;
+}
+
 /** Der Teil der File System Access API, den die App benutzt. */
 export interface FileHandle {
   readonly name: string;
   getFile(): Promise<File>;
-  createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>;
+  createWritable(): Promise<Writable>;
   queryPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   requestPermission?(descriptor: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   /** Wo die Datei liegt - fehlt die Angabe, auf diesem Gerät. */
@@ -190,11 +201,55 @@ export async function chooseSaveFile(suggestedName: string): Promise<FileHandle 
   }
 }
 
-/** Schreibt den Inhalt in die gemerkte Datei. */
-export async function writeFile(handle: FileHandle, blob: Blob): Promise<void> {
+/** Laufende Schreibvorgänge je Datei - der nächste wartet auf den vorigen. */
+const pendingWrites = new WeakMap<FileHandle, Promise<void>>();
+
+/**
+ * Schreibt den Inhalt in die gemerkte Datei.
+ *
+ * Schreibvorgänge auf dieselbe Datei laufen nacheinander, nie gleichzeitig:
+ * Jeder parallele Vorgang bekäme sonst eine eigene Schattenkopie.
+ */
+export function writeFile(handle: FileHandle, blob: Blob): Promise<void> {
+  const previous = pendingWrites.get(handle) ?? Promise.resolve();
+  // Auch nach einem Fehlschlag des vorigen Vorgangs weiterschreiben.
+  const current = previous.catch(() => undefined).then(() => writeOnce(handle, blob));
+  pendingWrites.set(handle, current);
+  // Ist dieser Vorgang der letzte, die Warteschlange wieder freigeben.
+  const release = () => {
+    if (pendingWrites.get(handle) === current) {
+      pendingWrites.delete(handle);
+    }
+  };
+  current.then(release, release);
+  return current;
+}
+
+async function writeOnce(handle: FileHandle, blob: Blob): Promise<void> {
   const writable = await handle.createWritable();
-  await writable.write(blob);
-  await writable.close();
+  try {
+    await writable.write(blob);
+  } catch (error) {
+    // Die Datei bleibt unverändert; nur die Schattenkopie wird verworfen.
+    await discard(writable, error);
+    throw error;
+  }
+  try {
+    await writable.close();
+  } catch (error) {
+    // Scheitert das Ersetzen, bleibt sonst die Schattenkopie liegen.
+    await discard(writable, error);
+    throw error;
+  }
+}
+
+/** Verwirft die Schattenkopie. Ein Fehler dabei verdeckt nicht den eigentlichen. */
+async function discard(writable: Writable, reason: unknown): Promise<void> {
+  try {
+    await writable.abort?.(reason);
+  } catch {
+    // Schon geschlossen oder verworfen - nichts mehr zu tun.
+  }
 }
 
 /**
