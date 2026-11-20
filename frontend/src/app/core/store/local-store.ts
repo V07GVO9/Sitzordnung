@@ -14,10 +14,8 @@ import { AssessmentStore } from './assessment.store';
 import { Database, createEmptyDatabase, migrateDatabase } from './database';
 import { ExportStore } from './export.store';
 import { GradeBookStore } from './grade-book.store';
-import { GradeScaleStore } from './grade-scale.store';
 import { MasterDataStore } from './master-data.store';
 import { ParticipationStore } from './participation.store';
-import { PeriodStore } from './period.store';
 import { QuarterGradeStore } from './quarter-grade.store';
 import { RatingStore } from './rating.store';
 import { SchemeStore } from './scheme.store';
@@ -53,12 +51,8 @@ export class LocalStore {
   readonly timetable = new TimetableStore(this.state);
   /** Bewertungen im Unterricht und der Punktestand daraus. */
   readonly ratings = new RatingStore(this.state);
-  /** Notenschlüssel für die Mitarbeitspunkte. */
-  readonly gradeScales = new GradeScaleStore(this.state);
   /** Wer fehlte und welche Stundennote von Hand gesetzt wurde. */
   readonly participation = new ParticipationStore(this.state);
-  /** Notenzeiträume wie „1. Halbjahr“. */
-  readonly periods = new PeriodStore(this.state);
   /** Bewertungsschema je Kurs. */
   readonly schemes = new SchemeStore(this.state);
   /** Leistungsnachweise und ihre Ergebnisse. */
@@ -66,8 +60,8 @@ export class LocalStore {
   readonly quarterGrades = new QuarterGradeStore(this.state);
   /** Notenübersicht, Änderungsprotokoll und Notenbögen. */
   readonly gradeBook = new GradeBookStore(this.state, this.schemes, this.assessments);
-  /** CSV- und HTML-Exporte. */
-  readonly exports = new ExportStore(this.state, this.ratings, this.gradeBook);
+  /** HTML- und PDF-Exporte. */
+  readonly exports = new ExportStore(this.state, this.gradeBook);
   readonly settings = new SettingsStore(this.state);
   readonly schoolYear = new SchoolYearStore(this.state, this.masterData);
 

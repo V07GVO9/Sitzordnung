@@ -29,33 +29,22 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 | Zwei Modi | **Unterricht** zum Bewerten, **Einstellungen** zum Umbauen der Sitzordnung |
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
-| Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
-| Sicherheit im Alltag | Sicherungskopie mit Erinnerung nach 7 Tagen, automatische Sperre |
+| Sicherheit im Alltag | Sicherungskopie in OneDrive mit Erinnerung nach 7 Tagen, automatische Sperre |
 | Schuljahreswechsel | Klassen hochsetzen oder entfernen, Leistungsdaten des alten Jahres löschen, Stundenplan leeren – nach Pflicht-Sicherungskopie |
-| Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
-| Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
+| Export | Noten je Stunde als druckfertiges HTML, Sicherung aller Noten als PDF |
+| Noten | Je Kurs (Lernfeld/Fach) und Quartal schriftliche und mündliche Noten mit Bewertungsschema – siehe unten |
 
 ## Noten
 
-Jeder Kurs hat unter **Menü ☰ → Notenverwaltung** eine eigene Notenverwaltung. In KDM wird
+Unter **Menü ☰ → Noten** stehen je Kurs (Lernfeld/Fach) und Quartal die Noten:
+schriftlich in Prozent (die Note folgt aus dem Prozentschlüssel), mündlich als
+Note – vorausgefüllt mit dem Durchschnitt der Mitarbeit im Quartal. In KDM wird
 jedes Lernfeld als eigenes Fach angelegt (z. B. „LF3 …", Kürzel LF3) – so bekommt
 jedes Lernfeld eine eigene Note und ein eigenes Bewertungsschema.
 
-| Reiter | Inhalt |
-| --- | --- |
-| Übersicht | Alle Schüler mit Einzelnoten, Mitarbeit, schriftlich, mündlich und Gesamtnote (Noten mit Komma); Hinweise bei Note schlechter als 4,0 oder fehlenden Noten |
-| Leistungsnachweise | Klassenarbeit, Test, Referat … mit Datum anlegen, Punkte oder Noten eintragen, Notenspiegel. Zählt erst nach **Freigabe** |
-| Mitarbeit | Je Doppelstunde eine Note aus `++ + − −−` (1,0 · 2,0 · 4,0 · 5,0; ohne Bewertung 3,0). Einzeln überschreibbar oder „fehlte" |
-| Bewertungsschema | Gewichtung schriftlich/mündlich, Arten mit Gewicht, Punkteschlüssel (Vorlage IHK), Mitarbeitsnoten; auf andere Lernfelder übertragbar |
-| Notenbögen | Je Schüler ein Bogen mit seinem Stand – drucken/PDF oder als HTML-Datei; jede Ausgabe wird vermerkt |
-| Protokoll | Jede Änderung an freigegebenen Noten und jede von Hand gesetzte Mitarbeitsnote, mit Begründung |
-
-**Rechenweg:** Eine Doppelstunde zählt, sobald im Kurs an dem Tag jemand
-bewertet wurde. Die Mitarbeit ist der Durchschnitt dieser Stundennoten und geht
-mit ihrem Gewicht als eine Einzelnote in den mündlichen Bereich ein. Ein Bereich
-ist der gewichtete Durchschnitt seiner Einzelnoten; die Gesamtnote verrechnet
-beide Bereiche nach dem Anteil im Schema. Fehlt ein Bereich noch, ist die
-Gesamtnote vorläufig (*). Zeiträume wie „1. Halbjahr" grenzen alles ein.
+**Bewertungsschema bearbeiten** (auf derselben Seite): Gewichtung
+schriftlich/mündlich, Arten mit Gewicht, Prozentschlüssel (Vorlage IHK) und
+Mitarbeitsnoten je Doppelstunde; auf andere Lernfelder übertragbar.
 
 Die Vorgaben im Schema sind nur ein Vorschlag – verbindlich sind Schulgesetz,
 Verordnungen und Konferenzbeschlüsse.
@@ -82,8 +71,8 @@ Verordnungen und Konferenzbeschlüsse.
   Drop setzen *Auffüllen*, *Alphabetisch* und *Zufällig* die Schüler auf einen
   Schlag.
 - **Menü (drei Balken):** Klassen & Fächer verwalten, Schüler importieren,
-  Stundenplan, Auswertung & Export, Notenschlüssel, Einstellungen, Speichern und
-  Datenbestand schließen.
+  Stundenplan, Noten, Darstellung, Speichern, Sicherungskopie und Datenbestand
+  schließen.
 - **Darstellung:** hell, dunkel oder wie im Betriebssystem eingestellt –
   umschaltbar im Menü. Die Wahl gilt je Gerät.
 - **Als App installieren:** In Chrome und Edge erscheint *Als App
@@ -108,8 +97,7 @@ Fensters warnt der Browser davor.
 In Chrome und Edge merkt sich die Anwendung die gewählte Datei und schreibt beim
 Speichern direkt dorthin zurück. Dort speichert sie auch **automatisch** wenige
 Sekunden nach jeder Änderung – sobald einmal von Hand gespeichert und dem
-Browser damit das Schreiben erlaubt wurde. Abschalten lässt sich das unter
-*Auswertung → Datei*. Firefox und Safari unterstützen das nicht – dort landet
+Browser damit das Schreiben erlaubt wurde. Firefox und Safari unterstützen das nicht – dort landet
 beim Speichern jedes Mal eine neue Datei im Download-Ordner.
 
 Beim nächsten Start ist die zuletzt benutzte Datei schon vorgewählt (Chrome und
@@ -161,7 +149,7 @@ vorhanden. **Die Datei bleibt die eigentliche Ablage.**
 ### Die Sperre für Bewertungen
 
 Bewertungen sind nur innerhalb einer eingetragenen Unterrichtsstunde möglich.
-Zwei Stellschrauben unter *Auswertung → Einstellungen*:
+Zwei Stellschrauben stehen in der Datei (in der App nicht mehr umstellbar):
 
 - **Kulanzzeit** (Standard 15 Minuten): So lange vor Beginn und nach Ende einer
   Stunde ist das Bewerten noch möglich.
@@ -236,8 +224,6 @@ npm test
 Die Testsuite deckt die Fachlogik ab, die früher im Backend lag:
 
 - **Stundenplanprüfung** – Kulanzzeit, Tageswechsel, Notfall-Freigabe
-- **Notenschlüssel** – Punktgrenzen, kursspezifischer und globaler Schlüssel
-- **CSV-Erzeugung** – Trennzeichen, BOM, Schutz gegen Formeln in Excel
 - **Datenspeicher** – die Regeln der früheren API-Endpunkte: doppelte Namen,
   Sitzplatzvergabe, Überschneidungen im Stundenplan, Punktestände
 - **Verschlüsselung** – Rückweg, falsches Passwort, veränderte Datei
@@ -265,12 +251,12 @@ frontend/
       logic/             Reine Fachlogik ohne Zugriff auf den Bestand
         lesson.logic.ts      Stundenplanprüfung
         grading.logic.ts     Notenschlüssel (Mitarbeitspunkte)
-        assessment.logic.ts  Notenberechnung: Leistungsnachweise, Mitarbeit, Gesamtnote
+        assessment.logic.ts  Notenberechnung: Mitarbeit, Bereiche, Gesamtnote
         quarter.logic.ts     Quartale und Schuljahr
         school-calendar.ts   Feiertage und Ferien
-      export/            CSV und druckfertiges HTML (Notenbogen, Übersichten);
-                         print-document.ts ist deren gemeinsames Gerüst
-      import/            Stundenplan (ICS), Mitarbeitsübersicht (PDF), Fotos
+      export/            Druckfertiges HTML (Noten je Stunde) und PDF-Sicherung;
+                         print-document.ts ist das gemeinsame Gerüst
+      import/            Stundenplan (ICS), Fotos
       persistence/       Ablage des Bestands
         vault-crypto.ts    Ver- und Entschlüsselung der Datei
         vault.service.ts   Datei, Passwort und Zwischenspeicher
@@ -281,7 +267,7 @@ frontend/
                          Rückfragen, Installation als App
     vault/               Der Startbildschirm zum Öffnen des Bestands
     pages/               Je Seite ein Ordner: Wochenplan, Kurs, Noten, Verwaltung,
-                         Stundenplan, Auswertung, Einrichtung, Schuljahreswechsel
+                         Stundenplan, Einrichtung, Schuljahreswechsel
       course/              Kursseite (bewerten), dazu seat-plan-editor.ts
                            (Sitzordnungen verwalten) und seat-layout.ts
                            (Belegung als reine Funktionen)
@@ -315,7 +301,7 @@ https://github.com/V07GVO9/sitzordnung/releases/latest/download/Sitzordnung.apk
 Unterschiede zur Browser-Version:
 
 - **Speichern** legt die Datei unter *Dokumente/Sitzordnung* auf dem Gerät ab.
-- **CSV-Export** speichert dort ebenfalls und öffnet danach das Teilen-Menü.
+- **Exporte** (Noten je Stunde, PDF-Sicherung) speichern dort ebenfalls und öffnen danach das Teilen-Menü.
 - **Öffnen** nutzt die Dateiauswahl von Android.
 
 Lokal bauen (Android SDK nötig): `npm run android` im Ordner `frontend`, dann

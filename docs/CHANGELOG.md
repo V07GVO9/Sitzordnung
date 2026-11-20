@@ -8,6 +8,24 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 20.11.2026
+
+**Geändert**
+- **Sicherungskopie:** Wird ohne Rückfrage in OneDrive unter
+  *Sitzordnung-App/Sicherheitskopien* abgelegt. Ob eine neue fällig ist, richtet
+  sich nach der neuesten Kopie dort – auf allen Geräten gleich.
+- **Notenverwaltung entfernt:** Der Menüpunkt und die Seite (Übersicht,
+  Leistungsnachweise, Mitarbeit, Notenbögen, Protokoll) sind weggefallen. Das
+  **Bewertungsschema** steht jetzt unter Menü ☰ → *Noten* →
+  *Bewertungsschema bearbeiten*.
+- **Auswertung & Export entfernt:** Die Seite mit den Reitern *Punkte & Export*,
+  *Notenschlüssel*, *Einstellungen* und *Datei* ist weggefallen, ebenso die
+  Menüpunkte *Auswertung & Export*, *Notenschlüssel*, *App-Einstellungen* und
+  *Datei & Passwort*. Passwort ändern geht weiter über das Menü; gespeicherte
+  Notenschlüssel und Einstellungen gelten unverändert weiter.
+
+---
+
 ## 15.11.2026
 
 **Neu**

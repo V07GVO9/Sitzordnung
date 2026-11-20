@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SchoolClass } from '../../core/models';
 import { FilePickerCancelled } from '../../core/persistence/file-system';
-import { VaultService } from '../../core/persistence/vault.service';
+import { BackupService } from '../../core/persistence/backup.service';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
@@ -51,11 +51,11 @@ function toRow(c: SchoolClass): ClassRow {
         <h2><span class="nr">1</span> Sicherungskopie</h2>
         <p class="small">
           Pflicht vor dem Wechsel: Die Kopie enthält das komplette alte Schuljahr (verschlüsselt,
-          gleiches Passwort). Bitte an einem zweiten Ort ablegen.
+          gleiches Passwort) und landet in OneDrive unter „Sitzordnung-App/Sicherheitskopien“.
         </p>
         <button class="btn" [class.primary]="!backedUp()" type="button" (click)="backup()">
           <app-icon [name]="backedUp() ? 'circle-check' : 'download'" />
-          {{ backedUp() ? 'Sicherungskopie erstellt' : 'Sicherungskopie speichern …' }}
+          {{ backedUp() ? 'Sicherungskopie erstellt' : 'Sicherungskopie in OneDrive speichern' }}
         </button>
       </section>
 
@@ -233,7 +233,7 @@ function toRow(c: SchoolClass): ClassRow {
 })
 export class SchoolYearPage {
   private readonly store = inject(LocalStore);
-  private readonly vault = inject(VaultService);
+  private readonly backups = inject(BackupService);
   private readonly toasts = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly router = inject(Router);
@@ -272,9 +272,9 @@ export class SchoolYearPage {
 
   async backup(): Promise<void> {
     try {
-      await this.vault.saveBackupCopy();
+      await this.backups.createBackup();
       this.backedUp.set(true);
-      this.toasts.success('Sicherungskopie gespeichert.');
+      this.toasts.success('Sicherungskopie in OneDrive gespeichert.');
     } catch (error) {
       if (error instanceof FilePickerCancelled) {
         return;

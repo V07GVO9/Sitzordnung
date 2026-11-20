@@ -293,7 +293,10 @@ describe('LocalStore - Bewertungen', () => {
     const store = setup();
     const { course, student } = withCourse(store);
     store.clock.setFixed(new Date('2026-08-31T14:00:00'));
-    store.settings.saveSettings({ toleranceMinutes: 15, allowRatingOutsideLesson: true });
+    // Die Notfall-Freigabe steht in der Datei.
+    const db = store.snapshot();
+    db.settings.allowRatingOutsideLesson = true;
+    store.load(db);
 
     expect(store.ratings.rate(course.id, student.id, 1).value).toBe(1);
   });
@@ -408,86 +411,6 @@ describe('LocalStore - Bewertungen', () => {
     const outside = store.ratings.getScoreboard(course.id, { from: '2026-09-01' });
 
     expect(outside.students[0].points).toBe(0);
-  });
-});
-
-describe('LocalStore - Notenschlüssel', () => {
-  it('bringt einen Standardschlüssel mit', () => {
-    expect(setup().gradeScales.getGlobalGradeScale().entries.length).toBeGreaterThan(0);
-  });
-
-  it('lehnt einen Schlüssel ohne Stufen ab', () => {
-    const store = setup();
-
-    expect(() => store.gradeScales.saveGradeScale(null, { name: 'X', entries: [] })).toThrowError(
-      AppError,
-    );
-  });
-
-  it('lehnt zwei Stufen mit derselben Punktgrenze ab', () => {
-    const store = setup();
-
-    expect(() =>
-      store.gradeScales.saveGradeScale(null, {
-        name: 'X',
-        entries: [
-          { minPoints: 5, grade: '1' },
-          { minPoints: 5, grade: '2' },
-        ],
-      }),
-    ).toThrowError(AppError);
-  });
-
-  it('bevorzugt den Schlüssel des Kurses', () => {
-    const store = setup();
-    const { course } = withCourse(store);
-    store.gradeScales.saveGradeScale(course.id, {
-      name: 'Kurs',
-      entries: [{ minPoints: 0, grade: 'top' }],
-    });
-
-    expect(store.gradeScales.getCourseGradeScale(course.id).name).toBe('Kurs');
-
-    store.gradeScales.deleteCourseGradeScale(course.id);
-
-    expect(store.gradeScales.getCourseGradeScale(course.id).isGlobalDefault).toBe(true);
-  });
-});
-
-describe('LocalStore - Export', () => {
-  it('schreibt eine Zeile je Schüler in die Zusammenfassung', async () => {
-    const store = setup();
-    const { course, student } = withCourse(store);
-    store.ratings.rate(course.id, student.id, 2);
-
-    const result = store.exports.exportSummary(course.id);
-    const content = await result.blob.text();
-
-    expect(result.fileName).toContain('10a-Mathematik');
-    expect(content).toContain('Musterfrau;Anna;2;1;');
-  });
-
-  it('legt die Einzelbewertungen als Querformat-Tabelle an: Schüler je Zeile, Tage je Spalte', async () => {
-    const store = setup();
-    const { course, student } = withCourse(store);
-    store.ratings.rate(course.id, student.id, 1);
-    store.ratings.rate(course.id, student.id, -2, 'stört');
-
-    const result = store.exports.exportRatings(course.id);
-    const content = await result.blob.text();
-
-    expect(result.fileName).toMatch(/^bewertungen-10a-Mathematik-.*\.html$/);
-    expect(content).toContain('size: A4 landscape');
-    expect(content).toContain('31.08.');
-    expect(content).toContain('Musterfrau</strong>, Anna');
-    expect(content).toContain('<span class="old">+</span> <span>−−</span>');
-    expect(content).toContain('stört');
-  });
-
-  it('meldet, wenn es nichts zu exportieren gibt', () => {
-    const store = setup();
-
-    expect(() => store.exports.exportSummary(null)).toThrowError(AppError);
   });
 });
 

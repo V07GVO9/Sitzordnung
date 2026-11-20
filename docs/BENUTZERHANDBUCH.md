@@ -7,7 +7,7 @@ Technische Hinweise zu Installation und Entwicklung stehen in der
 
 > Dieses Handbuch wird jeden Donnerstag automatisch mit dem aktuellen Stand der
 > App abgeglichen. Neue Funktionen kommen dabei hinzu, das
-> [Änderungsverzeichnis](#14-änderungsverzeichnis) am Ende zeigt, was sich
+> [Änderungsverzeichnis](#13-änderungsverzeichnis) am Ende zeigt, was sich
 > geändert hat.
 
 ## Inhalt
@@ -20,12 +20,11 @@ Technische Hinweise zu Installation und Entwicklung stehen in der
 6. [Sitzordnung bauen](#6-sitzordnung-bauen)
 7. [Mitarbeit bewerten](#7-mitarbeit-bewerten)
 8. [Die Bereiche einer Klasse](#8-die-bereiche-einer-klasse)
-9. [Notenverwaltung je Kurs](#9-notenverwaltung-je-kurs)
-10. [Auswertung, Export und Einstellungen](#10-auswertung-export-und-einstellungen)
-11. [Speichern, Datei und Passwort](#11-speichern-datei-und-passwort)
-12. [Android-App und Installation als App](#12-android-app-und-installation-als-app)
-13. [Häufige Fragen](#13-häufige-fragen)
-14. [Änderungsverzeichnis](#14-änderungsverzeichnis)
+9. [Bewertungsschema](#9-bewertungsschema)
+10. [Speichern, Datei und Passwort](#10-speichern-datei-und-passwort)
+11. [Android-App und Installation als App](#11-android-app-und-installation-als-app)
+12. [Häufige Fragen](#12-häufige-fragen)
+13. [Änderungsverzeichnis](#13-änderungsverzeichnis)
 
 ---
 
@@ -96,10 +95,10 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | Bereich | Inhalt |
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
-| **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
+| **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit und Noten zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Notenverwaltung, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Darstellung, Speichern, Sicherungskopie, Passwort ändern, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -114,8 +113,8 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 
 | Modus | Was geht | Was nicht geht |
 | --- | --- | --- |
-| **Unterricht** (Standard) | Bewerten, Stundenplan und Klassen ansehen, auswerten, exportieren, Noten verwalten | Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen ändern |
-| **Bearbeiten** | Klassen, Fächer, Schüler, Stundenplan, Sitzpläne, Notenschlüssel, Einstellungen, Datei & Passwort ändern | Bewerten |
+| **Unterricht** (Standard) | Bewerten, Stundenplan und Klassen ansehen, Noten eintragen | Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen ändern |
+| **Bearbeiten** | Klassen, Fächer, Schüler, Stundenplan und Sitzpläne ändern | Bewerten |
 
 - **Bearbeiten starten:** Schalter **Bearbeiten** in der Titelleiste oder im
   Menü. Die App fragt zur Sicherheit nach.
@@ -284,8 +283,8 @@ Wer fehlt, wird schon zu Stundenbeginn markiert: im Sitzplan Kachel antippen →
 grau und gestrichelt, oben steht „· 1 fehlt“. Abwesende lassen sich nicht
 bewerten und werden nicht ausgelost. **Anwesend** nimmt die Markierung zurück.
 
-Für die Note zählt die Doppelstunde dann für diesen Schüler nicht (wie
-„fehlte“ in der Notenverwaltung). Die Änderung steht im Protokoll.
+Für die Note zählt die Doppelstunde dann für diesen Schüler nicht. Die
+Änderung wird in der Datei protokolliert.
 
 ### Schüler auslosen
 
@@ -314,8 +313,8 @@ Bewerten geht nur, **während der Kurs laut Stundenplan läuft**.
 - **Notfall-Freigabe**: hebt die Sperre ganz auf, z. B. bei kurzfristigen
   Planänderungen.
 
-Beides unter **Auswertung → Einstellungen** (siehe
-[Abschnitt 10](#reiter-einstellungen)).
+Beides steht in der Datei (Standard: 15 Minuten, Notfall-Freigabe aus) und
+lässt sich in der App nicht mehr umstellen.
 
 ---
 
@@ -350,105 +349,22 @@ Klasse in der Seitenleiste wählen; unten erscheinen vier Reiter.
 - Fach oben wählen.
 - Je Schüler: Verteilung der Bewertungen, **Punkte** und **Note** laut
   Notenschlüssel, oben der Durchschnitt.
-- **Notenverwaltung** öffnet die ausführliche Notenverwaltung des Kurses
-  ([Abschnitt 9](#9-notenverwaltung-je-kurs)), **Export** die Auswertung.
 
 ---
 
-## 9. Notenverwaltung je Kurs
+## 9. Bewertungsschema
 
-Aufruf: Menü ☰ → **Notenverwaltung** (nachdem im Wochenplan eine Stunde gewählt ist). Die Quartalsnoten stehen getrennt davon unter Menü ☰ → **Noten**.
-
-### Zeitraum
-
-Oben **Zeitraum** wählen (z. B. „1. Halbjahr 2026/27“) – alle Reiter rechnen
-dann nur in diesem Zeitraum. **Zeiträume verwalten**: Name, Von, Bis →
-**Zeitraum anlegen**; Löschen je Zeitraum.
-**Notenübersicht als CSV** exportiert die Übersicht.
-
-### Reiter
-
-| Reiter | Inhalt |
-| --- | --- |
-| **Übersicht** | Alle Schüler mit Einzelnoten der freigegebenen Leistungsnachweise, Mitarbeit, schriftlich, mündlich und Gesamtnote. Ein * markiert eine vorläufige Gesamtnote (ein Bereich hat noch keine Noten). Darüber ein gelber Kasten **Hinweise** (siehe unten). |
-| **Leistungsnachweise** | Klassenarbeit, Test, Referat … anlegen und Noten eintragen (siehe unten). |
-| **Mitarbeit** | Je Doppelstunde eine Mitarbeitsnote pro Schüler. |
-| **Mehr ▾ → Bewertungsschema** | Gewichtung, Arten, Punkteschlüssel, Mitarbeitsnoten. |
-| **Mehr ▾ → Notenbögen** | Je Schüler ein Bogen mit seinem Stand. |
-| **Mehr ▾ → Protokoll** | Alle Änderungen an freigegebenen Noten und von Hand gesetzte Mitarbeitsnoten, mit Begründung. |
-
-Die selteneren Reiter liegen unter **Mehr ▾**; ist einer davon offen, trägt
-der Knopf seinen Namen.
-
-### Hinweise in der Übersicht
-
-Der gelbe Kasten über der Tabelle nennt je Schüler, was Aufmerksamkeit braucht
-(ein Tipp auf die Kopfzeile klappt ihn zu). In der Tabelle markiert ein ⚠ neben
-dem Namen dieselben Schüler.
-
-| Hinweis | Wann |
-| --- | --- |
-| Gesamtnote schlechter als 4,0 | so, wie die Note angezeigt wird (ab 4,1) |
-| Noch keine schriftliche Note | ein schriftlicher Nachweis ist freigegeben, der Schüler hat dort keine Note |
-| Ohne Note in „…“ | in einem freigegebenen Nachweis fehlt die Note (auch entschuldigt) |
-
-### Leistungsnachweis anlegen und bewerten
-
-1. **Art**, **Titel**, **Datum** und optional **Max. Punkte** eingeben →
-   **Anlegen**.
-2. In der Liste **Noten eintragen** wählen.
-3. Je Schüler **Status** (*bewertet*, *entschuldigt*, *verweigert*), **Punkte**
-   oder **Note** (mit Komma, z. B. 2,3) und ggf. **Bemerkung** eintragen.
-   Mit Punkten rechnet die App über den Punkteschlüssel um; eine eingetragene
-   Note hat Vorrang.
-4. **Speichern** – der **Notenspiegel** und der Durchschnitt werden angezeigt.
-5. **Freigeben (zählt ab dann)** – erst jetzt zählt der Nachweis in der
-   Übersicht. Vorher ist er ein *Entwurf*.
-6. Änderungen nach der Freigabe brauchen eine **Begründung** (landet im
-   Protokoll). **Freigabe zurücknehmen** und **Löschen** sind möglich.
-
-### Mitarbeit aus anderem Werkzeug übernehmen (PDF)
-
-Für Mitarbeitsübersichten aus der Schul-App (PDF mit einer Seite je Schüler und
-den Anzahlen `--`, `-`, `o`, `+`, `++` je Fach):
-
-1. Im Kurs unter **Noten → Leistungsnachweise** bei *Mitarbeit aus anderem
-   Werkzeug übernehmen* **PDF auswählen**.
-2. **Fach in der Übersicht** prüfen (z. B. „LF3 B104" für den Kurs LF3) sowie
-   **Art** (nur mündliche Arten), **Titel** und **Datum** (Ende des Zeitraums).
-3. Die Vorschau zeigt je Name die Bewertungen, die errechnete Note und den
-   zugeordneten Schüler. Rollenkürzel wie *KS1* oder *KV2* werden entfernt.
-   Nicht erkannte Namen von Hand zuordnen oder *nicht übernehmen* lassen;
-   Zeilen ohne Bewertungen werden übersprungen.
-4. **Noten übernehmen** – es entsteht ein freigegebener, mündlicher
-   Leistungsnachweis. Die Anzahlen stehen als Bemerkung bei jeder Note.
-
-Note = Durchschnitt der Bewertungen mit den Mitarbeitsnoten des Schemas
-(Standard ++ 1,0 · + 2,0 · o 3,0 · − 4,0 · −− 5,0), eine Nachkommastelle.
-Die Übersicht enthält nur Summen, keine einzelnen Stunden – deshalb wird kein
-Eintrag je Doppelstunde erzeugt. Das **Gewicht** der gewählten Art im
-Bewertungsschema prüfen.
-
-### Mitarbeit je Doppelstunde
-
-- Eine Doppelstunde zählt, sobald an dem Tag im Kurs jemand bewertet wurde.
-- Mehrere Bewertungen einer Stunde werden addiert (höchstens ++, mindestens −−).
-- Standard: ++ = 1,0 · + = 2,0 · ausgeglichen = 3,0 · − = 4,0 · −− = 5,0 ·
-  ohne Bewertung = 3,0 (anpassbar im Schema).
-- Je Zelle lässt sich die Note **von Hand** überschreiben oder **fehlte**
-  wählen – dann zählt die Stunde für diesen Schüler nicht.
-- Die Mitarbeit ist der Durchschnitt der Stundennoten.
-
-### Bewertungsschema
+Aufruf: Menü ☰ → **Noten** → **Bewertungsschema bearbeiten** (nachdem im
+Wochenplan eine Stunde gewählt ist). Das Schema gilt je Kurs.
 
 - **Gewichtung der Bereiche:** Anteil *schriftlich* in %, der Rest ist
   *mündlich/sonstig*.
 - **Arten von Leistungsnachweisen:** Bezeichnung, Bereich und Gewicht
   (z. B. Klassenarbeit 2, Test 1). **Art hinzufügen** / **Entfernen**.
-  Die Mitarbeit geht mit eigenem Gewicht in den mündlichen Bereich ein.
-- **Punkteschlüssel:** ab wie viel Prozent welche Note gilt (Vorlage: IHK).
+- **Punkteschlüssel:** ab wie viel Prozent welche Note gilt (Vorlage: IHK) –
+  danach richtet sich die schriftliche Quartalsnote.
 - **Mitarbeit je Doppelstunde:** Noten für ++, +, ausgeglichen, −, −− und
-  ohne Bewertung.
+  ohne Bewertung – daraus entsteht der mündliche Vorschlag.
 - **Schema speichern** oder **Verwerfen**.
 - **Schema auf andere Kurse übertragen:** Kurse anhaken → **Übertragen**
   (übernimmt das gespeicherte Schema; vorausgewählt sind die übrigen
@@ -457,62 +373,9 @@ Bewertungsschema prüfen.
 > Die Vorgaben im Schema sind nur ein Vorschlag. Verbindlich sind
 > Schulgesetz, Verordnungen und Konferenzbeschlüsse.
 
-### Rechenweg der Gesamtnote
-
-1. Ein Bereich (schriftlich, mündlich) = gewichteter Durchschnitt seiner
-   Einzelnoten.
-2. Gesamtnote = beide Bereiche nach dem Anteil im Schema verrechnet.
-3. Fehlt ein Bereich, ist die Gesamtnote vorläufig (*).
-
-### Notenbögen
-
-1. Schüler anhaken (**Alle** / **Keinen**).
-2. **Drucken / als PDF speichern** oder **Je Schüler als HTML-Datei**.
-3. Jede Ausgabe wird unter *Ausgegebene Notenbögen* mit dem damaligen Stand
-   vermerkt.
-
-Nur freigegebene Leistungsnachweise erscheinen. Bögen einzeln aushändigen oder
-einzeln verschicken – nie als Klassenliste.
-
 ---
 
-## 10. Auswertung, Export und Einstellungen
-
-Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
-
-### Reiter „Punkte & Export“
-
-1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
-   **Von/Bis** (leer = gesamter Zeitraum).
-2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
-3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – das gewählte Fach,
-   - **Einzelbewertungen** – jede Bewertung einzeln,
-   - **Alle Kurse** – Punktestände aller Kurse.
-
-### Reiter „Notenschlüssel“ *(Bearbeitungsmodus)*
-
-Legt fest, ab wie vielen **Mitarbeitspunkten** welche Note gilt.
-
-1. **Für alle Kurse** oder **Nur [Kurs]** wählen.
-2. Bezeichnung vergeben, Stufen eintragen („ab … Punkten → Note“),
-   **Stufe hinzufügen** / ✕.
-3. **Übernehmen**. Einen kurseigenen Schlüssel entfernt **Eigenen Schlüssel
-   entfernen** – dann gilt wieder der allgemeine.
-
-### Reiter „Einstellungen“ *(Bearbeitungsmodus)*
-
-- **Kulanzzeit** vor und nach der Stunde (0–120 Minuten).
-- **Notfall-Freigabe:** Bewerten auch außerhalb des Stundenplans. Solange sie
-  aktiv ist, zeigt die App einen Warnhinweis.
-
-### Reiter „Datei“ *(Bearbeitungsmodus)*
-
-Siehe [Abschnitt 11](#11-speichern-datei-und-passwort).
-
----
-
-## 11. Speichern, Datei und Passwort
+## 10. Speichern, Datei und Passwort
 
 ### Speichern
 
@@ -561,13 +424,6 @@ die Datei schreibt, müssen drei Dinge stimmen.
 
 Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Datei.
 
-**Schritt 4 (nur falls nötig): Den Schalter prüfen**
-
-1. **☰ → Bearbeitungsmodus starten** → mit **Bearbeiten** bestätigen.
-2. **☰ → Datei & Passwort**.
-3. Haken bei **„Nach jeder Änderung automatisch in die Datei speichern“** setzen.
-4. **☰ → Zurück zum Unterricht**.
-
 **Gut zu wissen**
 
 - Die Einstellung gilt **nur für dieses Gerät**.
@@ -575,17 +431,6 @@ Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Dat
   Erlaubnis – dann Schritt 3 wiederholen.
 - Hat ein **anderes Gerät** zwischendurch gespeichert, pausiert das automatische
   Speichern, bis entschieden ist, welcher Stand gilt.
-
-### Reiter „Datei“ (Auswertung → Datei)
-
-- **Automatisch speichern** ein-/ausschalten (gilt je Gerät).
-- Bei OneDrive: **Auf diesem Gerät merken** ein-/ausschalten.
-- **Speichern unter …** – Kopie an anderem Ort/mit anderem Namen.
-- **In OneDrive ablegen** – lokalen Bestand nach OneDrive verschieben;
-  danach öffnet jedes Gerät denselben Stand.
-- **Passwort ändern:** bisheriges und neues Passwort →
-  **Passwort ändern und speichern**. Ältere Sicherungskopien behalten ihr altes
-  Passwort.
 
 ### Passwort ändern
 
@@ -608,18 +453,18 @@ Noten, Notenschlüssel und Einstellungen – verschlüsselt (AES-GCM).
 
 ### Sicherungskopie
 
-Menü ☰ → **Sicherungskopie speichern …** speichert eine Kopie des ganzen
-Bestands – verschlüsselt mit demselben Passwort – als
-`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung`. Dabei fragt die App **jedes Mal**,
-wo die Kopie hin soll (Chrome/Edge: Speichern-Dialog, Android: Teilen-Menü;
-andere Browser legen sie in den Download-Ordner). Anders als *Speichern unter …*
+Menü ☰ → **Sicherungskopie in OneDrive speichern** legt eine Kopie des ganzen
+Bestands – verschlüsselt mit demselben Passwort – ohne Rückfrage in OneDrive
+unter **Sitzordnung-App/Sicherheitskopien** ab, als
+`<Dateiname>-sicherung-JJJJ-MM-TT.sitzordnung`. Anders als *Speichern unter …*
 arbeitet die App danach mit derselben Datei weiter.
 
-Ist die letzte Kopie **7 Tage oder älter** (oder gibt es noch keine), zeigt der
-Wochenplan einen gelben Hinweis mit **Jetzt sichern**; **Später** blendet ihn
-bis morgen aus. Der Zeitpunkt der letzten Kopie steht in der Datei und gilt
-damit für alle Geräte. Die Kopie gehört an einen zweiten Ort (USB-Stick,
-Dienstrechner).
+Ist die neueste Kopie in diesem Ordner **7 Tage oder älter** (oder gibt es noch
+keine), zeigt der Wochenplan einen gelben Hinweis mit **Jetzt sichern**;
+**Später** blendet ihn auf diesem Gerät bis morgen aus. Maßgeblich ist das
+Erstellungsdatum der Kopien im OneDrive-Ordner – damit gilt derselbe Stand auf
+allen Geräten. Ist OneDrive gerade nicht erreichbar, zählt der Vermerk der
+letzten Sicherung in der Datei.
 
 ### Sicherung als PDF (lesbar)
 
@@ -659,7 +504,7 @@ Bewertungsschemata. Danach öffnet sich der Einrichtungs-Assistent – meist feh
 nur noch der neue Stundenplan. Rückgängig machen lässt sich der Wechsel nur über
 die Sicherungskopie.
 
-## 12. Android-App und Installation als App
+## 11. Android-App und Installation als App
 
 - **Als App installieren** (Chrome/Edge): Menü → **Als App installieren**.
   Die App bekommt ein eigenes Symbol und startet auch ohne Internet. Liegt eine
@@ -672,7 +517,7 @@ die Sicherungskopie.
 
 ---
 
-## 13. Häufige Fragen
+## 12. Häufige Fragen
 
 **Ich kann nicht bewerten.**
 Prüfen: (1) Unterrichtsmodus aktiv? (2) Läuft der Kurs laut Stundenplan?
@@ -690,7 +535,7 @@ Verwaltung → Schüler → **Vor-/Nachname tauschen**.
 
 **Passwort vergessen?**
 Nicht wiederherstellbar. Regelmäßig eine Sicherungskopie (Menü ☰ →
-**Sicherungskopie speichern …**) anlegen und das Passwort sicher verwahren.
+**Sicherungskopie in OneDrive speichern**) anlegen und das Passwort sicher verwahren.
 
 **Wie lösche ich Daten nach Schuljahresende?**
 Mit dem **Schuljahreswechsel** (Bearbeitungsmodus → Menü ☰): Er löscht die
@@ -700,7 +545,7 @@ sich weiterhin in der Verwaltung löschen. Löschfristen liegen bei der Lehrkraf
 
 ---
 
-## 14. Änderungsverzeichnis
+## 13. Änderungsverzeichnis
 
 Wird bei jeder automatischen Prüfung (donnerstags) ergänzt. Alle Neuerungen
 der App im Detail stehen im [Changelog](CHANGELOG.md).

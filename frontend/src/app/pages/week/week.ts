@@ -3,13 +3,11 @@ import { RouterLink } from '@angular/router';
 import { TimetableEntry, WEEKDAY_NAMES } from '../../core/models';
 import { freeDayReason } from '../../core/logic/school-calendar';
 import { toDateKey } from '../../core/logic/time';
-import { backupDue } from '../../core/logic/backup.logic';
 import { FilePickerCancelled } from '../../core/persistence/file-system';
-import { VaultService } from '../../core/persistence/vault.service';
+import { BackupService } from '../../core/persistence/backup.service';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
-import { readPreference, writePreference } from '../../core/ui/preference';
 import { subjectHue } from '../../core/ui/subject-hue';
 
 /** Eine Zeile des Wochenplans: ein Zeitblock wie 07:45–09:15. */
@@ -25,9 +23,6 @@ interface Cell {
   short: string;
   running: boolean;
 }
-
-/** Tag, an dem „Später“ gewählt wurde - dann erst morgen wieder erinnern. */
-const SNOOZE_KEY = 'sitzordnung.sicherung-spaeter';
 
 const DAY_SHORT: Record<number, string> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa' };
 
@@ -50,12 +45,12 @@ const DAY_SHORT: Record<number, string> = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 
 export class WeekPage {
   private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
-  private readonly vault = inject(VaultService);
-
-  /** Erinnerung an die Sicherungskopie - null, wenn keine fällig ist. */
-  readonly backupReminder = signal<{ days: number | null } | null>(null);
+  private readonly backups = inject(BackupService);
 
   readonly entries = signal(this.store.timetable.getTimetable());
+
+  /** Erinnerung an die Sicherungskopie - null, wenn keine fällig ist. */
+  readonly backupReminder = computed(() => this.backups.due(this.entries().length > 0));
   readonly courses = signal(this.store.masterData.getCourses());
   readonly lesson = signal(this.store.timetable.getCurrentLesson());
 
@@ -166,29 +161,14 @@ export class WeekPage {
   /** Aus welcher Richtung die neue Woche hereingleitet; null beim ersten Anzeigen. */
   private readonly slideDirection = signal<'next' | 'prev' | null>(null);
 
-  constructor() {
-    this.checkBackup();
-  }
-
   cellsAt(dayOfWeek: number, slot: Slot): Cell[] {
     return this.cells().get(`${dayOfWeek}|${slot.startTime}|${slot.endTime}`) ?? [];
   }
 
-  /** Fällige Sicherung? „Später“ schiebt die Erinnerung um einen Tag. */
-  private checkBackup(): void {
-    // Ohne Speicher im Browser erinnert die App eben bei jedem Öffnen.
-    const snoozed = readPreference(SNOOZE_KEY) === toDateKey(new Date());
-    const last = this.store.settings.getLastBackupAt();
-    this.backupReminder.set(
-      snoozed ? null : backupDue(last, new Date(), this.entries().length > 0),
-    );
-  }
-
   async backupNow(): Promise<void> {
     try {
-      await this.vault.saveBackupCopy();
-      this.backupReminder.set(null);
-      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
+      await this.backups.createBackup();
+      this.toasts.success('Sicherungskopie in OneDrive gespeichert.');
     } catch (error) {
       if (error instanceof FilePickerCancelled) {
         return;
@@ -198,8 +178,7 @@ export class WeekPage {
   }
 
   snoozeBackup(): void {
-    this.backupReminder.set(null);
-    writePreference(SNOOZE_KEY, toDateKey(new Date()));
+    this.backups.snooze();
   }
 
   shiftWeek(step: number): void {

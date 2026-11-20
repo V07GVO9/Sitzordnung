@@ -16,7 +16,7 @@ import {
   AssessmentType,
   Course,
   GradeArea,
-  GradeBook,
+  GradingScheme,
   GradingSchemeInput,
   ParticipationGrades,
   PercentScaleEntry,
@@ -25,16 +25,16 @@ import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 
 /**
- * Reiter „Bewertungsschema“: Gewichtung der Bereiche, Arten von
+ * Das Bewertungsschema eines Kurses: Gewichtung der Bereiche, Arten von
  * Leistungsnachweisen, Punkteschlüssel und Mitarbeitsnoten - als Entwurf, der
  * erst mit „Schema speichern“ gilt. Dazu das Übertragen auf andere Kurse.
  */
 @Component({
-  selector: 'app-grades-scheme',
+  selector: 'app-scheme-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
-  templateUrl: './scheme-tab.html',
-  styleUrl: './grades-tab.scss',
+  templateUrl: './scheme-editor.html',
+  styleUrl: './scheme-editor.scss',
   styles: `
     .cols {
       display: grid;
@@ -44,17 +44,16 @@ import { ToastService } from '../../core/ui/toast.service';
     }
   `,
 })
-export class GradesSchemeTab {
+export class SchemeEditor {
   private readonly store = inject(LocalStore);
   private readonly toasts = inject(ToastService);
 
-  readonly active = input.required<boolean>();
-  readonly book = input.required<GradeBook>();
+  /** Das gespeicherte Schema des Kurses (oder der Vorschlag). */
+  readonly scheme = input.required<GradingScheme>();
   readonly course = input<Course | null>(null);
-  readonly courseId = input.required<number>();
   /** Die übrigen Kurse - auf sie lässt sich das Schema übertragen. */
   readonly otherCourses = input.required<Course[]>();
-  /** Das Schema wurde gespeichert - das Notenbuch muss neu geladen werden. */
+  /** Das Schema wurde gespeichert - die Seite muss neu laden. */
   readonly changed = output<void>();
 
   readonly areaLabels = AREA_LABELS;
@@ -65,12 +64,15 @@ export class GradesSchemeTab {
   readonly schemeDraft = signal<GradingSchemeInput | null>(null);
   readonly copyTargets = signal<Set<number>>(new Set());
 
+  /** Zu welchem Kurs der Entwurf gehört - wechselt der Kurs, gilt er nicht mehr. */
+  private draftCourseId: number | null = null;
+
   constructor() {
-    // Ohne Entwurf - am Anfang und nach dem Speichern - gilt das Schema aus dem Notenbuch.
+    // Ohne Entwurf - am Anfang und nach dem Speichern - gilt das gespeicherte Schema.
     effect(() => {
-      this.book();
+      const courseId = this.scheme().courseId;
       untracked(() => {
-        if (!this.schemeDraft()) {
+        if (!this.schemeDraft() || this.draftCourseId !== courseId) {
           this.resetSchemeDraft();
         }
       });
@@ -78,7 +80,8 @@ export class GradesSchemeTab {
   }
 
   resetSchemeDraft(): void {
-    const scheme = this.book().scheme;
+    const scheme = this.scheme();
+    this.draftCourseId = scheme.courseId;
 
     this.schemeDraft.set({
       writtenPercent: scheme.writtenPercent,
@@ -157,7 +160,7 @@ export class GradesSchemeTab {
     }
 
     try {
-      this.store.schemes.saveScheme(this.courseId(), draft);
+      this.store.schemes.saveScheme(this.scheme().courseId, draft);
       this.toasts.success('Das Bewertungsschema wurde gespeichert.');
       this.schemeDraft.set(null);
       this.changed.emit();
@@ -178,11 +181,11 @@ export class GradesSchemeTab {
     }
 
     if (
-      !this.book().scheme.isDefault ||
+      !this.scheme().isDefault ||
       confirm('Das Schema ist noch nicht gespeichert. Den Vorschlag übertragen?')
     ) {
       try {
-        this.store.schemes.copyScheme(this.courseId(), targets);
+        this.store.schemes.copyScheme(this.scheme().courseId, targets);
         this.toasts.success(`Das Schema gilt jetzt auch für ${targets.length} weitere Kurse.`);
       } catch (err) {
         this.toasts.error(err, 'Das Schema konnte nicht übertragen werden.');

@@ -1,25 +1,17 @@
 /**
- * Die Exporte: Notenübersicht und Mitarbeit als CSV, Einzelbewertungen und
- * Noten je Unterrichtstag als druckfertiges HTML.
+ * Die Exporte: Noten je Unterrichtstag als druckfertiges HTML und die
+ * lesbare Sicherung als PDF.
  */
 
 import { AppError } from '../app-error';
 import { BackupCourse, BackupResult, renderBackupPdf, resultKey } from '../export/backup-pdf';
-import { CsvBuilder } from '../export/csv';
 import { renderLessonSheets } from '../export/lesson-sheet';
-import { RatingsSheet, renderRatingsSheets } from '../export/ratings-sheet';
-import {
-  average,
-  formatGrade,
-  lastRatingPerDay,
-  resultGrade,
-  sumOfDays,
-} from '../logic/assessment.logic';
+import { average, resultGrade } from '../logic/assessment.logic';
 import { schoolYearOf } from '../logic/quarter.logic';
 import { freeDayReason } from '../logic/school-calendar';
 import { fileNamePart } from '../logic/text';
-import { formatDateGerman, toDateKey, toTimeKey } from '../logic/time';
-import { AREA_LABELS, Course, DateRange, DayOfWeek, ExportFile, LessonSheet } from '../models';
+import { toDateKey } from '../logic/time';
+import { Course, DateRange, DayOfWeek, ExportFile, LessonSheet } from '../models';
 import { GradeBookStore } from './grade-book.store';
 import {
   allCourses,
@@ -29,7 +21,6 @@ import {
   schemeOf,
   studentsOfCourse,
 } from './lookups';
-import { RatingStore } from './rating.store';
 import { StorePart, StoreState } from './store-part';
 
 /** Der Teil des Dateinamens, der sagt, wovon der Export handelt. */
@@ -46,53 +37,9 @@ function htmlFile(html: string, fileName: string): ExportFile {
 export class ExportStore extends StorePart {
   constructor(
     state: StoreState,
-    private readonly ratings: RatingStore,
     private readonly gradeBook: GradeBookStore,
   ) {
     super(state);
-  }
-
-  /** Die Notenübersicht als CSV - eine Zeile je Schüler. */
-  exportGradeBook(courseId: number, range?: DateRange): ExportFile {
-    const book = this.gradeBook.getGradeBook(courseId, range);
-    const released = book.assessments.filter((a) => a.released);
-    const csv = new CsvBuilder();
-
-    csv.addRow(
-      'Klasse',
-      'Fach/Lernfeld',
-      'Nachname',
-      'Vorname',
-      ...released.map((a) => `${a.title} (${formatDateGerman(a.date)})`),
-      'Mitarbeit',
-      `Schriftlich (${book.scheme.writtenPercent} %)`,
-      `${AREA_LABELS.oral} (${100 - book.scheme.writtenPercent} %)`,
-      'Gesamt',
-    );
-
-    const value = (grade: number | null) => (grade === null ? null : Math.round(grade * 100) / 100);
-
-    for (const student of book.students) {
-      csv.addRow(
-        book.schoolClassName,
-        book.subjectName,
-        student.lastName,
-        student.firstName,
-        ...released.map((a) => value(student.assessmentGrades[a.id] ?? null)),
-        value(student.participation),
-        value(student.written),
-        value(student.oral),
-        value(student.overall),
-      );
-    }
-
-    return {
-      blob: csv.toBlob(),
-      fileName:
-        `noten-${fileNamePart(book.schoolClassName)}-` +
-        `${fileNamePart(book.subjectShortName || book.subjectName)}-` +
-        `${this.today()}.csv`,
-    };
   }
 
   // --- Noten je Unterrichtstag --------------------------------------------
@@ -191,96 +138,6 @@ export class ExportStore extends StorePart {
   async exportBackupPdf(): Promise<ExportFile> {
     const blob = await renderBackupPdf(this.getBackupCourses(), this.now());
     return { blob, fileName: `sicherung-alle-noten-${this.today()}.pdf` };
-  }
-
-  // --- Mitarbeit ----------------------------------------------------------
-
-  /**
-   * Die Einzelbewertungen als druckfertiges HTML im Querformat: je Kurs eine
-   * Tabelle, Schüler in den Zeilen, Bewertungstage in den Spalten.
-   */
-  exportRatings(courseId: number | null, range?: DateRange): ExportFile {
-    // Beim Export aller Kurse bleiben die ohne Bewertung im Zeitraum außen vor.
-    const courses = this.coursesToExport(
-      courseId,
-      (c) => courseId !== null || ratingsInRange(this.db, c.id, range).length > 0,
-    );
-
-    const sheets: RatingsSheet[] = courses.map((course) => {
-      // Nach Eingabe sortiert - die letzte Bewertung eines Tages zählt.
-      const ratings = ratingsInRange(this.db, course.id, range).sort((a, b) => a.id - b.id);
-      const dates = [...new Set(ratings.map((r) => r.lessonDate))].sort();
-
-      return {
-        schoolClassName: course.schoolClassName,
-        subjectName: course.subjectName,
-        from: range?.from || dates[0] || null,
-        to: range?.to || dates.at(-1) || null,
-        dates,
-        students: studentsOfCourse(this.db, course.id).map((student) => {
-          const own = ratings.filter((r) => r.studentId === student.id);
-          return {
-            firstName: student.firstName,
-            lastName: student.lastName,
-            cells: dates.map((date) =>
-              own
-                .filter((r) => r.lessonDate === date)
-                .map((r) => ({
-                  value: r.value,
-                  time: toTimeKey(new Date(r.createdAt)),
-                  comment: r.comment || null,
-                })),
-            ),
-            points: sumOfDays(lastRatingPerDay(own)),
-          };
-        }),
-      };
-    });
-
-    return htmlFile(
-      renderRatingsSheets(sheets, this.today()),
-      `bewertungen-${courseSuffix(sheets)}-${this.today()}.html`,
-    );
-  }
-
-  /**
-   * Eine Zeile pro Schüler mit Punktestand und - falls ein Notenschlüssel
-   * hinterlegt ist - der daraus errechneten Note.
-   */
-  exportSummary(courseId: number | null, range?: DateRange): ExportFile {
-    const courses = this.coursesToExport(courseId);
-
-    const csv = new CsvBuilder();
-    csv.addRow(
-      'Klasse',
-      'Fach',
-      'Nachname',
-      'Vorname',
-      'Punkte',
-      'Anzahl Bewertungen',
-      'Mittelwert',
-      'Note',
-    );
-
-    for (const course of courses) {
-      for (const score of this.ratings.getScoreboard(course.id, range).students) {
-        csv.addRow(
-          course.schoolClassName,
-          course.subjectName,
-          score.lastName,
-          score.firstName,
-          score.points,
-          score.ratingCount,
-          score.average === null ? '' : formatGrade(score.average, 2),
-          score.grade,
-        );
-      }
-    }
-
-    return {
-      blob: csv.toBlob(),
-      fileName: `mitarbeit-${courseSuffix(courses)}-${this.today()}.csv`,
-    };
   }
 
   // --- Hilfen -------------------------------------------------------------

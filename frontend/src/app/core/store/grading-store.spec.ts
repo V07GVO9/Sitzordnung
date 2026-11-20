@@ -1,4 +1,4 @@
-/** Notenverwaltung im Datenspeicher: Schema, Leistungsnachweise, Mitarbeit, Notenbogen. */
+/** Noten im Datenspeicher: Schema, Notenstand, Mitarbeit, Quartalsnoten. */
 
 import { AppError } from '../app-error';
 import { LocalStore } from './local-store';
@@ -26,6 +26,54 @@ function setup() {
   });
 
   return { store, schoolClass, course, anna, ben };
+}
+
+/**
+ * Legt einen Leistungsnachweis samt Noten direkt im Bestand an - so wie ihn
+ * eine ältere Datei mitbringt.
+ */
+function seedAssessment(
+  store: LocalStore,
+  courseId: number,
+  typeKey: string,
+  results: { studentId: number; grade: number }[] = [],
+): void {
+  const db = store.snapshot();
+  const id = db.nextIds.assessment++;
+  db.assessments.push({
+    id,
+    courseId,
+    typeKey,
+    title: 'Test',
+    date: '2026-10-05',
+    maxPoints: null,
+    releasedAt: MONDAY.toISOString(),
+    comment: null,
+  });
+  for (const { studentId, grade } of results) {
+    db.assessmentResults.push({
+      assessmentId: id,
+      studentId,
+      points: null,
+      grade,
+      status: 'graded',
+      comment: null,
+    });
+  }
+  store.load(db);
+}
+
+/** Setzt die Note einer Doppelstunde von Hand - wie in einer älteren Datei. */
+function seedOverride(
+  store: LocalStore,
+  courseId: number,
+  studentId: number,
+  lessonDate: string,
+  grade: number,
+): void {
+  const db = store.snapshot();
+  db.participationOverrides.push({ courseId, studentId, lessonDate, grade, reason: null });
+  store.load(db);
 }
 
 describe('LocalStore - Bewertungsschema', () => {
@@ -61,13 +109,7 @@ describe('LocalStore - Bewertungsschema', () => {
 
   it('lässt eine verwendete Art nicht entfernen', () => {
     const { store, course } = setup();
-    store.assessments.createAssessment(course.id, {
-      typeKey: 'test',
-      title: 'Test 1',
-      date: '2026-10-05',
-      maxPoints: null,
-      comment: null,
-    });
+    seedAssessment(store, course.id, 'test');
     const scheme = store.schemes.getScheme(course.id);
 
     expect(() =>
@@ -90,80 +132,6 @@ describe('LocalStore - Bewertungsschema', () => {
     store.schemes.copyScheme(course.id, [other.id]);
 
     expect(store.schemes.getScheme(other.id).writtenPercent).toBe(30);
-  });
-});
-
-describe('LocalStore - Leistungsnachweise', () => {
-  function withTest() {
-    const ctx = setup();
-    const assessment = ctx.store.assessments.createAssessment(ctx.course.id, {
-      typeKey: 'klassenarbeit',
-      title: 'Klassenarbeit 1',
-      date: '2026-10-05',
-      maxPoints: 100,
-      comment: null,
-    });
-    return { ...ctx, assessment };
-  }
-
-  it('rechnet Punkte in Noten um und zählt erst nach der Freigabe', () => {
-    const { store, course, assessment, anna } = withTest();
-    store.assessments.saveResults(assessment.id, [
-      { studentId: anna.id, points: 85, grade: null, status: 'graded', comment: null },
-    ]);
-
-    expect(store.assessments.getAssessmentDetail(assessment.id).results[0].effectiveGrade).toBe(2);
-    expect(store.gradeBook.getGradeBook(course.id).students[0].written).toBeNull();
-
-    store.assessments.setAssessmentReleased(assessment.id, true);
-    expect(store.gradeBook.getGradeBook(course.id).students[0].written).toBe(2);
-  });
-
-  it('lehnt Punkte über dem Maximum ab', () => {
-    const { store, assessment, anna } = withTest();
-
-    expect(() =>
-      store.assessments.saveResults(assessment.id, [
-        { studentId: anna.id, points: 101, grade: null, status: 'graded', comment: null },
-      ]),
-    ).toThrowError(AppError);
-  });
-
-  it('verlangt nach der Freigabe eine Begründung und protokolliert die Änderung', () => {
-    const { store, course, assessment, anna } = withTest();
-    store.assessments.saveResults(assessment.id, [
-      { studentId: anna.id, points: null, grade: 3.3, status: 'graded', comment: null },
-    ]);
-    store.assessments.setAssessmentReleased(assessment.id, true);
-
-    const change = [
-      { studentId: anna.id, points: null, grade: 3, status: 'graded' as const, comment: null },
-    ];
-    expect(() => store.assessments.saveResults(assessment.id, change)).toThrowError(AppError);
-    expect(store.assessments.getAssessmentDetail(assessment.id).results[0].grade).toBe(3.3);
-
-    store.assessments.saveResults(assessment.id, change, 'Korrekturfehler Aufgabe 3');
-    const log = store.gradeBook.getGradeChanges(course.id);
-
-    expect(log.length).toBe(1);
-    expect(log[0].oldValue).toBe('3,3');
-    expect(log[0].newValue).toBe('3,0');
-    expect(log[0].reason).toBe('Korrekturfehler Aufgabe 3');
-  });
-
-  it('sperrt Art und Punktzahl eines freigegebenen Nachweises', () => {
-    const { store, assessment } = withTest();
-    store.assessments.setAssessmentReleased(assessment.id, true);
-
-    expect(() =>
-      store.assessments.updateAssessment(assessment.id, {
-        typeKey: 'klassenarbeit',
-        title: 'Klassenarbeit 1',
-        date: '2026-10-05',
-        maxPoints: 80,
-        comment: null,
-      }),
-    ).toThrowError(AppError);
   });
 });
 
@@ -197,29 +165,19 @@ describe('LocalStore - Mitarbeit und Gesamtnote', () => {
     store.clock.setFixed(new Date('2026-10-12T11:30:00'));
     store.ratings.rate(course.id, anna.id, -2);
 
-    store.participation.setParticipationOverride(course.id, ben.id, '2026-10-05', null, 'krank');
+    store.participation.setAbsent(course.id, ben.id, '2026-10-05', true);
     const book = store.gradeBook.getGradeBook(course.id);
 
     expect(book.students.find((s) => s.studentId === anna.id)!.participation).toBe(3);
     expect(book.students.find((s) => s.studentId === ben.id)!.participation).toBe(3);
     expect(book.students.find((s) => s.studentId === ben.id)!.lessons[0].grade).toBeNull();
-    expect(store.gradeBook.getGradeChanges(course.id)[0].newValue).toBe('fehlte');
+    expect(store.snapshot().gradeChanges[0].newValue).toBe('fehlte');
   });
 
   it('verrechnet schriftlich und mündlich nach dem Schema', () => {
     const { store, course, anna } = setup();
     store.ratings.rate(course.id, anna.id, 2);
-    const test = store.assessments.createAssessment(course.id, {
-      typeKey: 'test',
-      title: 'Test',
-      date: '2026-10-05',
-      maxPoints: null,
-      comment: null,
-    });
-    store.assessments.saveResults(test.id, [
-      { studentId: anna.id, points: null, grade: 3, status: 'graded', comment: null },
-    ]);
-    store.assessments.setAssessmentReleased(test.id, true);
+    seedAssessment(store, course.id, 'test', [{ studentId: anna.id, grade: 3 }]);
 
     const row = store.gradeBook
       .getGradeBook(course.id)
@@ -230,72 +188,12 @@ describe('LocalStore - Mitarbeit und Gesamtnote', () => {
     expect(row.overall).toBe(2);
     expect(row.partial).toBeFalse();
   });
-
-  it('grenzt auf einen Zeitraum ein', () => {
-    const { store, course, anna } = setup();
-    store.ratings.rate(course.id, anna.id, 2);
-    const period = store.periods.savePeriod(null, {
-      name: '2. Halbjahr',
-      start: '2027-02-01',
-      end: '2027-07-31',
-    });
-
-    const reports = store.gradeBook.getStudentReports(course.id, [anna.id], period.id);
-
-    expect(reports[0].participation.lessonCount).toBe(0);
-    expect(reports[0].periodName).toBe('2. Halbjahr');
-  });
 });
 
-describe('LocalStore - Notenbogen', () => {
-  it('zeigt nur freigegebene Nachweise und vermerkt die Ausgabe', () => {
-    const { store, course, anna } = setup();
-    const draft = store.assessments.createAssessment(course.id, {
-      typeKey: 'test',
-      title: 'Entwurf',
-      date: '2026-10-05',
-      maxPoints: null,
-      comment: null,
-    });
-    store.assessments.saveResults(draft.id, [
-      { studentId: anna.id, points: null, grade: 2, status: 'graded', comment: null },
-    ]);
-
-    const reports = store.gradeBook.getStudentReports(course.id, [anna.id], null);
-    expect(reports[0].items.length).toBe(0);
-
-    store.gradeBook.recordReports(course.id, reports, null);
-    expect(store.gradeBook.getGradeReports(course.id).length).toBe(1);
-  });
-
-  it('stellt die Bögen zusammen und vermerkt sie in einem Schritt', () => {
-    const { store, course, anna, ben } = setup();
-
-    const reports = store.gradeBook.issueReports(course.id, [anna.id, ben.id], null);
-
-    expect(reports.map((r) => r.firstName)).toEqual(['Anna', 'Ben']);
-    expect(store.gradeBook.getGradeReports(course.id).length).toBe(2);
-  });
-
-  it('gibt ohne ausgewählten Schüler keinen Bogen aus', () => {
-    const { store, course } = setup();
-
-    expect(() => store.gradeBook.issueReports(course.id, [], null)).toThrowError(AppError);
-    expect(store.gradeBook.getGradeReports(course.id)).toEqual([]);
-  });
-
+describe('LocalStore - Leistungsdaten im Bestand', () => {
   it('räumt beim Löschen eines Schülers seine Noten mit weg', () => {
     const { store, course, anna } = setup();
-    const test = store.assessments.createAssessment(course.id, {
-      typeKey: 'test',
-      title: 'Test',
-      date: '2026-10-05',
-      maxPoints: null,
-      comment: null,
-    });
-    store.assessments.saveResults(test.id, [
-      { studentId: anna.id, points: null, grade: 2, status: 'graded', comment: null },
-    ]);
+    seedAssessment(store, course.id, 'test', [{ studentId: anna.id, grade: 2 }]);
 
     store.masterData.deleteStudent(anna.id);
 
@@ -398,66 +296,11 @@ describe('Quartalsnoten', () => {
   });
 });
 
-describe('LocalStore - Übernahme aus anderem Werkzeug', () => {
-  function oralKey(store: LocalStore, courseId: number): string {
-    return store.schemes.getScheme(courseId).types.find((t) => t.area === 'oral')!.key;
-  }
-
-  it('legt einen freigegebenen Nachweis mit den Noten an', () => {
-    const { store, course, anna, ben } = setup();
-
-    const assessment = store.assessments.importAssessment(course.id, {
-      typeKey: oralKey(store, course.id),
-      title: 'Mitarbeit (übernommen) LF3',
-      date: '2026-11-05',
-      comment: 'Übernommen aus KDM261.pdf',
-      results: [
-        { studentId: anna.id, grade: 2.6, comment: '1× ++, 2× +, 3× o, 1× -' },
-        { studentId: ben.id, grade: 2, comment: '6× +' },
-      ],
-    });
-
-    expect(assessment.released).toBeTrue();
-    expect(assessment.area).toBe('oral');
-    const detail = store.assessments.getAssessmentDetail(assessment.id);
-    const annaResult = detail.results.find((r) => r.studentId === anna.id)!;
-    expect(annaResult.grade).toBe(2.6);
-    expect(annaResult.comment).toBe('1× ++, 2× +, 3× o, 1× -');
-    expect(store.gradeBook.getGradeChanges(course.id)).toEqual([]);
-  });
-
-  it('legt bei Fehlern nichts an', () => {
-    const { store, course, anna } = setup();
-    const other = store.masterData.createClass('BFI10A');
-    const stranger = store.masterData.createStudent(other.id, 'Fremd', 'Person');
-
-    const attempt = (results: { studentId: number; grade: number; comment: null }[]) => () =>
-      store.assessments.importAssessment(course.id, {
-        typeKey: oralKey(store, course.id),
-        title: 'Mitarbeit',
-        date: '2026-11-05',
-        comment: null,
-        results,
-      });
-
-    expect(attempt([{ studentId: anna.id, grade: 7, comment: null }])).toThrowError(AppError);
-    expect(attempt([{ studentId: stranger.id, grade: 2, comment: null }])).toThrowError(AppError);
-    expect(
-      attempt([
-        { studentId: anna.id, grade: 2, comment: null },
-        { studentId: anna.id, grade: 3, comment: null },
-      ]),
-    ).toThrowError(AppError);
-    expect(attempt([])).toThrowError(AppError);
-    expect(store.assessments.getAssessments(course.id)).toEqual([]);
-  });
-});
-
 describe('LocalStore - Noten je Stunde', () => {
   it('zeigt jeden Unterrichtstag - Tage ganz ohne Bewertung zählen nicht', () => {
     const { store, course, anna, ben } = setup();
     store.ratings.rate(course.id, anna.id, 2, undefined, '2026-09-28', true);
-    store.participation.setParticipationOverride(course.id, ben.id, '2026-09-28', null, 'krank');
+    store.participation.setAbsent(course.id, ben.id, '2026-09-28', true);
 
     // 21.09. bis 05.10.: drei Montage, keine Ferien.
     const [sheet] = store.exports.getLessonSheets(course.id, {
@@ -530,14 +373,14 @@ describe('LocalStore - Abwesende im Unterricht', () => {
 
     expect(book.students.find((s) => s.studentId === ben.id)!.lessons[0].grade).toBeNull();
     expect(book.students.find((s) => s.studentId === ben.id)!.participation).toBeNull();
-    expect(store.gradeBook.getGradeChanges(course.id)[0].newValue).toBe('fehlte');
+    expect(store.snapshot().gradeChanges[0].newValue).toBe('fehlte');
   });
 
   it('nimmt nur das „fehlt“ zurück, eine von Hand gesetzte Note bleibt', () => {
     const { store, course, anna, ben } = setup();
     store.clock.setFixed(new Date('2026-10-05T11:30:00'));
     store.ratings.rate(course.id, anna.id, 2);
-    store.participation.setParticipationOverride(course.id, ben.id, '2026-10-05', 2);
+    seedOverride(store, course.id, ben.id, '2026-10-05', 2);
 
     store.participation.setAbsent(course.id, ben.id, '2026-10-05', false);
     expect(
@@ -552,19 +395,12 @@ describe('LocalStore - Abwesende im Unterricht', () => {
 });
 
 describe('LocalStore - Sicherungskopie und Schuljahreswechsel', () => {
-  it('merkt sich die letzte Sicherungskopie in der Datei - Einstellungen bleiben unberührt', () => {
+  it('merkt sich die letzte Sicherungskopie in der Datei', () => {
     const { store } = setup();
     expect(store.settings.getLastBackupAt()).toBeNull();
 
     store.settings.markBackup();
     expect(store.settings.getLastBackupAt()).toBe(MONDAY.toISOString());
-
-    store.settings.saveSettings({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
-    expect(store.settings.getLastBackupAt()).toBe(MONDAY.toISOString());
-    expect(store.settings.getSettings()).toEqual({
-      toleranceMinutes: 10,
-      allowRatingOutsideLesson: false,
-    });
   });
 
   it('setzt Klassen hoch, löscht Leistungsdaten und Stundenplan - Schüler und Kurse bleiben', () => {

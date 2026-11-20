@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { ModeService } from './mode.service';
 import { Course } from './models';
 import { LocalStore } from './store/local-store';
 
@@ -59,10 +58,4 @@ export class ActiveCourseService {
 export const activeCourseGuard: CanActivateFn = () => {
   const active = inject(ActiveCourseService);
   return active.hasCourse() || inject(Router).createUrlTree(['/']);
-};
-
-/** Die Auswertung braucht ein Fach - außer im Bearbeitungsmodus (Einstellungen, Datei). */
-export const evaluationGuard: CanActivateFn = () => {
-  const active = inject(ActiveCourseService);
-  return active.hasCourse() || inject(ModeService).isEdit() || inject(Router).createUrlTree(['/']);
 };

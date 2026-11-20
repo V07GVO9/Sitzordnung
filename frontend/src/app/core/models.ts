@@ -119,24 +119,6 @@ export interface CourseScoreboard {
   students: StudentScore[];
 }
 
-export interface GradeScaleEntry {
-  minPoints: number;
-  grade: string;
-}
-
-export interface GradeScale {
-  id: number;
-  courseId: number | null;
-  name: string;
-  isGlobalDefault: boolean;
-  entries: GradeScaleEntry[];
-}
-
-export interface GradeScaleInput {
-  name: string;
-  entries: GradeScaleEntry[];
-}
-
 export const WEEKDAY_NAMES: Record<number, string> = {
   1: 'Montag',
   2: 'Dienstag',
@@ -150,12 +132,7 @@ export const WEEKDAY_NAMES: Record<number, string> = {
 /** Die Wochentage in der Reihenfolge, in der ein Stundenplan sie zeigt. */
 export const SCHOOL_DAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
 
-export interface AppSettings {
-  toleranceMinutes: number;
-  allowRatingOutsideLesson: boolean;
-}
-
-/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
+/** Ein Zeitraum für Noten und Export. Beide Grenzen sind optional. */
 export interface DateRange {
   from?: string | null;
   to?: string | null;
@@ -262,26 +239,6 @@ export const AREA_LABELS: Record<GradeArea, string> = {
   oral: 'mündlich/sonstig',
 };
 
-export const STATUS_LABELS: Record<ResultStatus, string> = {
-  graded: 'bewertet',
-  excused: 'entschuldigt',
-  refused: 'verweigert',
-};
-
-/** Ein Zeitraum für die Notenbildung, etwa ein Halbjahr. */
-export interface GradingPeriod {
-  id: number;
-  name: string;
-  start: string;
-  end: string;
-}
-
-export interface GradingPeriodInput {
-  name: string;
-  start: string;
-  end: string;
-}
-
 export interface AssessmentType {
   key: string;
   label: string;
@@ -333,43 +290,6 @@ export interface Assessment {
   /** Durchschnitt der zählenden Noten. */
   average: number | null;
   gradedCount: number;
-}
-
-export interface AssessmentInput {
-  typeKey: string;
-  title: string;
-  date: string;
-  maxPoints: number | null;
-  comment: string | null;
-}
-
-/** Ein Leistungsnachweis mit fertigen Noten - etwa aus einem anderen Werkzeug übernommen. */
-export interface ImportedAssessmentInput {
-  typeKey: string;
-  title: string;
-  date: string;
-  comment: string | null;
-  results: { studentId: number; grade: number; comment: string | null }[];
-}
-
-export interface AssessmentResultInput {
-  studentId: number;
-  points: number | null;
-  grade: number | null;
-  status: ResultStatus;
-  comment: string | null;
-}
-
-export interface AssessmentResult extends AssessmentResultInput {
-  firstName: string;
-  lastName: string;
-  /** Die Note, mit der das Ergebnis zählt. */
-  effectiveGrade: number | null;
-}
-
-export interface AssessmentDetail {
-  assessment: Assessment;
-  results: AssessmentResult[];
 }
 
 /** Eine Doppelstunde aus Sicht eines Schülers. */
@@ -445,63 +365,6 @@ export interface LessonSheet {
     cells: LessonSheetCell[];
     average: number | null;
   }[];
-}
-
-export interface GradeChange {
-  id: number;
-  studentId: number;
-  studentName: string;
-  what: string;
-  oldValue: string;
-  newValue: string;
-  reason: string | null;
-  changedAt: string;
-}
-
-export interface GradeReport {
-  id: number;
-  studentId: number;
-  studentName: string;
-  periodId: number | null;
-  periodName: string | null;
-  issuedAt: string;
-  written: number | null;
-  oral: number | null;
-  overall: number | null;
-}
-
-/** Eine Zeile im Notenbogen. */
-export interface ReportItem {
-  date: string;
-  title: string;
-  typeLabel: string;
-  area: GradeArea;
-  weight: number;
-  grade: number | null;
-  status: ResultStatus | null;
-}
-
-/** Alles, was im Notenbogen eines Schülers steht. */
-export interface StudentReport {
-  studentId: number;
-  firstName: string;
-  lastName: string;
-  schoolClassName: string;
-  subjectName: string;
-  periodName: string;
-  issuedAt: string;
-  writtenPercent: number;
-  items: ReportItem[];
-  participation: {
-    lessonCount: number;
-    countedCount: number;
-    average: number | null;
-    weight: number;
-  };
-  written: number | null;
-  oral: number | null;
-  overall: number | null;
-  partial: boolean;
 }
 
 /** Die vier Quartale des Schuljahres. */

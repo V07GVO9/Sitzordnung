@@ -20,6 +20,7 @@ import {
 } from './core/persistence/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/persistence/vault.service';
+import { BackupService } from './core/persistence/backup.service';
 import { ToastHost } from './core/ui/toast-host';
 import { ToastService } from './core/ui/toast.service';
 import { ConfirmHost } from './core/ui/confirm-host';
@@ -41,7 +42,6 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
 /** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
 const SHORT_TITLES: Record<string, string> = {
   verwaltung: 'Verwaltung',
-  auswertung: 'Auswertung',
 };
 
 /** Titel der Seiten in der Kopfleiste. */
@@ -50,13 +50,12 @@ const PAGE_TITLES: Record<string, string> = {
   noten: 'Noten',
   stundenplan: 'Stundenplan',
   verwaltung: 'Klassen, Fächer & Schüler',
-  auswertung: 'Auswertung & Einstellungen',
   einrichtung: 'Einrichtung',
   schuljahr: 'Schuljahreswechsel',
 };
 
 /** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */
-const COURSE_PAGES = new Set(['kurs', 'noten', 'auswertung']);
+const COURSE_PAGES = new Set(['kurs', 'noten']);
 
 function courseTitle(course: Course): string {
   return `${course.subjectName} · ${course.schoolClassName}`;
@@ -92,6 +91,7 @@ export class App implements OnDestroy {
   private readonly router = inject(Router);
   private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
+  private readonly backups = inject(BackupService);
   private readonly toasts = inject(ToastService);
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
@@ -148,13 +148,13 @@ export class App implements OnDestroy {
 
   /** Der Titel der aktuellen Seite in der Kopfleiste. */
   readonly title = computed(() => {
-    const [page = '', , sub] = this.path();
+    const [page = ''] = this.path();
     const course = this.activeCourse();
     if (page === 'kurs') {
-      return course ? courseTitle(course) + (sub === 'noten' ? ' – Noten' : '') : '';
+      return course ? courseTitle(course) : '';
     }
     const title = PAGE_TITLES[page] ?? '';
-    // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
+    // Die Noten zeigen, für welches Fach sie gerade gelten.
     return course && COURSE_PAGES.has(page) ? `${title} – ${courseTitle(course)}` : title;
   });
   /**
@@ -162,10 +162,10 @@ export class App implements OnDestroy {
    * die Klasse - z. B. „INF BFI10A · Noten“.
    */
   readonly shortTitle = computed(() => {
-    const [page = '', , sub] = this.path();
+    const [page = ''] = this.path();
     const course = this.activeCourse();
     if (page === 'kurs') {
-      return course ? course.schoolClassName + (sub === 'noten' ? ' · Noten' : '') : '';
+      return course ? course.schoolClassName : '';
     }
     const title = SHORT_TITLES[page] ?? PAGE_TITLES[page] ?? '';
     return course && COURSE_PAGES.has(page) ? `${course.schoolClassName} · ${title}` : title;
@@ -278,12 +278,12 @@ export class App implements OnDestroy {
     void this.pwa.install();
   }
 
-  /** Speichert eine verschlüsselte Sicherungskopie an einem gewählten Ort, die Arbeitsdatei bleibt. */
+  /** Speichert eine verschlüsselte Sicherungskopie in OneDrive, die Arbeitsdatei bleibt. */
   async backup(): Promise<void> {
     this.closeMenu();
     try {
-      await this.vault.saveBackupCopy();
-      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
+      await this.backups.createBackup();
+      this.toasts.success('Sicherungskopie in OneDrive gespeichert.');
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');
