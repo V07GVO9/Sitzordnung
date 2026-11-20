@@ -11,7 +11,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { ActiveCourseService } from '../../core/active-course.service';
 import {
+  Course,
   GradeArea,
+  GradingScheme,
   QUARTERS,
   Quarter,
   QuarterGrade,
@@ -27,6 +29,7 @@ import { downloadExport } from '../../core/persistence/file-system';
 import { LocalStore } from '../../core/store/local-store';
 import { ToastService } from '../../core/ui/toast.service';
 import { Icon } from '../../core/ui/icon';
+import { SchemeEditor } from './scheme-editor';
 
 function initialQuarter(param: string | null): Quarter {
   const q = Number(param);
@@ -49,7 +52,7 @@ interface Row {
 @Component({
   selector: 'app-quarter-grades',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
+  imports: [Icon, SchemeEditor],
   template: `
     <div class="stack">
       <div class="page-head">
@@ -110,8 +113,7 @@ interface Row {
           </label>
           <span>· mündlich {{ 100 - writtenPercent() }} %</span>
           <span class="muted small">
-            Gilt für {{ course()?.subjectName }} in {{ course()?.schoolClassName }} - auch in der
-            Notenverwaltung.
+            Gilt für {{ course()?.subjectName }} in {{ course()?.schoolClassName }}.
           </span>
         </div>
 
@@ -202,6 +204,26 @@ interface Row {
             eingetragen) · * vorläufig - ein Bereich hat noch keine Note.
           </p>
         </div>
+
+        <div>
+          <button
+            class="btn"
+            type="button"
+            [attr.aria-expanded]="showScheme()"
+            (click)="showScheme.set(!showScheme())"
+          >
+            <app-icon name="settings" />
+            {{ showScheme() ? 'Bewertungsschema ausblenden' : 'Bewertungsschema bearbeiten' }}
+          </button>
+        </div>
+        @if (showScheme() && scheme(); as s) {
+          <app-scheme-editor
+            [scheme]="s"
+            [course]="course()"
+            [otherCourses]="otherCourses()"
+            (changed)="load(s.courseId)"
+          />
+        }
       }
     </div>
   `,
@@ -344,6 +366,12 @@ export class QuarterGradesPage {
   /** Anteil schriftlich in Prozent - aus dem Bewertungsschema des Kurses. */
   readonly writtenPercent = signal(50);
 
+  /** Bewertungsschema des Kurses: Gewichtung, Prozentschlüssel, Mitarbeitsnoten. */
+  readonly scheme = signal<GradingScheme | null>(null);
+  readonly showScheme = signal(false);
+  /** Die übrigen Kurse - auf sie lässt sich das Schema übertragen. */
+  readonly otherCourses = signal<Course[]>([]);
+
   readonly rows = computed<Row[]>(() => {
     const byKey = new Map<string, QuarterGrade>();
     for (const g of this.grades()) {
@@ -378,14 +406,17 @@ export class QuarterGradesPage {
     });
   }
 
-  private load(id: number): void {
+  load(id: number): void {
     try {
       this.students.set(this.store.masterData.getCourseStudents(id));
     } catch (err) {
       this.toasts.error(err, 'Die Schüler konnten nicht geladen werden.');
     }
     try {
-      this.writtenPercent.set(this.store.schemes.getScheme(id).writtenPercent);
+      const scheme = this.store.schemes.getScheme(id);
+      this.scheme.set(scheme);
+      this.writtenPercent.set(scheme.writtenPercent);
+      this.otherCourses.set(this.store.masterData.getCourses().filter((c) => c.id !== id));
     } catch (err) {
       this.toasts.error(err, 'Die Gewichtung konnte nicht geladen werden.');
     }
@@ -439,7 +470,9 @@ export class QuarterGradesPage {
     }
     try {
       const scheme = this.store.schemes.getScheme(courseId);
-      this.store.schemes.saveScheme(courseId, { ...scheme, writtenPercent: percent });
+      this.scheme.set(
+        this.store.schemes.saveScheme(courseId, { ...scheme, writtenPercent: percent }),
+      );
       this.writtenPercent.set(percent);
       this.toasts.success('Die Gewichtung wurde gespeichert.');
     } catch (err) {

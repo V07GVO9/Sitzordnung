@@ -1,10 +1,15 @@
-// Gemeinsame Stile der Reiter der Notenseite.
-@use './grades-common';
-
-// Der Reiter selbst nimmt keinen Platz ein - seine Karten reihen sich direkt
+// Der Editor selbst nimmt keinen Platz ein - seine Karten reihen sich direkt
 // in die Seite ein, als stünden sie dort.
 :host {
   display: contents;
+}
+
+.filter {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
 }
 
 // Den Abstand zwischen den Karten gibt schon die Seite (.stack) vor.

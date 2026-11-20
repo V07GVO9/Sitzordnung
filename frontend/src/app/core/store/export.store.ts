@@ -18,8 +18,8 @@ import {
 import { schoolYearOf } from '../logic/quarter.logic';
 import { freeDayReason } from '../logic/school-calendar';
 import { fileNamePart } from '../logic/text';
-import { formatDateGerman, toDateKey, toTimeKey } from '../logic/time';
-import { AREA_LABELS, Course, DateRange, DayOfWeek, ExportFile, LessonSheet } from '../models';
+import { toDateKey, toTimeKey } from '../logic/time';
+import { Course, DateRange, DayOfWeek, ExportFile, LessonSheet } from '../models';
 import { GradeBookStore } from './grade-book.store';
 import {
   allCourses,
@@ -50,49 +50,6 @@ export class ExportStore extends StorePart {
     private readonly gradeBook: GradeBookStore,
   ) {
     super(state);
-  }
-
-  /** Die Notenübersicht als CSV - eine Zeile je Schüler. */
-  exportGradeBook(courseId: number, range?: DateRange): ExportFile {
-    const book = this.gradeBook.getGradeBook(courseId, range);
-    const released = book.assessments.filter((a) => a.released);
-    const csv = new CsvBuilder();
-
-    csv.addRow(
-      'Klasse',
-      'Fach/Lernfeld',
-      'Nachname',
-      'Vorname',
-      ...released.map((a) => `${a.title} (${formatDateGerman(a.date)})`),
-      'Mitarbeit',
-      `Schriftlich (${book.scheme.writtenPercent} %)`,
-      `${AREA_LABELS.oral} (${100 - book.scheme.writtenPercent} %)`,
-      'Gesamt',
-    );
-
-    const value = (grade: number | null) => (grade === null ? null : Math.round(grade * 100) / 100);
-
-    for (const student of book.students) {
-      csv.addRow(
-        book.schoolClassName,
-        book.subjectName,
-        student.lastName,
-        student.firstName,
-        ...released.map((a) => value(student.assessmentGrades[a.id] ?? null)),
-        value(student.participation),
-        value(student.written),
-        value(student.oral),
-        value(student.overall),
-      );
-    }
-
-    return {
-      blob: csv.toBlob(),
-      fileName:
-        `noten-${fileNamePart(book.schoolClassName)}-` +
-        `${fileNamePart(book.subjectShortName || book.subjectName)}-` +
-        `${this.today()}.csv`,
-    };
   }
 
   // --- Noten je Unterrichtstag --------------------------------------------

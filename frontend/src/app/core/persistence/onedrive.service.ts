@@ -442,10 +442,7 @@ function writeLastUser(username: string | null): void {
 
 /** Ein Pfad in OneDrive, je Abschnitt maskiert: „/Ordner/Unterordner/Datei“. */
 function drivePath(folder: string, fileName?: string): string {
-  return `/${folder}${fileName ? '/' + fileName : ''}`
-    .split('/')
-    .map(encodeURIComponent)
-    .join('/');
+  return `/${folder}${fileName ? '/' + fileName : ''}`.split('/').map(encodeURIComponent).join('/');
 }
 
 async function requireOk(response: Response, message: string): Promise<void> {

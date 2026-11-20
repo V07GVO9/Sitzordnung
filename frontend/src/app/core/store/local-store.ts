@@ -17,7 +17,6 @@ import { GradeBookStore } from './grade-book.store';
 import { GradeScaleStore } from './grade-scale.store';
 import { MasterDataStore } from './master-data.store';
 import { ParticipationStore } from './participation.store';
-import { PeriodStore } from './period.store';
 import { QuarterGradeStore } from './quarter-grade.store';
 import { RatingStore } from './rating.store';
 import { SchemeStore } from './scheme.store';
@@ -57,8 +56,6 @@ export class LocalStore {
   readonly gradeScales = new GradeScaleStore(this.state);
   /** Wer fehlte und welche Stundennote von Hand gesetzt wurde. */
   readonly participation = new ParticipationStore(this.state);
-  /** Notenzeiträume wie „1. Halbjahr“. */
-  readonly periods = new PeriodStore(this.state);
   /** Bewertungsschema je Kurs. */
   readonly schemes = new SchemeStore(this.state);
   /** Leistungsnachweise und ihre Ergebnisse. */

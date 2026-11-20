@@ -20,11 +20,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/course/course').then((m) => m.CoursePage),
   },
   {
-    path: 'kurs/:courseId/noten',
-    title: 'Noten',
-    loadComponent: () => import('./pages/grades/grades').then((m) => m.GradesPage),
-  },
-  {
     path: 'noten',
     canActivate: [activeCourseGuard],
     title: 'Noten',

@@ -150,10 +150,10 @@ export class App implements OnDestroy {
 
   /** Der Titel der aktuellen Seite in der Kopfleiste. */
   readonly title = computed(() => {
-    const [page = '', , sub] = this.path();
+    const [page = ''] = this.path();
     const course = this.activeCourse();
     if (page === 'kurs') {
-      return course ? courseTitle(course) + (sub === 'noten' ? ' – Noten' : '') : '';
+      return course ? courseTitle(course) : '';
     }
     const title = PAGE_TITLES[page] ?? '';
     // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
@@ -164,10 +164,10 @@ export class App implements OnDestroy {
    * die Klasse - z. B. „INF BFI10A · Noten“.
    */
   readonly shortTitle = computed(() => {
-    const [page = '', , sub] = this.path();
+    const [page = ''] = this.path();
     const course = this.activeCourse();
     if (page === 'kurs') {
-      return course ? course.schoolClassName + (sub === 'noten' ? ' · Noten' : '') : '';
+      return course ? course.schoolClassName : '';
     }
     const title = SHORT_TITLES[page] ?? PAGE_TITLES[page] ?? '';
     return course && COURSE_PAGES.has(page) ? `${course.schoolClassName} · ${title}` : title;

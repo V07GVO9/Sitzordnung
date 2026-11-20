@@ -8,6 +8,19 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
 
 ---
 
+## 20.11.2026
+
+**Geändert**
+- **Sicherungskopie:** Wird ohne Rückfrage in OneDrive unter
+  *Sitzordnung-App/Sicherheitskopien* abgelegt. Ob eine neue fällig ist, richtet
+  sich nach der neuesten Kopie dort – auf allen Geräten gleich.
+- **Notenverwaltung entfernt:** Der Menüpunkt und die Seite (Übersicht,
+  Leistungsnachweise, Mitarbeit, Notenbögen, Protokoll) sind weggefallen. Das
+  **Bewertungsschema** steht jetzt unter Menü ☰ → *Noten* →
+  *Bewertungsschema bearbeiten*.
+
+---
+
 ## 15.11.2026
 
 **Neu**

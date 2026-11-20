@@ -30,32 +30,22 @@ Die ausführliche Anleitung für Lehrkräfte steht im
 | Mitarbeitsnoten | Jeder Schüler startet bei 0 Punkten und wird mit `++`, `+`, `−` oder `−−` bewertet |
 | Stundenplan | Wochenplan je Kurs; nur währenddessen sind Bewertungen möglich |
 | Notenschlüssel | Punktegrenzen frei festlegen – allgemein oder eigens für einen Kurs |
-| Sicherheit im Alltag | Sicherungskopie mit Erinnerung nach 7 Tagen, automatische Sperre |
+| Sicherheit im Alltag | Sicherungskopie in OneDrive mit Erinnerung nach 7 Tagen, automatische Sperre |
 | Schuljahreswechsel | Klassen hochsetzen oder entfernen, Leistungsdaten des alten Jahres löschen, Stundenplan leeren – nach Pflicht-Sicherungskopie |
 | Export | Punktestand und Einzelbewertungen jederzeit als CSV, wahlweise für einen Zeitraum |
-| Noten | Je Kurs (Lernfeld/Fach) schriftliche und mündliche Noten mit Bewertungsschema, Notenstand und Notenbogen je Schüler – siehe unten |
+| Noten | Je Kurs (Lernfeld/Fach) und Quartal schriftliche und mündliche Noten mit Bewertungsschema – siehe unten |
 
 ## Noten
 
-Jeder Kurs hat unter **Menü ☰ → Notenverwaltung** eine eigene Notenverwaltung. In KDM wird
+Unter **Menü ☰ → Noten** stehen je Kurs (Lernfeld/Fach) und Quartal die Noten:
+schriftlich in Prozent (die Note folgt aus dem Prozentschlüssel), mündlich als
+Note – vorausgefüllt mit dem Durchschnitt der Mitarbeit im Quartal. In KDM wird
 jedes Lernfeld als eigenes Fach angelegt (z. B. „LF3 …", Kürzel LF3) – so bekommt
 jedes Lernfeld eine eigene Note und ein eigenes Bewertungsschema.
 
-| Reiter | Inhalt |
-| --- | --- |
-| Übersicht | Alle Schüler mit Einzelnoten, Mitarbeit, schriftlich, mündlich und Gesamtnote (Noten mit Komma); Hinweise bei Note schlechter als 4,0 oder fehlenden Noten |
-| Leistungsnachweise | Klassenarbeit, Test, Referat … mit Datum anlegen, Punkte oder Noten eintragen, Notenspiegel. Zählt erst nach **Freigabe** |
-| Mitarbeit | Je Doppelstunde eine Note aus `++ + − −−` (1,0 · 2,0 · 4,0 · 5,0; ohne Bewertung 3,0). Einzeln überschreibbar oder „fehlte" |
-| Bewertungsschema | Gewichtung schriftlich/mündlich, Arten mit Gewicht, Punkteschlüssel (Vorlage IHK), Mitarbeitsnoten; auf andere Lernfelder übertragbar |
-| Notenbögen | Je Schüler ein Bogen mit seinem Stand – drucken/PDF oder als HTML-Datei; jede Ausgabe wird vermerkt |
-| Protokoll | Jede Änderung an freigegebenen Noten und jede von Hand gesetzte Mitarbeitsnote, mit Begründung |
-
-**Rechenweg:** Eine Doppelstunde zählt, sobald im Kurs an dem Tag jemand
-bewertet wurde. Die Mitarbeit ist der Durchschnitt dieser Stundennoten und geht
-mit ihrem Gewicht als eine Einzelnote in den mündlichen Bereich ein. Ein Bereich
-ist der gewichtete Durchschnitt seiner Einzelnoten; die Gesamtnote verrechnet
-beide Bereiche nach dem Anteil im Schema. Fehlt ein Bereich noch, ist die
-Gesamtnote vorläufig (*). Zeiträume wie „1. Halbjahr" grenzen alles ein.
+**Bewertungsschema bearbeiten** (auf derselben Seite): Gewichtung
+schriftlich/mündlich, Arten mit Gewicht, Prozentschlüssel (Vorlage IHK) und
+Mitarbeitsnoten je Doppelstunde; auf andere Lernfelder übertragbar.
 
 Die Vorgaben im Schema sind nur ein Vorschlag – verbindlich sind Schulgesetz,
 Verordnungen und Konferenzbeschlüsse.
