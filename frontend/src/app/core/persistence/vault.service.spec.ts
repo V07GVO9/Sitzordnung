@@ -521,7 +521,7 @@ describe('VaultService', () => {
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({});
       const vault = TestBed.inject(VaultService);
-      vault.setAutoSaveToFile(false);
+      vault.autoSaveToFile.set(false);
       vault.lastLocalFile.set(handle);
       return { vault, store: TestBed.inject(LocalStore), confirm: TestBed.inject(ConfirmService) };
     }
@@ -532,7 +532,7 @@ describe('VaultService', () => {
       const vault = TestBed.inject(VaultService);
       const store = TestBed.inject(LocalStore);
       vorherAutoSave = vault.autoSaveToFile();
-      vault.setAutoSaveToFile(false);
+      vault.autoSaveToFile.set(false);
 
       await oeffne(vault, handle);
       store.masterData.createClass('10a');
@@ -546,7 +546,7 @@ describe('VaultService', () => {
     afterEach(async () => {
       const vault = TestBed.inject(VaultService);
       await vault.closeVault();
-      vault.setAutoSaveToFile(vorherAutoSave);
+      vault.autoSaveToFile.set(vorherAutoSave);
     });
 
     it('übernimmt ungesicherte Änderungen beim Öffnen ohne Rückfrage', async () => {

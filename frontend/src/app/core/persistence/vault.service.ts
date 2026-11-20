@@ -264,15 +264,6 @@ export class VaultService {
     }
   }
 
-  setAutoSaveToFile(enabled: boolean): void {
-    this.autoSaveToFile.set(enabled);
-    try {
-      localStorage.setItem(AUTOSAVE_PREF_KEY, enabled ? '1' : '0');
-    } catch {
-      // Ohne Speicher gilt die Wahl nur bis zum Neuladen.
-    }
-  }
-
   /**
    * Schreibt still in die Datei, sofern der Browser das ohne Rückfrage
    * erlaubt. Sonst bleibt der Bestand als „nicht gespeichert“ markiert.
@@ -498,25 +489,6 @@ export class VaultService {
     this.setHandle(handle);
     this.fileName.set(handle.name);
     this.lastSavedAt.set(new Date());
-  }
-
-  /** Legt den geöffneten Bestand als neue Datei in OneDrive ab und arbeitet dort weiter. */
-  async moveToOneDrive(name: string): Promise<void> {
-    if (!this.store.isOpen() || this.password === null) {
-      throw new AppError('Es ist kein Datenbestand geöffnet.');
-    }
-
-    // Erst anmelden, solange das Anmeldefenster noch als Folge des Klicks gilt.
-    await this.oneDrive.ensureToken(true);
-    const blob = await encryptDatabase(this.store.snapshot(), this.password);
-    const handle = await this.oneDrive.create(name, blob);
-    const previousName = this.fileName();
-    this.baseHash = await fingerprint(await blob.text());
-    this.setHandle(handle);
-    this.fileName.set(handle.name);
-    this.store.markSaved();
-    this.lastSavedAt.set(new Date());
-    await this.dropAutosaveOf(previousName);
   }
 
   // --- Auf diesem Gerät merken --------------------------------------------
@@ -800,22 +772,6 @@ export class VaultService {
     );
     this.store.settings.markBackup();
     return createdAt;
-  }
-
-  /** Fragt nach einer neuen Datei und speichert dorthin. */
-  async saveAs(): Promise<void> {
-    const previousName = this.fileName();
-    if (this.canWriteInPlace) {
-      const handle = await chooseSaveFile(this.fileName() ?? DEFAULT_FILE_NAME);
-      if (handle) {
-        this.setHandle(handle);
-        this.fileName.set(handle.name);
-      }
-    }
-
-    await this.save();
-    await this.dropAutosaveOf(previousName);
-    await this.rememberLocalFile(this.handle);
   }
 
   /** Vergibt ein neues Passwort. Wirksam wird es mit dem nächsten Speichern. */

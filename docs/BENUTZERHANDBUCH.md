@@ -7,7 +7,7 @@ Technische Hinweise zu Installation und Entwicklung stehen in der
 
 > Dieses Handbuch wird jeden Donnerstag automatisch mit dem aktuellen Stand der
 > App abgeglichen. Neue Funktionen kommen dabei hinzu, das
-> [Änderungsverzeichnis](#14-änderungsverzeichnis) am Ende zeigt, was sich
+> [Änderungsverzeichnis](#13-änderungsverzeichnis) am Ende zeigt, was sich
 > geändert hat.
 
 ## Inhalt
@@ -21,11 +21,10 @@ Technische Hinweise zu Installation und Entwicklung stehen in der
 7. [Mitarbeit bewerten](#7-mitarbeit-bewerten)
 8. [Die Bereiche einer Klasse](#8-die-bereiche-einer-klasse)
 9. [Bewertungsschema](#9-bewertungsschema)
-10. [Auswertung, Export und Einstellungen](#10-auswertung-export-und-einstellungen)
-11. [Speichern, Datei und Passwort](#11-speichern-datei-und-passwort)
-12. [Android-App und Installation als App](#12-android-app-und-installation-als-app)
-13. [Häufige Fragen](#13-häufige-fragen)
-14. [Änderungsverzeichnis](#14-änderungsverzeichnis)
+10. [Speichern, Datei und Passwort](#10-speichern-datei-und-passwort)
+11. [Android-App und Installation als App](#11-android-app-und-installation-als-app)
+12. [Häufige Fragen](#12-häufige-fragen)
+13. [Änderungsverzeichnis](#13-änderungsverzeichnis)
 
 ---
 
@@ -96,10 +95,10 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 | Bereich | Inhalt |
 | --- | --- |
 | **Seitenleiste links** | Umschalter **Klassen** (alle Klassen mit Schülerzahl und Fächern) oder **Tagesansicht** (Unterricht eines Tages laut Stundenplan, mit ‹ › blättern, Klick aufs Datum = heute). Laufende Stunden sind mit „läuft“ markiert. |
-| **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), Auswertung, **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
-| **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit, Noten und Auswertung zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
+| **Symbolleiste unten links** | Stundenplan und Verwaltung (nur im Bearbeitungsmodus), **Speichern-Knopf** mit Zustand (gespeichert / ungespeichert / speichert). |
+| **Titelleiste** | Steht fest oben auf der Seite und scrollt mit dem Inhalt weg; zum Wiedersehen nach oben scrollen. Auf Mitarbeit und Noten zeigt der Titel das Fach mit Kürzel in der Fachfarbe; auf dem Handy in Kurzform (z. B. „INF BFI10A · Noten“), und der Modusschalter zeigt dort nur den Knopf zum Wechseln. Der Speichern-Knopf rechts zeigt den Speicherstand (Haken = gespeichert, Diskette auf Gelb = ungespeichert). Enthält Menüknopf ☰, Wochenplan, Modusschalter **Unterricht \| Bearbeiten**, bei laufender Stunde ein Hinweis-Knopf, der direkt zur Stunde führt. |
 | **Reiter unten** | Bei gewählter Klasse: **Übersicht, Schüler, Mitarbeit, Noten**. |
-| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Auswertung & Export, Notenschlüssel, App-Einstellungen, Darstellung, Speichern, Datei & Passwort, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
+| **Menü (drei Balken)** | Knopf ☰ links in der Titelleiste; Klick daneben oder <kbd>Esc</kbd> schließt es. Oben das **aktuelle Fach**, darunter Modus wechseln, Klassen & Fächer, Schüler, Stundenplan, Noten, Darstellung, Speichern, Sicherungskopie, Passwort ändern, Als App installieren. Im Unterrichtsmodus lässt sich das Menü erst öffnen, wenn im Wochenplan eine Stunde gewählt ist; im Bearbeitungsmodus immer. |
 
 - Die Seitenleiste lässt sich über das Symbol oben rechts ein- und ausblenden.
   Auf schmalen Geräten liegt sie als Schublade über dem Inhalt.
@@ -114,8 +113,8 @@ Der Aufbau ist an die iPad-App „Meine Klassenmappe“ angelehnt.
 
 | Modus | Was geht | Was nicht geht |
 | --- | --- | --- |
-| **Unterricht** (Standard) | Bewerten, Stundenplan und Klassen ansehen, auswerten, exportieren, Noten verwalten | Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen ändern |
-| **Bearbeiten** | Klassen, Fächer, Schüler, Stundenplan, Sitzpläne, Notenschlüssel, Einstellungen, Datei & Passwort ändern | Bewerten |
+| **Unterricht** (Standard) | Bewerten, Stundenplan und Klassen ansehen, Noten eintragen | Klassen, Schüler, Stundenplan, Sitzpläne und Einstellungen ändern |
+| **Bearbeiten** | Klassen, Fächer, Schüler, Stundenplan und Sitzpläne ändern | Bewerten |
 
 - **Bearbeiten starten:** Schalter **Bearbeiten** in der Titelleiste oder im
   Menü. Die App fragt zur Sicherheit nach.
@@ -314,8 +313,8 @@ Bewerten geht nur, **während der Kurs laut Stundenplan läuft**.
 - **Notfall-Freigabe**: hebt die Sperre ganz auf, z. B. bei kurzfristigen
   Planänderungen.
 
-Beides unter **Auswertung → Einstellungen** (siehe
-[Abschnitt 10](#reiter-einstellungen)).
+Beides steht in der Datei (Standard: 15 Minuten, Notfall-Freigabe aus) und
+lässt sich in der App nicht mehr umstellen.
 
 ---
 
@@ -350,7 +349,6 @@ Klasse in der Seitenleiste wählen; unten erscheinen vier Reiter.
 - Fach oben wählen.
 - Je Schüler: Verteilung der Bewertungen, **Punkte** und **Note** laut
   Notenschlüssel, oben der Durchschnitt.
-- **Export** öffnet die Auswertung.
 
 ---
 
@@ -377,43 +375,7 @@ Wochenplan eine Stunde gewählt ist). Das Schema gilt je Kurs.
 
 ---
 
-## 10. Auswertung, Export und Einstellungen
-
-Menü → **Auswertung & Export** (oder Diagramm-Symbol unten links).
-
-### Reiter „Punkte & Export“
-
-1. Ausgewertet wird das Fach, das im Wochenplan gewählt ist. Optional Zeitraum
-   **Von/Bis** (leer = gesamter Zeitraum).
-2. Tabelle: Name, Punkte, Anzahl Bewertungen, Punkte heute, Note.
-3. Export als CSV (öffnet sich in Excel/LibreOffice):
-   - **Punktestand (CSV)** – das gewählte Fach,
-   - **Einzelbewertungen** – jede Bewertung einzeln,
-   - **Alle Kurse** – Punktestände aller Kurse.
-
-### Reiter „Notenschlüssel“ *(Bearbeitungsmodus)*
-
-Legt fest, ab wie vielen **Mitarbeitspunkten** welche Note gilt.
-
-1. **Für alle Kurse** oder **Nur [Kurs]** wählen.
-2. Bezeichnung vergeben, Stufen eintragen („ab … Punkten → Note“),
-   **Stufe hinzufügen** / ✕.
-3. **Übernehmen**. Einen kurseigenen Schlüssel entfernt **Eigenen Schlüssel
-   entfernen** – dann gilt wieder der allgemeine.
-
-### Reiter „Einstellungen“ *(Bearbeitungsmodus)*
-
-- **Kulanzzeit** vor und nach der Stunde (0–120 Minuten).
-- **Notfall-Freigabe:** Bewerten auch außerhalb des Stundenplans. Solange sie
-  aktiv ist, zeigt die App einen Warnhinweis.
-
-### Reiter „Datei“ *(Bearbeitungsmodus)*
-
-Siehe [Abschnitt 11](#11-speichern-datei-und-passwort).
-
----
-
-## 11. Speichern, Datei und Passwort
+## 10. Speichern, Datei und Passwort
 
 ### Speichern
 
@@ -462,13 +424,6 @@ die Datei schreibt, müssen drei Dinge stimmen.
 
 Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Datei.
 
-**Schritt 4 (nur falls nötig): Den Schalter prüfen**
-
-1. **☰ → Bearbeitungsmodus starten** → mit **Bearbeiten** bestätigen.
-2. **☰ → Datei & Passwort**.
-3. Haken bei **„Nach jeder Änderung automatisch in die Datei speichern“** setzen.
-4. **☰ → Zurück zum Unterricht**.
-
 **Gut zu wissen**
 
 - Die Einstellung gilt **nur für dieses Gerät**.
@@ -476,17 +431,6 @@ Ab jetzt speichert die App **sofort nach jeder Änderung** von selbst in die Dat
   Erlaubnis – dann Schritt 3 wiederholen.
 - Hat ein **anderes Gerät** zwischendurch gespeichert, pausiert das automatische
   Speichern, bis entschieden ist, welcher Stand gilt.
-
-### Reiter „Datei“ (Auswertung → Datei)
-
-- **Automatisch speichern** ein-/ausschalten (gilt je Gerät).
-- Bei OneDrive: **Auf diesem Gerät merken** ein-/ausschalten.
-- **Speichern unter …** – Kopie an anderem Ort/mit anderem Namen.
-- **In OneDrive ablegen** – lokalen Bestand nach OneDrive verschieben;
-  danach öffnet jedes Gerät denselben Stand.
-- **Passwort ändern:** bisheriges und neues Passwort →
-  **Passwort ändern und speichern**. Ältere Sicherungskopien behalten ihr altes
-  Passwort.
 
 ### Passwort ändern
 
@@ -560,7 +504,7 @@ Bewertungsschemata. Danach öffnet sich der Einrichtungs-Assistent – meist feh
 nur noch der neue Stundenplan. Rückgängig machen lässt sich der Wechsel nur über
 die Sicherungskopie.
 
-## 12. Android-App und Installation als App
+## 11. Android-App und Installation als App
 
 - **Als App installieren** (Chrome/Edge): Menü → **Als App installieren**.
   Die App bekommt ein eigenes Symbol und startet auch ohne Internet. Liegt eine
@@ -573,7 +517,7 @@ die Sicherungskopie.
 
 ---
 
-## 13. Häufige Fragen
+## 12. Häufige Fragen
 
 **Ich kann nicht bewerten.**
 Prüfen: (1) Unterrichtsmodus aktiv? (2) Läuft der Kurs laut Stundenplan?
@@ -601,7 +545,7 @@ sich weiterhin in der Verwaltung löschen. Löschfristen liegen bei der Lehrkraf
 
 ---
 
-## 14. Änderungsverzeichnis
+## 13. Änderungsverzeichnis
 
 Wird bei jeder automatischen Prüfung (donnerstags) ergänzt. Alle Neuerungen
 der App im Detail stehen im [Changelog](CHANGELOG.md).

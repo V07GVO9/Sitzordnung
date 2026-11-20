@@ -395,19 +395,12 @@ describe('LocalStore - Abwesende im Unterricht', () => {
 });
 
 describe('LocalStore - Sicherungskopie und Schuljahreswechsel', () => {
-  it('merkt sich die letzte Sicherungskopie in der Datei - Einstellungen bleiben unberührt', () => {
+  it('merkt sich die letzte Sicherungskopie in der Datei', () => {
     const { store } = setup();
     expect(store.settings.getLastBackupAt()).toBeNull();
 
     store.settings.markBackup();
     expect(store.settings.getLastBackupAt()).toBe(MONDAY.toISOString());
-
-    store.settings.saveSettings({ toleranceMinutes: 10, allowRatingOutsideLesson: false });
-    expect(store.settings.getLastBackupAt()).toBe(MONDAY.toISOString());
-    expect(store.settings.getSettings()).toEqual({
-      toleranceMinutes: 10,
-      allowRatingOutsideLesson: false,
-    });
   });
 
   it('setzt Klassen hoch, löscht Leistungsdaten und Stundenplan - Schüler und Kurse bleiben', () => {

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { activeCourseGuard, evaluationGuard } from './core/active-course.service';
+import { activeCourseGuard } from './core/active-course.service';
 import { editModeGuard } from './core/mode.service';
 
 // Kein Guard: die Oberflaeche liegt komplett hinter dem Vault. Solange keine
@@ -55,12 +55,6 @@ export const routes: Routes = [
     canActivate: [editModeGuard],
     title: 'Schuljahreswechsel',
     loadComponent: () => import('./pages/school-year/school-year').then((m) => m.SchoolYearPage),
-  },
-  {
-    path: 'auswertung',
-    canActivate: [evaluationGuard],
-    title: 'Auswertung',
-    loadComponent: () => import('./pages/evaluation/evaluation').then((m) => m.EvaluationPage),
   },
   // Frühere Adressen führen weiterhin irgendwohin Sinnvolles.
   { path: 'unterricht', redirectTo: '' },

@@ -18,6 +18,11 @@ Kategorien: **Neu** · **Geändert** · **Behoben**
   Leistungsnachweise, Mitarbeit, Notenbögen, Protokoll) sind weggefallen. Das
   **Bewertungsschema** steht jetzt unter Menü ☰ → *Noten* →
   *Bewertungsschema bearbeiten*.
+- **Auswertung & Export entfernt:** Die Seite mit den Reitern *Punkte & Export*,
+  *Notenschlüssel*, *Einstellungen* und *Datei* ist weggefallen, ebenso die
+  Menüpunkte *Auswertung & Export*, *Notenschlüssel*, *App-Einstellungen* und
+  *Datei & Passwort*. Passwort ändern geht weiter über das Menü; gespeicherte
+  Notenschlüssel und Einstellungen gelten unverändert weiter.
 
 ---
 

@@ -195,24 +195,11 @@
         <a routerLink="/"><app-icon name="calendar-days" /> Wochenplan</a>
         @if (activeCourse()) {
           <a routerLink="/noten"><app-icon name="graduation-cap" /> Noten</a>
-          <a routerLink="/auswertung" [queryParams]="{ tab: 'punkte' }">
-            <app-icon name="file-down" /> Auswertung & Export
-          </a>
         } @else {
-          <p class="menu-hint">
-            Noten und Auswertung gibt es, sobald im Wochenplan eine Stunde gewählt ist.
-          </p>
+          <p class="menu-hint">Noten gibt es, sobald im Wochenplan eine Stunde gewählt ist.</p>
         }
 
         <p class="menu-label">Einstellungen</p>
-        @if (isEdit()) {
-          <a routerLink="/auswertung" [queryParams]="{ tab: 'noten' }">
-            <app-icon name="graduation-cap" /> Notenschlüssel
-          </a>
-          <a routerLink="/auswertung" [queryParams]="{ tab: 'einstellungen' }">
-            <app-icon name="settings" /> App-Einstellungen
-          </a>
-        }
         <button type="button" (click)="cycleTheme()">
           <app-icon [name]="themeIcon()" /> Darstellung: {{ themeLabel() }}
         </button>
@@ -245,11 +232,6 @@
         <button type="button" [disabled]="isSaving()" (click)="openPasswordDialog()">
           <app-icon name="key-round" /> Passwort ändern
         </button>
-        @if (isEdit()) {
-          <a routerLink="/auswertung" [queryParams]="{ tab: 'datei' }">
-            <app-icon name="key-round" /> Datei & Passwort
-          </a>
-        }
         @if (canInstall()) {
           <button type="button" (click)="install()">
             <app-icon name="monitor-down" /> Als App installieren

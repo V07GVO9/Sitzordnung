@@ -119,24 +119,6 @@ export interface CourseScoreboard {
   students: StudentScore[];
 }
 
-export interface GradeScaleEntry {
-  minPoints: number;
-  grade: string;
-}
-
-export interface GradeScale {
-  id: number;
-  courseId: number | null;
-  name: string;
-  isGlobalDefault: boolean;
-  entries: GradeScaleEntry[];
-}
-
-export interface GradeScaleInput {
-  name: string;
-  entries: GradeScaleEntry[];
-}
-
 export const WEEKDAY_NAMES: Record<number, string> = {
   1: 'Montag',
   2: 'Dienstag',
@@ -150,12 +132,7 @@ export const WEEKDAY_NAMES: Record<number, string> = {
 /** Die Wochentage in der Reihenfolge, in der ein Stundenplan sie zeigt. */
 export const SCHOOL_DAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
 
-export interface AppSettings {
-  toleranceMinutes: number;
-  allowRatingOutsideLesson: boolean;
-}
-
-/** Ein Zeitraum für Auswertung und Export. Beide Grenzen sind optional. */
+/** Ein Zeitraum für Noten und Export. Beide Grenzen sind optional. */
 export interface DateRange {
   from?: string | null;
   to?: string | null;

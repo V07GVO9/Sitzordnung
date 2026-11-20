@@ -42,7 +42,6 @@ const THEME_LABELS: Record<ThemeChoice, string> = {
 /** Kurze Titel fürs Handy - die Zeile ist dort schmal. */
 const SHORT_TITLES: Record<string, string> = {
   verwaltung: 'Verwaltung',
-  auswertung: 'Auswertung',
 };
 
 /** Titel der Seiten in der Kopfleiste. */
@@ -51,13 +50,12 @@ const PAGE_TITLES: Record<string, string> = {
   noten: 'Noten',
   stundenplan: 'Stundenplan',
   verwaltung: 'Klassen, Fächer & Schüler',
-  auswertung: 'Auswertung & Einstellungen',
   einrichtung: 'Einrichtung',
   schuljahr: 'Schuljahreswechsel',
 };
 
 /** Seiten, die sich auf das gewählte Fach beziehen - dort steht es mit im Titel. */
-const COURSE_PAGES = new Set(['kurs', 'noten', 'auswertung']);
+const COURSE_PAGES = new Set(['kurs', 'noten']);
 
 function courseTitle(course: Course): string {
   return `${course.subjectName} · ${course.schoolClassName}`;
@@ -156,7 +154,7 @@ export class App implements OnDestroy {
       return course ? courseTitle(course) : '';
     }
     const title = PAGE_TITLES[page] ?? '';
-    // Noten und Auswertung zeigen, für welches Fach sie gerade gelten.
+    // Die Noten zeigen, für welches Fach sie gerade gelten.
     return course && COURSE_PAGES.has(page) ? `${title} – ${courseTitle(course)}` : title;
   });
   /**
