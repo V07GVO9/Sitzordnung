@@ -19,6 +19,13 @@ export const ONEDRIVE_CONFIG = {
 
   /** Der Ordner in OneDrive, in dem die Datenbestände liegen. */
   folder: 'Sitzordnung',
+
+  /**
+   * Hier legt „Sicherungskopie speichern“ die Kopien ab - ohne Rückfrage nach
+   * dem Ort. Das Datum der neuesten Kopie entscheidet auf allen Geräten, ob
+   * eine neue Sicherung fällig ist.
+   */
+  backupFolder: 'Sitzordnung-App/Sicherheitskopien',
 };
 
 /** Hierhin leitet Microsoft nach der Anmeldung zurück; main.ts nimmt die Antwort an. */

@@ -38,6 +38,7 @@ interface DriveItem {
   size?: number;
   eTag?: string;
   lastModifiedDateTime?: string;
+  createdDateTime?: string;
   file?: unknown;
   '@microsoft.graph.downloadUrl'?: string;
 }
@@ -165,12 +166,14 @@ export class OneDriveService {
     interactive = false,
   ): Promise<Response> {
     const token = await this.token(interactive);
+    // Folgeseiten (@odata.nextLink) kommen als vollständige Adresse.
+    const url = path.startsWith('https://') ? path : GRAPH + path;
     const headers = new Headers(init.headers);
     headers.set('Authorization', `Bearer ${token}`);
 
     let response: Response;
     try {
-      response = await fetch(GRAPH + path, { ...init, headers });
+      response = await fetch(url, { ...init, headers });
     } catch {
       throw new AppError('OneDrive ist nicht erreichbar. Besteht eine Internetverbindung?');
     }
@@ -227,10 +230,7 @@ export class OneDriveService {
   /** Legt eine neue Datei an. Eine vorhandene gleichen Namens bleibt unangetastet. */
   async create(name: string, content: Blob): Promise<FileHandle> {
     const fileName = name.endsWith(VAULT_EXTENSION) ? name : name + VAULT_EXTENSION;
-    const path = `/${ONEDRIVE_CONFIG.folder}/${fileName}`
-      .split('/')
-      .map(encodeURIComponent)
-      .join('/');
+    const path = drivePath(ONEDRIVE_CONFIG.folder, fileName);
 
     const response = await this.graph(
       `/root:${path}:/content?@microsoft.graph.conflictBehavior=fail`,
@@ -247,6 +247,60 @@ export class OneDriveService {
     const handle = new OneDriveHandle(this, item.id, item.name);
     handle.eTag = item.eTag ?? null;
     return handle;
+  }
+
+  // --- Sicherungskopien -----------------------------------------------------
+
+  /**
+   * Legt eine Sicherungskopie im Sicherungsordner ab (fehlende Ordner legt
+   * OneDrive selbst an). Gibt es den Namen schon, hängt OneDrive eine Nummer an.
+   * Liefert den Zeitpunkt, zu dem die Kopie angelegt wurde.
+   */
+  async uploadBackup(name: string, content: Blob): Promise<string> {
+    const response = await this.graph(
+      `/root:${drivePath(ONEDRIVE_CONFIG.backupFolder, name)}:/content` +
+        '?@microsoft.graph.conflictBehavior=rename',
+      { method: 'PUT', body: content, headers: { 'Content-Type': 'application/octet-stream' } },
+      true,
+    );
+    await requireOk(response, 'Die Sicherungskopie konnte nicht in OneDrive gespeichert werden.');
+    const item = (await response.json()) as DriveItem;
+    return item.createdDateTime ?? new Date().toISOString();
+  }
+
+  /**
+   * Wann wurde die neueste Sicherungskopie im Sicherungsordner angelegt?
+   * null: Es gibt noch keine. Fragt still an - ohne Anmeldefenster.
+   */
+  async latestBackupAt(): Promise<string | null> {
+    let next: string | null =
+      `/root:${drivePath(ONEDRIVE_CONFIG.backupFolder)}:/children` +
+      '?$select=name,createdDateTime,file&$top=200';
+    let latest: string | null = null;
+
+    while (next) {
+      const response = await this.graph(next);
+      // Der Ordner entsteht erst mit der ersten Sicherung.
+      if (response.status === 404) {
+        return null;
+      }
+      await requireOk(response, 'Die Sicherungskopien in OneDrive konnten nicht gelesen werden.');
+
+      const page = (await response.json()) as {
+        value: DriveItem[];
+        '@odata.nextLink'?: string;
+      };
+      for (const item of page.value) {
+        const created = item.createdDateTime;
+        if (item.file && item.name.endsWith(VAULT_EXTENSION) && created) {
+          if (latest === null || Date.parse(created) > Date.parse(latest)) {
+            latest = created;
+          }
+        }
+      }
+      next = page['@odata.nextLink'] ?? null;
+    }
+    return latest;
   }
 
   /** Löscht eine Datei. OneDrive legt sie in seinen Papierkorb. */
@@ -384,6 +438,14 @@ function writeLastUser(username: string | null): void {
   } catch {
     // Ohne Speicher wird beim nächsten Start eben nachgefragt.
   }
+}
+
+/** Ein Pfad in OneDrive, je Abschnitt maskiert: „/Ordner/Unterordner/Datei“. */
+function drivePath(folder: string, fileName?: string): string {
+  return `/${folder}${fileName ? '/' + fileName : ''}`
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/');
 }
 
 async function requireOk(response: Response, message: string): Promise<void> {

@@ -20,6 +20,7 @@ import {
 } from './core/persistence/file-system';
 import { LocalStore } from './core/store/local-store';
 import { VaultService } from './core/persistence/vault.service';
+import { BackupService } from './core/persistence/backup.service';
 import { ToastHost } from './core/ui/toast-host';
 import { ToastService } from './core/ui/toast.service';
 import { ConfirmHost } from './core/ui/confirm-host';
@@ -92,6 +93,7 @@ export class App implements OnDestroy {
   private readonly router = inject(Router);
   private readonly store = inject(LocalStore);
   private readonly vault = inject(VaultService);
+  private readonly backups = inject(BackupService);
   private readonly toasts = inject(ToastService);
   private readonly theme = inject(ThemeService);
   private readonly pwa = inject(PwaService);
@@ -278,12 +280,12 @@ export class App implements OnDestroy {
     void this.pwa.install();
   }
 
-  /** Speichert eine verschlüsselte Sicherungskopie an einem gewählten Ort, die Arbeitsdatei bleibt. */
+  /** Speichert eine verschlüsselte Sicherungskopie in OneDrive, die Arbeitsdatei bleibt. */
   async backup(): Promise<void> {
     this.closeMenu();
     try {
-      await this.vault.saveBackupCopy();
-      this.toasts.success('Sicherungskopie gespeichert – bitte an einem zweiten Ort ablegen.');
+      await this.backups.createBackup();
+      this.toasts.success('Sicherungskopie in OneDrive gespeichert.');
     } catch (error) {
       if (!(error instanceof FilePickerCancelled)) {
         this.toasts.error(error, 'Die Sicherungskopie konnte nicht erstellt werden.');

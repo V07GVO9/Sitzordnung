@@ -34,7 +34,6 @@ import {
   openFile,
   readHandle,
   requestAccess,
-  saveCopyWithPicker,
   supportsFileHandles,
   writeFile,
 } from './file-system';
@@ -780,20 +779,27 @@ export class VaultService {
   }
 
   /**
-   * Speichert eine Sicherungskopie - verschlüsselt mit demselben Passwort.
-   * Es wird jedes Mal nach dem Speicherort gefragt. Anders als
-   * „Speichern unter“ bleibt die Arbeitsdatei dieselbe.
+   * Speichert eine Sicherungskopie - verschlüsselt mit demselben Passwort -
+   * ohne Rückfrage in den OneDrive-Ordner für Sicherungskopien. Anders als
+   * „Speichern unter“ bleibt die Arbeitsdatei dieselbe. Liefert, wann die
+   * Kopie angelegt wurde.
    */
-  async saveBackupCopy(): Promise<void> {
+  async saveBackupCopy(): Promise<string> {
     if (!this.store.isOpen() || this.password === null) {
       throw new AppError('Es ist kein Datenbestand geöffnet.');
     }
+    // Erst anmelden, solange das Anmeldefenster noch als Folge des Klicks gilt.
+    await this.oneDrive.ensureToken(true);
     const blob = await encryptDatabase(this.store.snapshot(), this.password);
     const base = (this.fileName() ?? DEFAULT_FILE_NAME).replace(/\.sitzordnung$/i, '');
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    await saveCopyWithPicker(blob, `${base}-sicherung-${day}${VAULT_EXTENSION}`);
+    const createdAt = await this.oneDrive.uploadBackup(
+      `${base}-sicherung-${day}${VAULT_EXTENSION}`,
+      blob,
+    );
     this.store.settings.markBackup();
+    return createdAt;
   }
 
   /** Fragt nach einer neuen Datei und speichert dorthin. */
